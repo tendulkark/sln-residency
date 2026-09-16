@@ -1,20 +1,50 @@
 @import "tailwindcss";
 
-:root {
-  --brand: #7a1f3d;
-  --brand-dark: #5e1730;
-  --brand-tint: #fdf3f0;
-  --app-bg: #fdfaf3;
+/*
+ * Theme tokens. --color-brand is the one value a tenant can override at
+ * runtime (see lib/theme.js, driven by Tenant.primaryColor) — everything
+ * else derives from it via color-mix() so a single override re-tints
+ * hovers/tints/focus rings without any extra JS or config.
+ */
+@theme {
+  --color-brand: #7a1f3d;
+  --color-brand-dark: color-mix(in srgb, var(--color-brand) 82%, black);
+  --color-brand-tint: color-mix(in srgb, var(--color-brand) 10%, white);
+  --color-brand-ring: color-mix(in srgb, var(--color-brand) 45%, white);
+  --color-surface: #fdfaf3;
 }
 
 body {
-  background-color: var(--app-bg);
+  background-color: var(--color-surface);
   @apply text-gray-900;
 }
 
-.btn-brand {
-  background-color: var(--brand);
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
-.btn-brand:hover {
-  background-color: var(--brand-dark);
+
+/*
+ * window.print() (e.g. "Checkout & Print Bill") should print only the open
+ * dialog's content, not the dashboard behind it. Every ui/Dialog carries
+ * data-print-area so this stays generic across every modal, not just one.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  [data-print-area],
+  [data-print-area] * {
+    visibility: visible;
+  }
+  [data-print-area] {
+    position: absolute;
+    inset: 0;
+    box-shadow: none;
+  }
 }

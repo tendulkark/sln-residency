@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Hotel } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
 import { useAuthStore } from "../store/authStore.js";
+import { Button, Input } from "../ui/index.js";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -30,48 +32,24 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-        <div>
+        <div className="flex flex-col items-center text-center">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-tint text-brand">
+            <Hotel className="h-6 w-6" />
+          </div>
           <h1 className="text-lg font-semibold text-gray-900">Staff Sign In</h1>
           <p className="text-sm text-gray-500">SLN Residency staff console</p>
         </div>
 
-        {error && (
-          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-        )}
+        {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700" htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-          />
-        </div>
+        <Input id="email" label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input id="password" label="Password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
 
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700" htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="btn-brand w-full rounded-md px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
+        <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
     </div>
   );

@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PartyPopper } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { useAuthStore } from "../store/authStore.js";
+import { Button, Card, CardSkeleton, EmptyState } from "../ui/index.js";
 
 const NEEDS_ATTENTION_CODES = new Set(["dirty", "cleaning", "maintenance"]);
 
@@ -31,15 +33,20 @@ export default function HousekeepingPage() {
         <p className="text-sm text-gray-500">Rooms that need cleaning or maintenance before they can be sold again.</p>
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
       {error && <p className="text-sm text-red-600">{error.message}</p>}
 
+      {isLoading && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <CardSkeleton count={3} />
+        </div>
+      )}
+
       {tasks.length === 0 && !isLoading ? (
-        <p className="mt-16 text-center text-sm text-gray-400">All rooms are clean! Great job. 🌟</p>
+        <EmptyState icon={PartyPopper} title="All rooms are clean!" subtitle="Great job — nothing needs attention right now." />
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tasks.map((room) => (
-            <div key={room.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <Card key={room.id}>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-base font-semibold text-gray-900">Room {room.roomNumber}</p>
@@ -52,15 +59,11 @@ export default function HousekeepingPage() {
               </div>
 
               {permissions.has("rooms.housekeeping") && availableStatus && (
-                <button
-                  onClick={() => markAvailable.mutate(room.id)}
-                  disabled={markAvailable.isPending}
-                  className="btn-brand mt-3 w-full rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-                >
+                <Button onClick={() => markAvailable.mutate(room.id)} disabled={markAvailable.isPending} className="mt-3 w-full">
                   Mark available
-                </button>
+                </Button>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}

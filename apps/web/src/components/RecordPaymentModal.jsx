@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api.js";
+import { Button, Input, Select } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 
 export default function RecordPaymentModal({ booking, onClose }) {
   const queryClient = useQueryClient();
   const { data: methods } = useQuery({ queryKey: ["payment-methods"], queryFn: () => apiFetch("/payment-methods") });
   const { data: paymentStatuses } = useQuery({ queryKey: ["statuses", "payment"], queryFn: () => apiFetch("/statuses?domain=payment") });
+  const methodOptions = useMemo(() => (methods ?? []).map((m) => ({ value: m.id, label: m.name })), [methods]);
+  const statusOptions = useMemo(() => (paymentStatuses ?? []).map((s) => ({ value: s.id, label: s.label })), [paymentStatuses]);
 
   const [methodId, setMethodId] = useState("");
   const [statusId, setStatusId] = useState("");
@@ -48,59 +51,23 @@ export default function RecordPaymentModal({ booking, onClose }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Amount (₹)</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            required
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Method</label>
-          <select value={methodId} onChange={(e) => setMethodId(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>
-            <option value="">Select a method</option>
-            {methods?.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Status</label>
-          <select value={statusId} onChange={(e) => setStatusId(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-            {paymentStatuses?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">Reference note</label>
-          <input
-            value={referenceNote}
-            onChange={(e) => setReferenceNote(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            placeholder="UPI txn id, cheque no., etc."
-          />
-        </div>
+        <Input label="Amount (₹)" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+        <Select label="Method" options={methodOptions} value={methodId} onChange={setMethodId} placeholder="Select a method" />
+        <Select label="Status" options={statusOptions} value={statusId} onChange={setStatusId} />
+        <Input
+          label="Reference note"
+          value={referenceNote}
+          onChange={(e) => setReferenceNote(e.target.value)}
+          placeholder="UPI txn id, cheque no., etc."
+        />
 
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button type="submit" disabled={recordMutation.isPending} className="btn-brand rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          </Button>
+          <Button type="submit" disabled={recordMutation.isPending}>
             {recordMutation.isPending ? "Recording…" : "Record payment"}
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>

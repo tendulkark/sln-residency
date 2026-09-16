@@ -58,7 +58,7 @@ export default async function authRoutes(fastify) {
     return {
       accessToken,
       user: { id: user.id, name: user.name, email: user.email, roleName: user.role.name },
-      tenant: { id: user.tenant.id, name: user.tenant.name, subdomain: user.tenant.subdomain },
+      tenant: { id: user.tenant.id, name: user.tenant.name, subdomain: user.tenant.subdomain, primaryColor: user.tenant.primaryColor },
       permissions,
     };
   });
@@ -91,7 +91,7 @@ export default async function authRoutes(fastify) {
     return {
       accessToken,
       user: { id: user.id, name: user.name, email: user.email, roleName: user.role.name },
-      tenant: { id: user.tenant.id, name: user.tenant.name, subdomain: user.tenant.subdomain },
+      tenant: { id: user.tenant.id, name: user.tenant.name, subdomain: user.tenant.subdomain, primaryColor: user.tenant.primaryColor },
       permissions,
     };
   });

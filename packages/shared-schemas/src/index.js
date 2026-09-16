@@ -5,4 +5,5 @@ export * from "./room.js";
 export * from "./roomClosure.js";
 export * from "./guest.js";
 export * from "./booking.js";
+export * from "./bookingCharge.js";
 export * from "./payment.js";

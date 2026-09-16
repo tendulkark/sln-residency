@@ -37,6 +37,7 @@ model Tenant {
   invoices      Invoice[]
   auditLogs     AuditLog[]
   roomClosures  RoomClosure[]
+  bookingCharges BookingCharge[]
 }
 
 // ---------------------------------------------------------------------------
@@ -104,6 +105,7 @@ model User {
   invoicesGenerated Invoice[]  @relation("InvoiceGeneratedBy")
   auditLogs        AuditLog[]
   roomClosuresCreated RoomClosure[] @relation("RoomClosureCreatedBy")
+  bookingChargesCreated BookingCharge[] @relation("BookingChargeCreatedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -221,6 +223,10 @@ model Booking {
   roomId          String
   guestId         String
   statusId        String
+  // Shared across the sibling bookings created together as one group
+  // booking (one guest, several rooms, one bill) — null for a plain
+  // single-room booking.
+  groupCode       String?
   checkIn         DateTime
   checkOut        DateTime
   actualCheckIn   DateTime?
@@ -242,10 +248,33 @@ model Booking {
 
   payments Payment[]
   invoices Invoice[]
+  charges  BookingCharge[]
 
   @@index([tenantId])
   @@index([roomId])
   @@index([statusId])
+  @@index([tenantId, groupCode])
+}
+
+// Ad-hoc line items against a booking's bill — extra charges (food,
+// damages, laundry, ...) or a discount/concession. `type` is a small
+// structural enum (like Status.domain), not tenant-configurable data.
+model BookingCharge {
+  id          String   @id @default(cuid())
+  tenantId    String
+  bookingId   String
+  type        String // "charge" | "discount"
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("BookingChargeCreatedBy", fields: [createdById], references: [id])
+
+  @@index([tenantId])
+  @@index([bookingId])
 }
 
 // ---------------------------------------------------------------------------

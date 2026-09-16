@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api.js";
 import { formatCurrency } from "../lib/format.js";
+import { Button, Input } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 
 const EMPTY_FORM = { name: "", basePrice: "", capacity: 2, amenities: "" };
@@ -78,17 +79,13 @@ export default function RoomTypesModal({ onClose }) {
                 {formatCurrency(rt.basePrice)} base · capacity {rt.capacity} · {rt._count?.rooms ?? 0} room(s)
               </p>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => startEdit(rt)} className="text-xs font-medium text-gray-600 hover:text-gray-900">
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" onClick={() => startEdit(rt)}>
                 Edit
-              </button>
-              <button
-                onClick={() => deleteMutation.mutate(rt.id)}
-                disabled={rt._count?.rooms > 0}
-                className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-40"
-              >
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(rt.id)} disabled={rt._count?.rooms > 0}>
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         ))}
@@ -97,49 +94,33 @@ export default function RoomTypesModal({ onClose }) {
       <div className="mt-5 border-t border-gray-200 pt-4">
         <p className="mb-2 text-sm font-semibold text-gray-900">{editingId ? "Edit room type" : "Add room type"}</p>
         <div className="grid grid-cols-2 gap-3">
-          <input
-            placeholder="Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-          <input
+          <Input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input
             type="number"
             step="0.01"
             placeholder="Base price (excl. tax)"
             value={form.basePrice}
             onChange={(e) => setForm({ ...form, basePrice: e.target.value })}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
-          <input
-            type="number"
-            placeholder="Capacity"
-            value={form.capacity}
-            onChange={(e) => setForm({ ...form, capacity: e.target.value })}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-          <input
-            placeholder="Amenities (comma separated)"
-            value={form.amenities}
-            onChange={(e) => setForm({ ...form, amenities: e.target.value })}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
+          <Input type="number" placeholder="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+          <Input placeholder="Amenities (comma separated)" value={form.amenities} onChange={(e) => setForm({ ...form, amenities: e.target.value })} />
         </div>
         <div className="mt-3 flex justify-end gap-2">
           {editingId && (
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setEditingId(null);
                 setForm(EMPTY_FORM);
               }}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700"
             >
               Cancel edit
-            </button>
+            </Button>
           )}
-          <button onClick={submitForm} className="btn-brand rounded-md px-3 py-1.5 text-xs font-medium text-white">
+          <Button size="sm" onClick={submitForm}>
             {editingId ? "Save changes" : "Add room type"}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>
