@@ -7,4 +7,5 @@ export const guestSchema = z.object({
   idProofType: z.string().min(1).optional().nullable(),
   idProofNumber: z.string().min(1).optional().nullable(),
   address: z.string().min(1).optional().nullable(),
+  gstin: z.string().min(1).optional().nullable(),
 });

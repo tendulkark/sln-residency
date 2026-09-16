@@ -215,6 +215,7 @@ model Guest {
   idProofType   String?
   idProofNumber String?
   address       String?
+  gstin         String? // for a B2B tax invoice when the guest travels for business
   createdAt     DateTime @default(now())
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -361,6 +362,11 @@ model Invoice {
   generatedBy User     @relation("InvoiceGeneratedBy", fields: [generatedById], references: [id])
 
   @@unique([tenantId, invoiceNumber])
+  // A stay gets exactly one tax invoice — this is what actually makes
+  // invoice generation idempotent under a race (two near-simultaneous
+  // "Checkout & Print Bill" clicks), not just the find-existing-else-create
+  // check in invoices.routes.js, which alone can't close that race.
+  @@unique([bookingId])
   @@index([tenantId])
 }
 

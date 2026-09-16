@@ -62,15 +62,20 @@ explicitly asked later.
       status-transition bookings, dynamic booking statuses. Shipped alongside
       a Hotel Dashboard (live room board + stats), a Housekeeping view
       (derived from room status, no new table), and a Reservations calendar.
-- [ ] Phase 3 — Manual payments & GST: tax_rules engine and record-payment UI
-      are in (see `lib/tax.js`, `payments.routes.js`); invoice generation
-      with snapshotted tax is still outstanding.
-- [ ] Phase 4 — Admin controls: room types/pricing management is in
-      (Rooms Setup); manage roles/permissions, statuses, tax rules, and staff
-      accounts are still outstanding.
+- [x] Phase 3 — Manual payments & GST: tax_rules engine and record-payment UI
+      (`lib/tax.js`, `payments.routes.js`), plus invoice generation with
+      snapshotted tax (`lib/billing.js`, `invoices.routes.js`) — a stay gets
+      exactly one sequentially-numbered tax invoice (`Invoice.bookingId` is
+      unique), printable from Manage Stay or reprinted from Reports.
+- [ ] Phase 4 — Admin controls: room types/pricing management (Rooms Setup)
+      and hotel profile/branding (Settings) are in; manage roles/permissions,
+      statuses, tax rules, and staff accounts are still outstanding.
 - [ ] Phase 5 — PWA polish: manifest/icons, offline shell caching, install
       prompts.
-- [ ] Phase 6 — Reporting: occupancy %, revenue, GST collected, daily
-      cash/UPI/card reconciliation view.
+- [x] Phase 6 — Reporting: a Rooms Reports module (`reports.routes.js`,
+      `lib/reports.js`) covering Bookings (status/room-type breakdown, full
+      audit-trail-backed detail table, CSV export), Revenue (by payment
+      method + daily), Occupancy (daily % across the range), and GST
+      (CGST/SGST collected, by rate, per-invoice).
 - [ ] Phase 7 — Multi-tenant/reseller layer: tenant sign-up, subdomain
       routing, subscription plan gating, white-label theming.

@@ -48,6 +48,20 @@ payment methods) is hardcoded — it's all editable data. See
   creation (with inline or existing-guest lookup), check-in/check-out/cancel
   transitions, and manual payment recording.
 
+## Phase 3 & 6 (this build)
+
+- **Tax invoices** — "Checkout & Print Bill" generates a sequentially
+  numbered, tax-snapshotted GST invoice (letterheaded from Settings), printed
+  from a dedicated invoice view and reprintable any time from Manage Stay or
+  the Reports module.
+- **Settings** — hotel profile (name, address, phone, GSTIN, logo, brand
+  color) used on every printed invoice and in the sidebar.
+- **Reports** — a Rooms Reports module with four tabs: Bookings (status/
+  room-type breakdown, a full detail table with every audit-trail-backed
+  column, CSV export), Revenue (by payment method + daily trend), Occupancy
+  (daily % across a date range), and GST (CGST/SGST collected, by rate,
+  per-invoice) — all filterable by date range.
+
 ## Local setup
 
 1. **Start Postgres** (or point `DATABASE_URL` at any Postgres instance you
@@ -95,7 +109,6 @@ payment methods) is hardcoded — it's all editable data. See
 
 ## What's next
 
-See the build order in [AI_RULES.md](AI_RULES.md) — Phase 3 is invoice
-generation with snapshotted GST (the tax engine and manual payment recording
-are already in), followed by Phase 4's remaining admin controls (roles/
-permissions, statuses, tax rules, and staff account management UIs).
+See the build order in [AI_RULES.md](AI_RULES.md) — next up is the rest of
+Phase 4's admin controls (roles/permissions, statuses, tax rules, and staff
+account management UIs), followed by Phase 5's PWA polish.

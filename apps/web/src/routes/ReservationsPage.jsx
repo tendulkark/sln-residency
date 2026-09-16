@@ -137,56 +137,60 @@ export default function ReservationsPage() {
       )}
 
       {viewMode === "month" && !isLoading && (
-        <div className="overflow-hidden rounded-xl border border-line bg-card shadow-sm">
-          <div className="grid grid-cols-7 border-b border-line bg-muted">
-            {DAY_LABELS.map((d) => (
-              <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500">
-                {d}
-              </div>
-            ))}
-          </div>
-          {weeks.map((weekStart) => {
-            const { placed, overflowCount } = layoutWeek(bookings ?? [], weekStart);
-            const lanesUsed = Math.max(1, ...placed.map((p) => p.lane + 1), overflowCount > 0 ? 1 : 0);
-
-            return (
-              <div key={weekStart.toISOString()} className="grid grid-cols-7 border-b border-line-soft" style={{ minHeight: `${28 + lanesUsed * 24}px` }}>
-                {Array.from({ length: 7 }).map((_, i) => {
-                  const day = addDays(weekStart, i);
-                  const inMonth = day.getMonth() === currentMonth;
-                  const isToday = toISODate(day) === toISODate(new Date());
-                  return (
-                    <div key={i} className={`border-r border-line-soft p-1 ${inMonth ? "" : "bg-muted text-gray-300"}`}>
-                      <span className={`text-xs ${isToday ? "flex h-5 w-5 items-center justify-center rounded-full bg-brand font-semibold text-white" : "text-gray-500"}`}>
-                        {day.getDate()}
-                      </span>
-                    </div>
-                  );
-                })}
-
-                <div className="col-span-7 -mt-6 grid grid-cols-7 gap-y-[2px] px-1">
-                  {placed.map(({ booking, startCol, endCol, lane }) => (
-                    <button
-                      key={booking.id}
-                      onClick={() => permissions.has("payments.record") && setPaymentModal(booking)}
-                      className="truncate rounded px-1.5 py-0.5 text-left text-[10px] font-semibold text-white"
-                      style={{
-                        gridColumnStart: startCol + 1,
-                        gridColumnEnd: endCol + 1,
-                        gridRow: lane + 1,
-                        backgroundColor: booking.status.color,
-                        marginTop: `${lane * 20}px`,
-                      }}
-                      title={`${booking.guest.name} · Room ${booking.room.roomNumber} · ${booking.status.label}`}
-                    >
-                      {booking.guest.name} · {booking.room.roomNumber}
-                    </button>
-                  ))}
-                  {overflowCount > 0 && <span className="col-span-7 px-1 text-[10px] text-gray-500">+{overflowCount} more</span>}
+        // Seven fixed columns don't shrink to a phone width — scroll
+        // horizontally instead of squeezing every cell unreadable.
+        <div className="overflow-x-auto rounded-xl border border-line bg-card shadow-sm">
+          <div className="min-w-[700px]">
+            <div className="grid grid-cols-7 border-b border-line bg-muted">
+              {DAY_LABELS.map((d) => (
+                <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500">
+                  {d}
                 </div>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+            {weeks.map((weekStart) => {
+              const { placed, overflowCount } = layoutWeek(bookings ?? [], weekStart);
+              const lanesUsed = Math.max(1, ...placed.map((p) => p.lane + 1), overflowCount > 0 ? 1 : 0);
+
+              return (
+                <div key={weekStart.toISOString()} className="grid grid-cols-7 border-b border-line-soft" style={{ minHeight: `${28 + lanesUsed * 24}px` }}>
+                  {Array.from({ length: 7 }).map((_, i) => {
+                    const day = addDays(weekStart, i);
+                    const inMonth = day.getMonth() === currentMonth;
+                    const isToday = toISODate(day) === toISODate(new Date());
+                    return (
+                      <div key={i} className={`border-r border-line-soft p-1 ${inMonth ? "" : "bg-muted text-gray-300"}`}>
+                        <span className={`text-xs ${isToday ? "flex h-5 w-5 items-center justify-center rounded-full bg-brand font-semibold text-white" : "text-gray-500"}`}>
+                          {day.getDate()}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  <div className="col-span-7 -mt-6 grid grid-cols-7 gap-y-[2px] px-1">
+                    {placed.map(({ booking, startCol, endCol, lane }) => (
+                      <button
+                        key={booking.id}
+                        onClick={() => permissions.has("payments.record") && setPaymentModal(booking)}
+                        className="truncate rounded px-1.5 py-0.5 text-left text-[10px] font-semibold text-white"
+                        style={{
+                          gridColumnStart: startCol + 1,
+                          gridColumnEnd: endCol + 1,
+                          gridRow: lane + 1,
+                          backgroundColor: booking.status.color,
+                          marginTop: `${lane * 20}px`,
+                        }}
+                        title={`${booking.guest.name} · Room ${booking.room.roomNumber} · ${booking.status.label}`}
+                      >
+                        {booking.guest.name} · {booking.room.roomNumber}
+                      </button>
+                    ))}
+                    {overflowCount > 0 && <span className="col-span-7 px-1 text-[10px] text-gray-500">+{overflowCount} more</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
