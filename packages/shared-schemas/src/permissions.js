@@ -7,6 +7,8 @@
 export const PERMISSIONS = [
   { code: "rooms.view", description: "View rooms and their status" },
   { code: "rooms.edit", description: "Create/edit rooms" },
+  { code: "rooms.housekeeping", description: "Update room housekeeping status (mark clean/dirty/maintenance)" },
+  { code: "roomclosures.manage", description: "Block a room from availability for a date range" },
   { code: "roomtypes.view", description: "View room types" },
   { code: "roomtypes.edit", description: "Create/edit room types and pricing" },
   { code: "bookings.view", description: "View bookings" },
@@ -34,6 +36,7 @@ export const DEFAULT_ADMIN_PERMISSION_CODES = PERMISSIONS.map((p) => p.code);
 
 export const DEFAULT_EMPLOYEE_PERMISSION_CODES = [
   "rooms.view",
+  "rooms.housekeeping",
   "roomtypes.view",
   "bookings.view",
   "bookings.create",

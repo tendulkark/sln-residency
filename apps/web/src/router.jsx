@@ -3,7 +3,10 @@ import RootLayout from "./routes/RootLayout.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 import Login from "./routes/Login.jsx";
 import AdminShell from "./routes/AdminShell.jsx";
-import RoomsPage from "./routes/RoomsPage.jsx";
+import DashboardPage from "./routes/DashboardPage.jsx";
+import RoomsSetupPage from "./routes/RoomsSetupPage.jsx";
+import HousekeepingPage from "./routes/HousekeepingPage.jsx";
+import ReservationsPage from "./routes/ReservationsPage.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -16,8 +19,11 @@ export const router = createBrowserRouter([
           {
             element: <AdminShell />,
             children: [
-              { index: true, element: <Navigate to="/rooms" replace /> },
-              { path: "rooms", element: <RoomsPage /> },
+              { index: true, element: <Navigate to="/dashboard" replace /> },
+              { path: "dashboard", element: <DashboardPage /> },
+              { path: "rooms-setup", element: <RoomsSetupPage /> },
+              { path: "housekeeping", element: <HousekeepingPage /> },
+              { path: "reservations", element: <ReservationsPage /> },
             ],
           },
         ],

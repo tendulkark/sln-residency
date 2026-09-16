@@ -36,6 +36,7 @@ model Tenant {
   taxRules      TaxRule[]
   invoices      Invoice[]
   auditLogs     AuditLog[]
+  roomClosures  RoomClosure[]
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +103,7 @@ model User {
   paymentsRecorded Payment[]   @relation("PaymentRecordedBy")
   invoicesGenerated Invoice[]  @relation("InvoiceGeneratedBy")
   auditLogs        AuditLog[]
+  roomClosuresCreated RoomClosure[] @relation("RoomClosureCreatedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -165,10 +167,31 @@ model Room {
   roomType RoomType  @relation(fields: [roomTypeId], references: [id])
   status   Status    @relation(fields: [statusId], references: [id])
   bookings Booking[]
+  closures RoomClosure[]
 
   @@unique([tenantId, roomNumber])
   @@index([tenantId])
   @@index([statusId])
+}
+
+// A date range during which a room is blocked from availability (e.g. for
+// renovation/maintenance) — enforced alongside booking-overlap checks.
+model RoomClosure {
+  id        String    @id @default(cuid())
+  tenantId  String
+  roomId    String
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  createdById String
+  createdAt DateTime  @default(now())
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  room      Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("RoomClosureCreatedBy", fields: [createdById], references: [id])
+
+  @@index([tenantId])
+  @@index([roomId])
 }
 
 // ---------------------------------------------------------------------------

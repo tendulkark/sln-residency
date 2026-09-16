@@ -6,8 +6,11 @@ import { apiFetch } from "../lib/api.js";
 // signed-in user lacks it. This is a UX nicety only — the API re-checks
 // every request regardless (AI_RULES.md #3).
 const NAV_ITEMS = [
-  { to: "/rooms", label: "Rooms", permission: "rooms.view" },
-  // Bookings, Staff, and Settings land in later phases.
+  { to: "/dashboard", label: "Hotel Dashboard", permission: "rooms.view" },
+  { to: "/rooms-setup", label: "Rooms Setup", permission: "rooms.view" },
+  { to: "/housekeeping", label: "Housekeeping", permission: "rooms.housekeeping" },
+  { to: "/reservations", label: "Reservations", permission: "bookings.view" },
+  // Staff and Settings land in later phases.
 ];
 
 export default function AdminShell() {
@@ -38,7 +41,7 @@ export default function AdminShell() {
               to={item.to}
               className={({ isActive }) =>
                 `block rounded-md px-3 py-2 text-sm font-medium ${
-                  isActive ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-100"
+                  isActive ? "btn-brand text-white" : "text-gray-700 hover:bg-gray-100"
                 }`
               }
             >
@@ -59,7 +62,7 @@ export default function AdminShell() {
         </div>
       </aside>
 
-      <main className="flex-1 bg-gray-50 p-6">
+      <main className="flex-1 p-6">
         <Outlet />
       </main>
     </div>

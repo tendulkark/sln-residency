@@ -57,12 +57,17 @@ explicitly asked later.
 - [x] Phase 1 — Foundation: monorepo scaffold, Postgres schema (Prisma),
       JWT auth + roles/permissions, tenant model, admin shell listing rooms
       and their status.
-- [ ] Phase 2 — Core booking flow: room types, availability, create/edit/
-      cancel booking, dynamic booking statuses.
-- [ ] Phase 3 — Manual payments & GST: tax_rules engine, record-payment UI,
-      invoice generation with snapshotted tax (no gateway).
-- [ ] Phase 4 — Admin controls: manage roles/permissions, statuses, tax
-      rules, room types/pricing, staff accounts.
+- [x] Phase 2 — Core booking flow: room types, availability (incl. a
+      RoomClosure model for maintenance/renovation blocks), create/edit/
+      status-transition bookings, dynamic booking statuses. Shipped alongside
+      a Hotel Dashboard (live room board + stats), a Housekeeping view
+      (derived from room status, no new table), and a Reservations calendar.
+- [ ] Phase 3 — Manual payments & GST: tax_rules engine and record-payment UI
+      are in (see `lib/tax.js`, `payments.routes.js`); invoice generation
+      with snapshotted tax is still outstanding.
+- [ ] Phase 4 — Admin controls: room types/pricing management is in
+      (Rooms Setup); manage roles/permissions, statuses, tax rules, and staff
+      accounts are still outstanding.
 - [ ] Phase 5 — PWA polish: manifest/icons, offline shell caching, install
       prompts.
 - [ ] Phase 6 — Reporting: occupancy %, revenue, GST collected, daily

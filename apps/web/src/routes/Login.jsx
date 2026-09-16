@@ -21,7 +21,7 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       });
       setSession(data);
-      navigate("/rooms", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -68,7 +68,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          className="btn-brand w-full rounded-md px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {submitting ? "Signing in…" : "Sign in"}
         </button>
