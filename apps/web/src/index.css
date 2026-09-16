@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+:root {
+  --brand: #7a1f3d;
+  --brand-dark: #5e1730;
+  --brand-tint: #fdf3f0;
+  --app-bg: #fdfaf3;
+}
+
 body {
-  @apply bg-gray-50 text-gray-900;
+  background-color: var(--app-bg);
+  @apply text-gray-900;
+}
+
+.btn-brand {
+  background-color: var(--brand);
+}
+.btn-brand:hover {
+  background-color: var(--brand-dark);
 }

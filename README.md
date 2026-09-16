@@ -19,18 +19,34 @@ payment methods) is hardcoded — it's all editable data. See
   `packages/shared-schemas` (Zod schemas + the permission catalog, shared by
   both apps).
 
-## Phase 1 (this scaffold)
+## Phase 1 (foundation)
 
 - Prisma schema for the full dynamic model: tenants, users, roles,
-  permissions, statuses (per domain), room types, rooms, guests, bookings,
-  payment methods, payments, tax rules, invoices, audit log.
+  permissions, statuses (per domain), room types, rooms, room closures,
+  guests, bookings, payment methods, payments, tax rules, invoices, audit
+  log.
 - JWT auth with refresh rotation + a `requirePermission(code)` gate on every
   protected route.
 - A seed script that creates one tenant ("SLN Residency"), the Admin/
-  Employee roles, an admin login, default statuses, default payment
-  methods, and a handful of sample rooms.
-- A minimal staff console: login → sidebar shell → Rooms page showing each
-  room's live status.
+  Employee roles, an admin login, default statuses/payment methods/tax
+  rule, three room types, and 22 sample rooms with sample bookings and
+  payments.
+
+## Phase 2 (this build)
+
+- **Hotel Dashboard** — live stats (occupancy, tonight's revenue, needs
+  attention, today's payments by method) and a room board grouped by floor,
+  with Day/Week/Month/Custom date filters, floor/status/search filters,
+  "New booking" and "Closed periods".
+- **Rooms Setup** — add/edit/delete rooms, manage room types and pricing
+  (base price + live CGST/SGST breakdown from the active `TaxRule`).
+- **Housekeeping** — rooms needing cleaning/maintenance, derived straight
+  from `Room.status` (no separate task table), with a one-click "mark
+  available".
+- **Reservations** — a Day/Week/Month booking calendar (month view renders
+  bookings as spanning bars colored by their dynamic `Status`), booking
+  creation (with inline or existing-guest lookup), check-in/check-out/cancel
+  transitions, and manual payment recording.
 
 ## Local setup
 
@@ -75,10 +91,11 @@ payment methods) is hardcoded — it's all editable data. See
    ```
 
 6. Open `http://localhost:5173`, sign in with the seeded admin login, and
-   you should land on the Rooms page showing the seeded sample rooms.
+   you should land on the Hotel Dashboard showing the seeded rooms/bookings.
 
 ## What's next
 
-See the build order in [AI_RULES.md](AI_RULES.md) — Phase 2 is the core
-booking flow (create/edit/cancel a booking against a room + guest, with
-dynamic booking statuses).
+See the build order in [AI_RULES.md](AI_RULES.md) — Phase 3 is invoice
+generation with snapshotted GST (the tax engine and manual payment recording
+are already in), followed by Phase 4's remaining admin controls (roles/
+permissions, statuses, tax rules, and staff account management UIs).
