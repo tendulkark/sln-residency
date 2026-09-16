@@ -1,16 +1,23 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { DoorOpen, Wallet, AlertTriangle, CreditCard, CalendarOff, Plus, Search } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
 import { toISODate, rangeFor } from "../lib/dateRange.js";
 import { formatCurrency } from "../lib/format.js";
 import StatCard from "../components/StatCard.jsx";
 import RoomBoardCard from "../components/RoomBoardCard.jsx";
 import BookingFormModal from "../components/BookingFormModal.jsx";
-import RecordPaymentModal from "../components/RecordPaymentModal.jsx";
+import RoomBookingsModal from "../components/RoomBookingsModal.jsx";
 import RoomClosuresModal from "../components/RoomClosuresModal.jsx";
+import { Button, Chip, Input, SegmentedControl, CardSkeleton } from "../ui/index.js";
 import { useAuthStore } from "../store/authStore.js";
 
-const VIEW_MODES = ["day", "week", "month", "custom"];
+const VIEW_MODES = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "custom", label: "Custom" },
+];
 const BUCKETS = [
   { code: "available", label: "Available" },
   { code: "occupied", label: "Occupied" },
@@ -29,7 +36,7 @@ export default function DashboardPage() {
   const [bucketFilter, setBucketFilter] = useState(null);
   const [search, setSearch] = useState("");
   const [bookingModal, setBookingModal] = useState(null); // { roomId } | null
-  const [paymentModal, setPaymentModal] = useState(null); // booking | null
+  const [roomBookingsModal, setRoomBookingsModal] = useState(null); // { id, roomNumber } | null
   const [closuresOpen, setClosuresOpen] = useState(false);
 
   const dateISO = toISODate(selectedDate);
@@ -84,20 +91,23 @@ export default function DashboardPage() {
         </div>
         <div className="flex gap-2">
           {permissions.has("roomclosures.manage") && (
-            <button onClick={() => setClosuresOpen(true)} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+            <Button variant="outline" onClick={() => setClosuresOpen(true)}>
+              <CalendarOff className="h-4 w-4" />
               Closed periods
-            </button>
+            </Button>
           )}
           {permissions.has("bookings.create") && (
-            <button onClick={() => setBookingModal({})} className="btn-brand rounded-md px-3 py-2 text-sm font-medium text-white">
-              + New booking
-            </button>
+            <Button onClick={() => setBookingModal({})}>
+              <Plus className="h-4 w-4" />
+              New booking
+            </Button>
           )}
         </div>
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
+          icon={DoorOpen}
           label="Rooms open tonight"
           value={`${bucketCounts.available} / ${board?.length ?? 0} rooms`}
           sublabel={
@@ -110,12 +120,14 @@ export default function DashboardPage() {
           }
         />
         <StatCard
+          icon={Wallet}
           label="Tonight's revenue"
           value={formatCurrency(summary?.tonightsRevenue)}
           badge={summary?.revenueChangePercent != null ? `↑ ${summary.revenueChangePercent}%` : null}
           sublabel="Projected from confirmed stays"
         />
         <StatCard
+          icon={AlertTriangle}
           label="Needs attention"
           tone="warn"
           value={
@@ -133,6 +145,7 @@ export default function DashboardPage() {
           }
         />
         <StatCard
+          icon={CreditCard}
           label="Room payments — today"
           value={formatCurrency(summary?.roomPaymentsToday.total)}
           sublabel={(summary?.roomPaymentsToday.byMethod ?? []).map((m) => `${m.name} ${formatCurrency(m.amount)}`).join(" · ")}
@@ -146,7 +159,9 @@ export default function DashboardPage() {
             <button
               key={b.code}
               onClick={() => setBucketFilter(bucketFilter === b.code ? null : b.code)}
-              className={`rounded-lg border p-3 text-left ${bucketFilter === b.code ? "border-gray-900" : "border-gray-200"}`}
+              className={`rounded-lg border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring ${
+                bucketFilter === b.code ? "border-brand ring-1 ring-brand" : "border-gray-200"
+              }`}
             >
               <p className="text-xs uppercase text-gray-500">{b.label}</p>
               <p className="text-lg font-semibold text-gray-900">{bucketCounts[b.code] ?? 0}</p>
@@ -156,21 +171,15 @@ export default function DashboardPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
-          {VIEW_MODES.map((mode) => (
-            <button
-              key={mode}
-              onClick={() => {
-                setViewMode(mode);
-                if (mode !== "custom") setSelectedDate(shiftDate(mode));
-              }}
-              className={`rounded-md border px-3 py-1.5 text-sm font-medium capitalize ${
-                viewMode === mode ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300 text-gray-700"
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <SegmentedControl
+            options={VIEW_MODES}
+            value={viewMode}
+            onChange={(mode) => {
+              setViewMode(mode);
+              if (mode !== "custom") setSelectedDate(shiftDate(mode));
+            }}
+          />
           <input
             type="date"
             value={dateISO}
@@ -178,31 +187,26 @@ export default function DashboardPage() {
               setSelectedDate(new Date(e.target.value));
               setViewMode("custom");
             }}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {floors.map((floor) => (
-            <button
-              key={floor}
-              onClick={() => setFloorFilter(floorFilter === floor ? null : floor)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                floorFilter === floor ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300 text-gray-700"
-              }`}
-            >
+            <Chip key={floor} active={floorFilter === floor} onClick={() => setFloorFilter(floorFilter === floor ? null : floor)}>
               Floor {floor}
-            </button>
+            </Chip>
           ))}
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Room, guest or type"
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-          />
+          <div className="w-48">
+            <Input icon={Search} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Room, guest or type" />
+          </div>
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading rooms…</p>}
+      {isLoading && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <CardSkeleton count={10} />
+        </div>
+      )}
 
       {roomsByFloor.map(([floor, rooms]) => (
         <div key={floor} className="mb-6">
@@ -211,14 +215,7 @@ export default function DashboardPage() {
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {rooms.map((room) => (
-              <RoomBoardCard
-                key={room.id}
-                room={room}
-                onClick={() => {
-                  if (room.guest) setPaymentModal({ id: room.guest.bookingId, guest: room.guest, totalAmount: null });
-                  else if (permissions.has("bookings.create")) setBookingModal({ roomId: room.id });
-                }}
-              />
+              <RoomBoardCard key={room.id} room={room} onClick={() => setRoomBookingsModal({ id: room.id, roomNumber: room.roomNumber })} />
             ))}
           </div>
         </div>
@@ -227,9 +224,7 @@ export default function DashboardPage() {
       {bookingModal && (
         <BookingFormModal defaultRoomId={bookingModal.roomId} defaultDate={selectedDate} onClose={() => setBookingModal(null)} />
       )}
-      {paymentModal && permissions.has("payments.record") && (
-        <RecordPaymentModal booking={paymentModal} onClose={() => setPaymentModal(null)} />
-      )}
+      {roomBookingsModal && <RoomBookingsModal room={roomBookingsModal} onClose={() => setRoomBookingsModal(null)} />}
       {closuresOpen && <RoomClosuresModal onClose={() => setClosuresOpen(false)} />}
     </div>
   );

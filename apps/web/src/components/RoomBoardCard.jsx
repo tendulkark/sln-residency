@@ -1,3 +1,4 @@
+import { Users } from "lucide-react";
 import { formatCurrency, formatTime } from "../lib/format.js";
 
 // "reserved" and "closed" are computed buckets (not rows in the tenant's
@@ -27,8 +28,14 @@ export default function RoomBoardCard({ room, onClick }) {
 
       {room.guest ? (
         <div className="mt-3 text-xs text-gray-600">
-          <p className="font-medium text-gray-900">
-            {room.guest.name} · {room.guest.statusCode === "checked_in" ? `${room.guest.guests} guest(s)` : "arriving"}
+          <p className="flex items-center gap-1 font-medium text-gray-900">
+            {room.guest.name}
+            {room.guest.statusCode === "checked_in" && (
+              <span className="inline-flex items-center gap-0.5 text-gray-500">
+                <Users className="h-3 w-3" />
+                {room.guest.guests}
+              </span>
+            )}
           </p>
           <p>
             {room.guest.statusCode === "checked_in"

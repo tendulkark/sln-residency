@@ -19,3 +19,13 @@ export function toDateInputValue(dateLike) {
   const offset = d.getTimezoneOffset();
   return new Date(d.getTime() - offset * 60_000).toISOString().slice(0, 10);
 }
+
+// HH:MM in the viewer's local time, for an <input type="time"> value.
+export function toTimeInputValue(dateLike) {
+  const d = new Date(dateLike);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+export function formatDateTime(dateLike) {
+  return new Date(dateLike).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+}

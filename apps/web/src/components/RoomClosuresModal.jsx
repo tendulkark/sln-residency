@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api.js";
 import { formatDate, toDateInputValue } from "../lib/format.js";
 import { useAuthStore } from "../store/authStore.js";
+import { Button, EmptyState, Input, Select } from "../ui/index.js";
+import { CalendarOff } from "lucide-react";
 import Modal from "./Modal.jsx";
 
 export default function RoomClosuresModal({ onClose }) {
@@ -10,6 +12,7 @@ export default function RoomClosuresModal({ onClose }) {
   const canManage = useAuthStore((s) => s.permissions.has("roomclosures.manage"));
   const { data: rooms } = useQuery({ queryKey: ["rooms"], queryFn: () => apiFetch("/rooms") });
   const { data: closures, isLoading } = useQuery({ queryKey: ["room-closures"], queryFn: () => apiFetch("/room-closures") });
+  const roomOptions = useMemo(() => (rooms ?? []).map((r) => ({ value: r.id, label: `${r.roomNumber} · ${r.roomType.name}` })), [rooms]);
 
   const [roomId, setRoomId] = useState("");
   const [startDate, setStartDate] = useState(toDateInputValue(new Date()));
@@ -54,8 +57,8 @@ export default function RoomClosuresModal({ onClose }) {
       {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+      {closures?.length === 0 && <EmptyState icon={CalendarOff} title="No rooms are currently blocked out." />}
       <div className="space-y-2">
-        {closures?.length === 0 && <p className="text-sm text-gray-500">No rooms are currently blocked out.</p>}
         {closures?.map((c) => (
           <div key={c.id} className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
             <div>
@@ -65,9 +68,9 @@ export default function RoomClosuresModal({ onClose }) {
               </p>
             </div>
             {canManage && (
-              <button onClick={() => deleteMutation.mutate(c.id)} className="text-xs font-medium text-red-600 hover:text-red-800">
+              <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(c.id)}>
                 Remove
-              </button>
+              </Button>
             )}
           </div>
         ))}
@@ -77,27 +80,19 @@ export default function RoomClosuresModal({ onClose }) {
         <form onSubmit={handleSubmit} className="mt-5 border-t border-gray-200 pt-4">
           <p className="mb-2 text-sm font-semibold text-gray-900">Block a room</p>
           <div className="grid grid-cols-2 gap-3">
-            <select value={roomId} onChange={(e) => setRoomId(e.target.value)} className="col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm">
-              <option value="">Select a room</option>
-              {rooms?.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.roomNumber} · {room.roomType.name}
-                </option>
-              ))}
-            </select>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
-            <input
-              placeholder="Reason (optional)"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+            <div className="col-span-2">
+              <Select options={roomOptions} value={roomId} onChange={setRoomId} placeholder="Select a room" />
+            </div>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <div className="col-span-2">
+              <Input placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} />
+            </div>
           </div>
           <div className="mt-3 flex justify-end">
-            <button type="submit" disabled={createMutation.isPending} className="btn-brand rounded-md px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
+            <Button type="submit" size="sm" disabled={createMutation.isPending}>
               {createMutation.isPending ? "Blocking…" : "Block room"}
-            </button>
+            </Button>
           </div>
         </form>
       )}

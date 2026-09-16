@@ -1,14 +1,10 @@
 import { roomSchema, updateRoomSchema, updateRoomStatusSchema } from "@sln/shared-schemas";
 import { requirePermission } from "../lib/permissions.js";
 import { recordAudit } from "../lib/audit.js";
-import { getApplicableTaxRule, splitTax } from "../lib/tax.js";
+import { priceRoom } from "../lib/tax.js";
 
 async function serializeRoom(fastify, tenantId, room) {
-  const basePrice = Number(room.roomType.basePrice);
-  const taxRule = await getApplicableTaxRule(fastify.prisma, tenantId, basePrice);
-  const pricing = taxRule
-    ? splitTax(basePrice, taxRule.ratePercent)
-    : { cgst: 0, sgst: 0, taxAmount: 0, total: basePrice };
+  const pricing = await priceRoom(fastify.prisma, tenantId, room.roomType.basePrice);
 
   return {
     id: room.id,
@@ -17,12 +13,12 @@ async function serializeRoom(fastify, tenantId, room) {
     roomType: {
       id: room.roomType.id,
       name: room.roomType.name,
-      basePrice,
+      basePrice: pricing.basePrice,
       capacity: room.roomType.capacity,
       amenities: room.roomType.amenities ?? [],
     },
     status: { id: room.status.id, code: room.status.code, label: room.status.label, color: room.status.color },
-    pricing: { basePrice, ...pricing },
+    pricing,
   };
 }
 

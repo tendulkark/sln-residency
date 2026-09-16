@@ -1,13 +1,19 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Plus, Search, CalendarX2 } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
 import { rangeFor, addDays, startOfMonth, toISODate } from "../lib/dateRange.js";
 import { formatCurrency, formatDate } from "../lib/format.js";
 import BookingFormModal from "../components/BookingFormModal.jsx";
 import RecordPaymentModal from "../components/RecordPaymentModal.jsx";
 import { useAuthStore } from "../store/authStore.js";
+import { Badge, Button, CardSkeleton, EmptyState, Input, SegmentedControl } from "../ui/index.js";
 
-const VIEW_MODES = ["day", "week", "month"];
+const VIEW_MODES = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MAX_LANES = 4;
 
@@ -99,48 +105,38 @@ export default function ReservationsPage() {
           <p className="text-sm text-gray-500">{anchorDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</p>
         </div>
         {permissions.has("bookings.create") && (
-          <button onClick={() => setBookingModal(true)} className="btn-brand rounded-md px-3 py-2 text-sm font-medium text-white">
-            + New Booking
-          </button>
+          <Button onClick={() => setBookingModal(true)}>
+            <Plus className="h-4 w-4" />
+            New Booking
+          </Button>
         )}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button onClick={() => setAnchorDate(new Date())} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm">
+          <Button variant="outline" size="sm" onClick={() => setAnchorDate(new Date())}>
             Today
-          </button>
-          <button onClick={() => shift(-1)} className="rounded-md border border-gray-300 px-2 py-1.5 text-sm">
-            ‹
-          </button>
-          <button onClick={() => shift(1)} className="rounded-md border border-gray-300 px-2 py-1.5 text-sm">
-            ›
-          </button>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search guest / room"
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-          />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => shift(-1)} aria-label="Previous">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => shift(1)} aria-label="Next">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <div className="w-56">
+            <Input icon={Search} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search guest / room" />
+          </div>
         </div>
-        <div className="flex gap-2">
-          {VIEW_MODES.map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`rounded-md border px-3 py-1.5 text-sm font-medium capitalize ${
-                viewMode === mode ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300 text-gray-700"
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl options={VIEW_MODES} value={viewMode} onChange={setViewMode} />
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading bookings…</p>}
+      {isLoading && (
+        <div className="grid grid-cols-1 gap-3">
+          <CardSkeleton count={4} />
+        </div>
+      )}
 
-      {viewMode === "month" && (
+      {viewMode === "month" && !isLoading && (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
             {DAY_LABELS.map((d) => (
@@ -161,7 +157,7 @@ export default function ReservationsPage() {
                   const isToday = toISODate(day) === toISODate(new Date());
                   return (
                     <div key={i} className={`border-r border-gray-100 p-1 ${inMonth ? "" : "bg-gray-50 text-gray-300"}`}>
-                      <span className={`text-xs ${isToday ? "flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 font-semibold text-white" : "text-gray-500"}`}>
+                      <span className={`text-xs ${isToday ? "flex h-5 w-5 items-center justify-center rounded-full bg-brand font-semibold text-white" : "text-gray-500"}`}>
                         {day.getDate()}
                       </span>
                     </div>
@@ -194,9 +190,9 @@ export default function ReservationsPage() {
         </div>
       )}
 
-      {viewMode !== "month" && (
+      {viewMode !== "month" && !isLoading && (
         <div className="space-y-2">
-          {(bookings ?? []).length === 0 && <p className="text-sm text-gray-500">No bookings in this range.</p>}
+          {(bookings ?? []).length === 0 && <EmptyState icon={CalendarX2} title="No bookings in this range." />}
           {bookings?.map((booking) => (
             <div key={booking.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <div>
@@ -208,37 +204,34 @@ export default function ReservationsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ backgroundColor: `${booking.status.color}1a`, color: booking.status.color }}>
-                  {booking.status.label}
-                </span>
+                <Badge color={booking.status.color}>{booking.status.label}</Badge>
                 {permissions.has("bookings.edit") && booking.status.code === "confirmed" && statusByCode.checked_in && (
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => transitionStatus.mutate({ bookingId: booking.id, statusId: statusByCode.checked_in.id, extra: { actualCheckIn: new Date().toISOString() } })}
-                    className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium"
                   >
                     Check in
-                  </button>
+                  </Button>
                 )}
                 {permissions.has("bookings.edit") && booking.status.code === "checked_in" && statusByCode.checked_out && (
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => transitionStatus.mutate({ bookingId: booking.id, statusId: statusByCode.checked_out.id, extra: { actualCheckOut: new Date().toISOString() } })}
-                    className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium"
                   >
                     Check out
-                  </button>
+                  </Button>
                 )}
                 {permissions.has("bookings.cancel") && !booking.status.isTerminal && statusByCode.cancelled && (
-                  <button
-                    onClick={() => transitionStatus.mutate({ bookingId: booking.id, statusId: statusByCode.cancelled.id })}
-                    className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600"
-                  >
+                  <Button variant="danger" size="sm" onClick={() => transitionStatus.mutate({ bookingId: booking.id, statusId: statusByCode.cancelled.id })}>
                     Cancel
-                  </button>
+                  </Button>
                 )}
                 {permissions.has("payments.record") && (
-                  <button onClick={() => setPaymentModal(booking)} className="btn-brand rounded-md px-2 py-1 text-xs font-medium text-white">
+                  <Button size="sm" onClick={() => setPaymentModal(booking)}>
                     Record payment
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
