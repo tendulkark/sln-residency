@@ -1,0 +1,20 @@
+{
+  "name": "sln-residency",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Multi-tenant hotel room-booking SaaS (staff-only, no payment gateway)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "db:migrate": "npm run db:migrate --workspace=apps/api",
+    "db:seed": "npm run db:seed --workspace=apps/api",
+    "db:studio": "npm run db:studio --workspace=apps/api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

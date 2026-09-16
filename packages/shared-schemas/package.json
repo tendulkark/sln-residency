@@ -1,0 +1,10 @@
+{
+  "name": "@sln/shared-schemas",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.js",
+  "dependencies": {
+    "zod": "^3.24.2"
+  }
+}

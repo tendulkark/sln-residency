@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Tenants
+// ---------------------------------------------------------------------------
+
+model Tenant {
+  id               String   @id @default(cuid())
+  name             String
+  subdomain        String   @unique
+  logoUrl          String?
+  primaryColor     String?
+  currency         String   @default("INR")
+  timezone         String   @default("Asia/Kolkata")
+  subscriptionPlan String   @default("standard")
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  users         User[]
+  roles         Role[]
+  statuses      Status[]
+  roomTypes     RoomType[]
+  rooms         Room[]
+  guests        Guest[]
+  bookings      Booking[]
+  paymentMethods PaymentMethod[]
+  payments      Payment[]
+  taxRules      TaxRule[]
+  invoices      Invoice[]
+  auditLogs     AuditLog[]
+}
+
+// ---------------------------------------------------------------------------
+// Roles & permissions
+// ---------------------------------------------------------------------------
+
+// Global catalog of permission codes — not tenant-scoped. New permissions
+// are added here as features are built; which ones a role has is entirely
+// tenant-configurable via RolePermission.
+model Permission {
+  id          String @id @default(cuid())
+  code        String @unique // e.g. "rooms.edit", "bookings.create"
+  description String
+
+  rolePermissions RolePermission[]
+}
+
+model Role {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  isSystemRole Boolean  @default(false) // true for the tenant's built-in Admin role
+  createdAt    DateTime @default(now())
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  users           User[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+
+model User {
+  id                String    @id @default(cuid())
+  tenantId          String
+  roleId            String
+  name              String
+  email             String
+  passwordHash      String
+  isActive          Boolean   @default(true)
+  refreshTokenHash  String? // hash of the currently-valid refresh token, rotated on each use
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role     Role   @relation(fields: [roleId], references: [id])
+
+  bookingsCreated Booking[]    @relation("BookingCreatedBy")
+  paymentsRecorded Payment[]   @relation("PaymentRecordedBy")
+  invoicesGenerated Invoice[]  @relation("InvoiceGeneratedBy")
+  auditLogs        AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic statuses (rooms / bookings / payments)
+// ---------------------------------------------------------------------------
+
+model Status {
+  id         String  @id @default(cuid())
+  tenantId   String
+  domain     String // "room" | "booking" | "payment"
+  code       String
+  label      String
+  color      String  @default("#6b7280")
+  sortOrder  Int     @default(0)
+  isDefault  Boolean @default(false)
+  isTerminal Boolean @default(false) // e.g. "Checked-out", "Cancelled", "Refunded"
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rooms    Room[]
+  bookings Booking[]
+  payments Payment[]
+
+  @@unique([tenantId, domain, code])
+  @@index([tenantId, domain])
+}
+
+// ---------------------------------------------------------------------------
+// Room types & rooms
+// ---------------------------------------------------------------------------
+
+model RoomType {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  basePrice    Decimal  @db.Decimal(10, 2)
+  capacity     Int      @default(2)
+  amenities    Json?
+  createdAt    DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rooms  Room[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model Room {
+  id         String   @id @default(cuid())
+  tenantId   String
+  roomTypeId String
+  statusId   String
+  roomNumber String
+  floor      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roomType RoomType  @relation(fields: [roomTypeId], references: [id])
+  status   Status    @relation(fields: [statusId], references: [id])
+  bookings Booking[]
+
+  @@unique([tenantId, roomNumber])
+  @@index([tenantId])
+  @@index([statusId])
+}
+
+// ---------------------------------------------------------------------------
+// Guests & bookings
+// ---------------------------------------------------------------------------
+
+model Guest {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  phone         String?
+  email         String?
+  idProofType   String?
+  idProofNumber String?
+  address       String?
+  createdAt     DateTime @default(now())
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([tenantId])
+}
+
+model Booking {
+  id              String    @id @default(cuid())
+  tenantId        String
+  roomId          String
+  guestId         String
+  statusId        String
+  checkIn         DateTime
+  checkOut        DateTime
+  actualCheckIn   DateTime?
+  actualCheckOut  DateTime?
+  adults          Int       @default(1)
+  children        Int       @default(0)
+  ratePerNight    Decimal   @db.Decimal(10, 2)
+  totalAmount     Decimal   @db.Decimal(10, 2)
+  notes           String?
+  createdById     String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  room      Room     @relation(fields: [roomId], references: [id])
+  guest     Guest    @relation(fields: [guestId], references: [id])
+  status    Status   @relation(fields: [statusId], references: [id])
+  createdBy User     @relation("BookingCreatedBy", fields: [createdById], references: [id])
+
+  payments Payment[]
+  invoices Invoice[]
+
+  @@index([tenantId])
+  @@index([roomId])
+  @@index([statusId])
+}
+
+// ---------------------------------------------------------------------------
+// Payments (manual, no gateway) & tax
+// ---------------------------------------------------------------------------
+
+// Tenant-editable list of ways a guest can pay — "Cash", "UPI", "Card",
+// "Bank Transfer", etc. Adding a new method is a data row, not a deploy.
+model PaymentMethod {
+  id       String  @id @default(cuid())
+  tenantId String
+  name     String
+  code     String
+  isActive Boolean @default(true)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  tenantId       String
+  bookingId      String
+  methodId       String
+  statusId       String
+  amount         Decimal  @db.Decimal(10, 2)
+  referenceNote  String? // e.g. UPI transaction id or cheque number, entered by staff
+  recordedById   String
+  recordedAt     DateTime @default(now())
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking    Booking       @relation(fields: [bookingId], references: [id])
+  method     PaymentMethod @relation(fields: [methodId], references: [id])
+  status     Status        @relation(fields: [statusId], references: [id])
+  recordedBy User          @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([tenantId])
+  @@index([bookingId])
+}
+
+model TaxRule {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  name                String
+  ratePercent         Decimal   @db.Decimal(5, 2)
+  hsnSacCode          String?
+  appliesAboveAmount  Decimal?  @db.Decimal(10, 2)
+  appliesBelowAmount  Decimal?  @db.Decimal(10, 2)
+  effectiveFrom       DateTime
+  effectiveTo         DateTime?
+  isActive            Boolean   @default(true)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  @@index([tenantId])
+}
+
+model Invoice {
+  id               String   @id @default(cuid())
+  tenantId         String
+  bookingId        String
+  invoiceNumber    String
+  subtotal         Decimal  @db.Decimal(10, 2)
+  taxRuleId        String?
+  taxRateSnapshot  Decimal  @db.Decimal(5, 2) @default(0)
+  taxAmount        Decimal  @db.Decimal(10, 2) @default(0)
+  total            Decimal  @db.Decimal(10, 2)
+  generatedById    String
+  generatedAt      DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  taxRule     TaxRule? @relation(fields: [taxRuleId], references: [id])
+  generatedBy User     @relation("InvoiceGeneratedBy", fields: [generatedById], references: [id])
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String?
+  action     String // e.g. "booking.create", "room.status_change"
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([entityType, entityId])
+}
