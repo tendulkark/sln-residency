@@ -70,8 +70,12 @@ explicitly asked later.
 - [ ] Phase 4 — Admin controls: room types/pricing management (Rooms Setup)
       and hotel profile/branding (Settings) are in; manage roles/permissions,
       statuses, tax rules, and staff accounts are still outstanding.
-- [ ] Phase 5 — PWA polish: manifest/icons, offline shell caching, install
-      prompts.
+- [x] Phase 5 — PWA polish: manifest + generated icons (favicons,
+      apple-touch-icon, 192/512 + maskable) via `vite-plugin-pwa`, an
+      offline-shell service worker (network-first for API calls), and iOS
+      "Add to Home Screen" meta tags — installable on Android/iOS/desktop.
+      Outstanding: a custom in-app "Install" button (`beforeinstallprompt`);
+      today it relies on the browser's own native install UI.
 - [x] Phase 6 — Reporting: a Rooms Reports module (`reports.routes.js`,
       `lib/reports.js`) covering Bookings (status/room-type breakdown, full
       audit-trail-backed detail table, CSV export), Revenue (by payment
