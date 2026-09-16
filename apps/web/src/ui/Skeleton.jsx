@@ -6,7 +6,7 @@ export function CardSkeleton({ count = 4, className = "" }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${className}`}>
+        <div key={i} className={`rounded-xl border border-line bg-card p-4 shadow-sm ${className}`}>
           <Skeleton className="h-3 w-2/3" />
           <Skeleton className="mt-3 h-6 w-1/2" />
           <Skeleton className="mt-3 h-3 w-full" />

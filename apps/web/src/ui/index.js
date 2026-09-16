@@ -12,3 +12,4 @@ export { default as SegmentedControl } from "./SegmentedControl.jsx";
 export { default as Menu } from "./Menu.jsx";
 export { default as EmptyState } from "./EmptyState.jsx";
 export { default as Skeleton, CardSkeleton } from "./Skeleton.jsx";
+export { default as PageHeader } from "./PageHeader.jsx";

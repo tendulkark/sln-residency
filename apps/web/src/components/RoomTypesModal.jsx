@@ -72,7 +72,7 @@ export default function RoomTypesModal({ onClose }) {
 
       <div className="space-y-2">
         {roomTypes?.map((rt) => (
-          <div key={rt.id} className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
+          <div key={rt.id} className="flex items-center justify-between rounded-md border border-line px-3 py-2">
             <div>
               <p className="text-sm font-medium text-gray-900">{rt.name}</p>
               <p className="text-xs text-gray-500">
@@ -91,7 +91,7 @@ export default function RoomTypesModal({ onClose }) {
         ))}
       </div>
 
-      <div className="mt-5 border-t border-gray-200 pt-4">
+      <div className="mt-5 border-t border-line pt-4">
         <p className="mb-2 text-sm font-semibold text-gray-900">{editingId ? "Edit room type" : "Add room type"}</p>
         <div className="grid grid-cols-2 gap-3">
           <Input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

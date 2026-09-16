@@ -145,9 +145,9 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
         {isGroupBooking ? (
           <div className="space-y-1">
             <span className="block text-sm font-medium text-gray-700">Rooms</span>
-            <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-gray-300 p-2">
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-line-strong p-2">
               {rooms?.map((room) => (
-                <label key={room.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-gray-50">
+                <label key={room.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted">
                   <input type="checkbox" checked={groupRoomIds.includes(room.id)} onChange={() => toggleGroupRoom(room.id)} className="accent-brand" />
                   {room.roomNumber} · {room.roomType.name} · {formatCurrency(room.pricing.total)}/night
                 </label>
@@ -213,7 +213,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
 
         <Textarea label="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
 
-        <div className="space-y-3 rounded-md border border-gray-200 p-3">
+        <div className="space-y-3 rounded-md border border-line p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Payment</p>
 
           {paymentRows.map((row, i) => (
@@ -268,7 +268,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
             onChange={setCheckInImmediately}
           />
 
-          <div className="grid grid-cols-5 gap-2 rounded-md bg-gray-50 p-3 text-center">
+          <div className="grid grid-cols-5 gap-2 rounded-md bg-muted p-3 text-center">
             <SummaryStat label="Nights" value={nights} />
             <SummaryStat label="Rate" value={formatCurrency(nightlyRate)} />
             <SummaryStat label="Discount" value={`-${formatCurrency(discountAmount)}`} />

@@ -6,7 +6,7 @@ export default function Chip({ active, onClick, children, count }) {
       type="button"
       onClick={onClick}
       className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-        active ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+        active ? "border-brand bg-brand text-white" : "border-line-strong bg-card text-gray-700 hover:bg-muted"
       }`}
     >
       {children}

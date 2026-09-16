@@ -7,3 +7,4 @@ export * from "./guest.js";
 export * from "./booking.js";
 export * from "./bookingCharge.js";
 export * from "./payment.js";
+export * from "./tenant.js";

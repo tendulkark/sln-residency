@@ -7,7 +7,7 @@ import { formatCurrency, formatDate } from "../lib/format.js";
 import BookingFormModal from "../components/BookingFormModal.jsx";
 import RecordPaymentModal from "../components/RecordPaymentModal.jsx";
 import { useAuthStore } from "../store/authStore.js";
-import { Badge, Button, CardSkeleton, EmptyState, Input, SegmentedControl } from "../ui/index.js";
+import { Badge, Button, CardSkeleton, EmptyState, Input, SegmentedControl, PageHeader } from "../ui/index.js";
 
 const VIEW_MODES = [
   { value: "day", label: "Day" },
@@ -99,18 +99,18 @@ export default function ReservationsPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Room Reservations</h1>
-          <p className="text-sm text-gray-500">{anchorDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</p>
-        </div>
-        {permissions.has("bookings.create") && (
-          <Button onClick={() => setBookingModal(true)}>
-            <Plus className="h-4 w-4" />
-            New Booking
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Room Reservations"
+        subtitle={anchorDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
+        actions={
+          permissions.has("bookings.create") && (
+            <Button onClick={() => setBookingModal(true)}>
+              <Plus className="h-4 w-4" />
+              New Booking
+            </Button>
+          )
+        }
+      />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -137,8 +137,8 @@ export default function ReservationsPage() {
       )}
 
       {viewMode === "month" && !isLoading && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+        <div className="overflow-hidden rounded-xl border border-line bg-card shadow-sm">
+          <div className="grid grid-cols-7 border-b border-line bg-muted">
             {DAY_LABELS.map((d) => (
               <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500">
                 {d}
@@ -150,13 +150,13 @@ export default function ReservationsPage() {
             const lanesUsed = Math.max(1, ...placed.map((p) => p.lane + 1), overflowCount > 0 ? 1 : 0);
 
             return (
-              <div key={weekStart.toISOString()} className="grid grid-cols-7 border-b border-gray-100" style={{ minHeight: `${28 + lanesUsed * 24}px` }}>
+              <div key={weekStart.toISOString()} className="grid grid-cols-7 border-b border-line-soft" style={{ minHeight: `${28 + lanesUsed * 24}px` }}>
                 {Array.from({ length: 7 }).map((_, i) => {
                   const day = addDays(weekStart, i);
                   const inMonth = day.getMonth() === currentMonth;
                   const isToday = toISODate(day) === toISODate(new Date());
                   return (
-                    <div key={i} className={`border-r border-gray-100 p-1 ${inMonth ? "" : "bg-gray-50 text-gray-300"}`}>
+                    <div key={i} className={`border-r border-line-soft p-1 ${inMonth ? "" : "bg-muted text-gray-300"}`}>
                       <span className={`text-xs ${isToday ? "flex h-5 w-5 items-center justify-center rounded-full bg-brand font-semibold text-white" : "text-gray-500"}`}>
                         {day.getDate()}
                       </span>
@@ -194,7 +194,7 @@ export default function ReservationsPage() {
         <div className="space-y-2">
           {(bookings ?? []).length === 0 && <EmptyState icon={CalendarX2} title="No bookings in this range." />}
           {bookings?.map((booking) => (
-            <div key={booking.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <div key={booking.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card p-4 shadow-sm">
               <div>
                 <p className="text-sm font-semibold text-gray-900">
                   {booking.guest.name} · Room {booking.room.roomNumber}

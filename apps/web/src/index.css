@@ -1,21 +1,45 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 /*
- * Theme tokens. --color-brand is the one value a tenant can override at
- * runtime (see lib/theme.js, driven by Tenant.primaryColor) — everything
- * else derives from it via color-mix() so a single override re-tints
- * hovers/tints/focus rings without any extra JS or config.
+ * "Divine" theme tokens. --color-brand is the one value a tenant can
+ * override at runtime (see lib/theme.js, driven by Tenant.primaryColor) —
+ * everything else derives from it via color-mix() so a single override
+ * re-tints hovers/tints/focus rings/borders/hovers across the whole app
+ * without touching a single component. --color-gold is the one fixed
+ * design-language accent (temple gold trim) that isn't tenant data — it
+ * pairs with any brand color a hotel picks.
+ *
+ * --color-card/--color-line/--color-line-strong/--color-muted* replace the
+ * plain grays every surface used to reach for (bg-white, border-gray-200,
+ * border-gray-300, bg-gray-50/100) with warm, brand-tinted equivalents, so
+ * every card/input/divider in the app re-themes together from here.
  */
 @theme {
   --color-brand: #7a1f3d;
   --color-brand-dark: color-mix(in srgb, var(--color-brand) 82%, black);
   --color-brand-tint: color-mix(in srgb, var(--color-brand) 10%, white);
   --color-brand-ring: color-mix(in srgb, var(--color-brand) 45%, white);
-  --color-surface: #fdfaf3;
+
+  --color-gold: #b8862b;
+  --color-gold-dark: color-mix(in srgb, var(--color-gold) 80%, black);
+  --color-gold-tint: color-mix(in srgb, var(--color-gold) 14%, white);
+
+  --color-surface: #fbf6ea;
+  --color-card: #fffdf8;
+  --color-line: color-mix(in srgb, var(--color-brand) 10%, #e7e0cf);
+  --color-line-soft: color-mix(in srgb, var(--color-brand) 6%, #efe9db);
+  --color-line-strong: color-mix(in srgb, var(--color-brand) 16%, #d8cfb8);
+  --color-muted: color-mix(in srgb, var(--color-brand) 4%, #f7f2e6);
+  --color-muted-strong: color-mix(in srgb, var(--color-brand) 8%, #efe6d2);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", "Georgia", serif;
 }
 
 body {
   background-color: var(--color-surface);
+  font-family: var(--font-sans);
   @apply text-gray-900;
 }
 
@@ -27,6 +51,22 @@ body {
   50% {
     opacity: 0.5;
   }
+}
+
+/*
+ * Shared "divine" decorative touches — a thin brand→gold gradient rule (the
+ * same motif as the printed invoice's letterhead bar) and a very faint
+ * repeating temple-lattice watermark. Both read off the theme tokens above,
+ * so a tenant's brand color carries into them automatically.
+ */
+.divine-rule {
+  height: 3px;
+  background-image: linear-gradient(90deg, var(--color-brand), var(--color-gold) 50%, var(--color-brand));
+}
+
+.divine-pattern {
+  background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--color-brand) 16%, transparent) 1px, transparent 0);
+  background-size: 22px 22px;
 }
 
 /*

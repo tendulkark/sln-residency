@@ -4,7 +4,7 @@ import { PartyPopper } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { useAuthStore } from "../store/authStore.js";
-import { Button, Card, CardSkeleton, EmptyState } from "../ui/index.js";
+import { Button, Card, CardSkeleton, EmptyState, PageHeader } from "../ui/index.js";
 
 const NEEDS_ATTENTION_CODES = new Set(["dirty", "cleaning", "maintenance"]);
 
@@ -28,10 +28,7 @@ export default function HousekeepingPage() {
 
   return (
     <div>
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold text-gray-900">Housekeeping Tasks</h1>
-        <p className="text-sm text-gray-500">Rooms that need cleaning or maintenance before they can be sold again.</p>
-      </div>
+      <PageHeader title="Housekeeping Tasks" subtitle="Rooms that need cleaning or maintenance before they can be sold again." />
 
       {error && <p className="text-sm text-red-600">{error.message}</p>}
 

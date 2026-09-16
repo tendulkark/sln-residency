@@ -64,7 +64,7 @@ export default function RoomBoardCard({ room, onClick }) {
           </span>
         )}
         {room.upcomingCount > 0 && (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-600">
+          <span className="rounded-full bg-muted-strong px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-600">
             {room.upcomingCount} upcoming
           </span>
         )}

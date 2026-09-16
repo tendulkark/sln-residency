@@ -86,7 +86,7 @@ export default function ExtendStayModal({ booking, onClose, onExtended }) {
           onChange={(e) => setAdditionalCharge(e.target.value)}
         />
 
-        <div className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2 text-sm">
+        <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
           <span className="font-medium text-gray-700">New room total</span>
           <span className="font-semibold text-gray-900">{formatCurrency(newRoomTotal)}</span>
         </div>

@@ -50,7 +50,7 @@ export default function RoomBookingsModal({ room, onClose }) {
               tabIndex={0}
               onClick={() => setManageBookingId(booking.id)}
               onKeyDown={(e) => e.key === "Enter" && setManageBookingId(booking.id)}
-              className="block w-full cursor-pointer rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-brand"
+              className="block w-full cursor-pointer rounded-lg border border-line bg-card p-4 text-left shadow-sm transition hover:border-brand"
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -81,7 +81,7 @@ export default function RoomBookingsModal({ room, onClose }) {
                         e.stopPropagation();
                         setEditBooking(booking);
                       }}
-                      className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                      className="rounded-md p-1.5 text-gray-400 hover:bg-muted-strong hover:text-gray-700"
                       aria-label="Edit booking"
                     >
                       <Pencil className="h-4 w-4" />
