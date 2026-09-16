@@ -2,27 +2,8 @@ import { createBookingSchema, updateBookingSchema, updateBookingStatusSchema, bo
 import { requirePermission } from "../lib/permissions.js";
 import { recordAudit } from "../lib/audit.js";
 import { findBookingConflict, findClosureConflict } from "../lib/availability.js";
-import { getApplicableTaxRule, priceRoom, splitInclusiveTax } from "../lib/tax.js";
-
-const BOOKING_INCLUDE = {
-  room: { select: { id: true, roomNumber: true, floor: true } },
-  guest: { select: { id: true, name: true, phone: true, email: true } },
-  status: { select: { id: true, code: true, label: true, color: true, isTerminal: true } },
-};
-
-// Nights are billed by calendar day (the standard hotel convention — a
-// guest checking out a few hours late on the same calendar day owes a
-// late-checkout fee, not a whole extra night), never by raw elapsed hours.
-// setHours() operates in the server's local time, which matches the
-// tenant's timezone in this deployment (same pattern as
-// dashboard.routes.js's localDateLabel).
-function nightsBetween(checkIn, checkOut) {
-  const inDay = new Date(checkIn);
-  inDay.setHours(0, 0, 0, 0);
-  const outDay = new Date(checkOut);
-  outDay.setHours(0, 0, 0, 0);
-  return Math.max(1, Math.round((outDay - inDay) / (24 * 60 * 60 * 1000)));
-}
+import { priceRoom } from "../lib/tax.js";
+import { BOOKING_INCLUDE, nightsBetween, computeStayBreakdown } from "../lib/billing.js";
 
 function startOfToday() {
   const d = new Date();
@@ -84,62 +65,10 @@ export default async function bookingsRoutes(fastify) {
     "/bookings/:id/stay",
     { preHandler: [fastify.authenticate, requirePermission("bookings.view")] },
     async (request, reply) => {
-      const tenantId = request.user.tenantId;
-      const primary = await fastify.prisma.booking.findFirst({
-        where: { id: request.params.id, tenantId },
-        include: BOOKING_INCLUDE,
-      });
-      if (!primary) return reply.code(404).send({ error: "Booking not found" });
-
-      const bookings = primary.groupCode
-        ? await fastify.prisma.booking.findMany({
-            where: { tenantId, groupCode: primary.groupCode },
-            include: BOOKING_INCLUDE,
-            orderBy: { room: { roomNumber: "asc" } },
-          })
-        : [primary];
-
-      const bookingIds = bookings.map((b) => b.id);
-
-      const [charges, payments] = await Promise.all([
-        fastify.prisma.bookingCharge.findMany({ where: { bookingId: { in: bookingIds } }, orderBy: { createdAt: "asc" } }),
-        fastify.prisma.payment.findMany({
-          where: { bookingId: { in: bookingIds } },
-          include: { method: true, status: true },
-          orderBy: { recordedAt: "asc" },
-        }),
-      ]);
-
-      const roomsInclTax = bookings.reduce((sum, b) => sum + Number(b.totalAmount), 0);
-      const taxRule = await getApplicableTaxRule(fastify.prisma, tenantId, roomsInclTax);
-      const taxSplit = taxRule ? splitInclusiveTax(roomsInclTax, taxRule.ratePercent) : { taxable: roomsInclTax, cgst: 0, sgst: 0, taxAmount: 0 };
-
-      const chargesTotal = charges.filter((c) => c.type === "charge").reduce((sum, c) => sum + Number(c.amount), 0);
-      const discountTotal = charges.filter((c) => c.type === "discount").reduce((sum, c) => sum + Number(c.amount), 0);
-      const grandTotal = Math.round((roomsInclTax + chargesTotal - discountTotal) * 100) / 100;
-      const advancePaid = payments
-        .filter((p) => !["failed", "refunded"].includes(p.status.code))
-        .reduce((sum, p) => sum + Number(p.amount), 0);
-      const balanceDue = Math.round((grandTotal - advancePaid) * 100) / 100;
-
-      return {
-        bookings,
-        charges,
-        payments,
-        summary: {
-          nights: nightsBetween(primary.checkIn, primary.checkOut),
-          roomsInclTax,
-          taxableValue: taxSplit.taxable,
-          taxRatePercent: taxRule ? Number(taxRule.ratePercent) : 0,
-          cgst: taxSplit.cgst,
-          sgst: taxSplit.sgst,
-          chargesTotal,
-          discountTotal,
-          grandTotal,
-          advancePaid,
-          balanceDue,
-        },
-      };
+      const stay = await computeStayBreakdown(fastify.prisma, request.user.tenantId, request.params.id);
+      if (!stay) return reply.code(404).send({ error: "Booking not found" });
+      const { bookings, charges, payments, summary } = stay;
+      return { bookings, charges, payments, summary };
     }
   );
 

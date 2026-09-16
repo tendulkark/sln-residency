@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, BedDouble, Sparkles, CalendarDays, LogOut, Hotel } from "lucide-react";
+import { LayoutDashboard, BedDouble, Sparkles, CalendarDays, LogOut, Hotel, Settings } from "lucide-react";
 import { useAuthStore } from "../store/authStore.js";
 import { apiFetch } from "../lib/api.js";
 import { Button } from "../ui/index.js";
@@ -12,7 +12,8 @@ const NAV_ITEMS = [
   { to: "/rooms-setup", label: "Rooms Setup", permission: "rooms.view", icon: BedDouble },
   { to: "/housekeeping", label: "Housekeeping", permission: "rooms.housekeeping", icon: Sparkles },
   { to: "/reservations", label: "Reservations", permission: "bookings.view", icon: CalendarDays },
-  // Staff and Settings land in later phases.
+  { to: "/settings", label: "Settings", permission: "settings.manage", icon: Settings },
+  // Staff management lands in a later phase.
 ];
 
 export default function AdminShell() {
@@ -30,13 +31,18 @@ export default function AdminShell() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
-        <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-4">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand">
-            <Hotel className="h-4 w-4" />
-          </div>
+      <aside className="flex w-60 flex-col border-r border-line bg-card">
+        <div className="divine-rule" />
+        <div className="flex items-center gap-2.5 border-b border-line px-4 py-4">
+          {tenant?.logoUrl ? (
+            <img src={tenant.logoUrl} alt={`${tenant.name} logo`} className="h-9 w-9 shrink-0 rounded-full object-contain ring-2 ring-gold-tint" />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand ring-2 ring-gold-tint">
+              <Hotel className="h-4 w-4" />
+            </div>
+          )}
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-gray-900">{tenant?.name ?? "SLN Residency"}</p>
+            <p className="truncate font-display text-base font-semibold text-gray-900">{tenant?.name ?? "Staff Console"}</p>
             <p className="text-xs text-gray-500">Staff console</p>
           </div>
         </div>
@@ -47,8 +53,8 @@ export default function AdminShell() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition ${
-                  isActive ? "bg-brand text-white" : "text-gray-700 hover:bg-gray-100"
+                `flex items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-sm font-medium transition ${
+                  isActive ? "border-gold bg-brand-tint text-brand" : "border-transparent text-gray-700 hover:bg-muted-strong"
                 }`
               }
             >
@@ -58,7 +64,7 @@ export default function AdminShell() {
           ))}
         </nav>
 
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-line p-4">
           <p className="truncate text-sm font-medium text-gray-900">{user?.name}</p>
           <p className="truncate text-xs text-gray-500">{user?.roleName}</p>
           <Button variant="outline" size="sm" onClick={handleLogout} className="mt-3 w-full">

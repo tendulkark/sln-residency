@@ -17,6 +17,12 @@ model Tenant {
   subdomain        String   @unique
   logoUrl          String?
   primaryColor     String?
+  // Hotel letterhead details used on printed tax invoices — editable via
+  // the Settings screen, never hardcoded per AI_RULES.md #1.
+  address          String?
+  phone            String?
+  email            String?
+  gstin            String?
   currency         String   @default("INR")
   timezone         String   @default("Asia/Kolkata")
   subscriptionPlan String   @default("standard")

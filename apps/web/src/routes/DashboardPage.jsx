@@ -9,7 +9,7 @@ import RoomBoardCard from "../components/RoomBoardCard.jsx";
 import BookingFormModal from "../components/BookingFormModal.jsx";
 import RoomBookingsModal from "../components/RoomBookingsModal.jsx";
 import RoomClosuresModal from "../components/RoomClosuresModal.jsx";
-import { Button, Chip, Input, SegmentedControl, CardSkeleton } from "../ui/index.js";
+import { Button, Chip, Input, SegmentedControl, CardSkeleton, PageHeader } from "../ui/index.js";
 import { useAuthStore } from "../store/authStore.js";
 
 const VIEW_MODES = [
@@ -81,29 +81,28 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Hotel Dashboard</h1>
-          <p className="text-sm text-gray-500">
-            {selectedDate.toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })} ·{" "}
-            {board?.length ? Math.round((bucketCounts.occupied / board.length) * 100) : 0}% occupancy · live from front desk
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {permissions.has("roomclosures.manage") && (
-            <Button variant="outline" onClick={() => setClosuresOpen(true)}>
-              <CalendarOff className="h-4 w-4" />
-              Closed periods
-            </Button>
-          )}
-          {permissions.has("bookings.create") && (
-            <Button onClick={() => setBookingModal({})}>
-              <Plus className="h-4 w-4" />
-              New booking
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Hotel Dashboard"
+        subtitle={`${selectedDate.toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })} · ${
+          board?.length ? Math.round((bucketCounts.occupied / board.length) * 100) : 0
+        }% occupancy · live from front desk`}
+        actions={
+          <>
+            {permissions.has("roomclosures.manage") && (
+              <Button variant="outline" onClick={() => setClosuresOpen(true)}>
+                <CalendarOff className="h-4 w-4" />
+                Closed periods
+              </Button>
+            )}
+            {permissions.has("bookings.create") && (
+              <Button onClick={() => setBookingModal({})}>
+                <Plus className="h-4 w-4" />
+                New booking
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -111,7 +110,7 @@ export default function DashboardPage() {
           label="Rooms open tonight"
           value={`${bucketCounts.available} / ${board?.length ?? 0} rooms`}
           sublabel={
-            <div className="mt-1 h-1.5 w-full rounded-full bg-gray-100">
+            <div className="mt-1 h-1.5 w-full rounded-full bg-muted-strong">
               <div
                 className="h-1.5 rounded-full bg-blue-500"
                 style={{ width: `${board?.length ? (bucketCounts.available / board.length) * 100 : 0}%` }}
@@ -152,7 +151,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-4 rounded-xl border border-line bg-card p-4 shadow-sm">
         <p className="mb-3 text-sm font-semibold text-gray-900">Room status</p>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {BUCKETS.map((b) => (
@@ -160,7 +159,7 @@ export default function DashboardPage() {
               key={b.code}
               onClick={() => setBucketFilter(bucketFilter === b.code ? null : b.code)}
               className={`rounded-lg border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring ${
-                bucketFilter === b.code ? "border-brand ring-1 ring-brand" : "border-gray-200"
+                bucketFilter === b.code ? "border-brand ring-1 ring-brand" : "border-line"
               }`}
             >
               <p className="text-xs uppercase text-gray-500">{b.label}</p>
@@ -187,7 +186,7 @@ export default function DashboardPage() {
               setSelectedDate(new Date(e.target.value));
               setViewMode("custom");
             }}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            className="rounded-md border border-line-strong px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">

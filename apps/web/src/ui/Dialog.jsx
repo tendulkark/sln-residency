@@ -31,10 +31,11 @@ export default function Dialog({ title, actions, onClose, children, wide = false
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <DialogPanel data-print-area className={`w-full ${wide ? "max-w-2xl" : "max-w-md"} rounded-xl bg-white shadow-lg`}>
-              <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-                <DialogTitle className="text-base font-semibold text-gray-900">{title}</DialogTitle>
-                <div className="flex items-center gap-2 print:hidden">
+            <DialogPanel data-print-area className={`w-full overflow-hidden ${wide ? "max-w-2xl" : "max-w-md"} rounded-xl bg-card shadow-lg`}>
+              <div className="divine-rule print:hidden" />
+              <div className="flex items-center justify-between border-b border-line px-5 py-4 print:hidden">
+                <DialogTitle className="font-display text-lg font-semibold text-gray-900">{title}</DialogTitle>
+                <div className="flex items-center gap-2">
                   {actions}
                   <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Close">
                     <X className="h-4.5 w-4.5" />

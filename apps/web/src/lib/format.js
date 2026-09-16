@@ -2,6 +2,12 @@ export function formatCurrency(amount) {
   return `₹${Number(amount ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
+// Paise-precise formatting for GST invoices, where rounded-off rupee
+// amounts would make the CGST/SGST split not add back up to the total.
+export function formatCurrencyPrecise(amount) {
+  return `Rs. ${Number(amount ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function formatDate(dateLike) {
   return new Date(dateLike).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }

@@ -13,6 +13,8 @@ import guestsRoutes from "./routes/guests.routes.js";
 import bookingsRoutes from "./routes/bookings.routes.js";
 import paymentsRoutes from "./routes/payments.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
+import invoicesRoutes from "./routes/invoices.routes.js";
+import tenantRoutes from "./routes/tenant.routes.js";
 
 export async function buildApp() {
   const fastify = Fastify({ logger: true });
@@ -31,6 +33,8 @@ export async function buildApp() {
   await fastify.register(bookingsRoutes);
   await fastify.register(paymentsRoutes);
   await fastify.register(dashboardRoutes);
+  await fastify.register(invoicesRoutes);
+  await fastify.register(tenantRoutes);
 
   fastify.get("/health", async () => ({ ok: true }));
 

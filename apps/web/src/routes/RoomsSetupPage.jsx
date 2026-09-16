@@ -7,7 +7,7 @@ import StatusBadge from "../components/StatusBadge.jsx";
 import RoomFormModal from "../components/RoomFormModal.jsx";
 import RoomTypesModal from "../components/RoomTypesModal.jsx";
 import { useAuthStore } from "../store/authStore.js";
-import { Button, CardSkeleton, EmptyState, Menu } from "../ui/index.js";
+import { Button, CardSkeleton, EmptyState, Menu, PageHeader } from "../ui/index.js";
 
 export default function RoomsSetupPage() {
   const permissions = useAuthStore((s) => s.permissions);
@@ -24,34 +24,34 @@ export default function RoomsSetupPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Hotel Rooms Setup</h1>
-          <p className="text-sm text-gray-500">Manage rooms, amenities and pricing.</p>
-        </div>
-        <div className="flex gap-2">
-          {permissions.has("roomtypes.edit") && (
-            <Button variant="outline" onClick={() => setRoomTypesOpen(true)}>
-              <Settings className="h-4 w-4" />
-              Manage Room Types
-            </Button>
-          )}
-          {permissions.has("rooms.edit") && (
-            <Button onClick={() => setRoomModal("new")}>
-              <Plus className="h-4 w-4" />
-              Add Room
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Hotel Rooms Setup"
+        subtitle="Manage rooms, amenities and pricing."
+        actions={
+          <>
+            {permissions.has("roomtypes.edit") && (
+              <Button variant="outline" onClick={() => setRoomTypesOpen(true)}>
+                <Settings className="h-4 w-4" />
+                Manage Room Types
+              </Button>
+            )}
+            {permissions.has("rooms.edit") && (
+              <Button onClick={() => setRoomModal("new")}>
+                <Plus className="h-4 w-4" />
+                Add Room
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {error && <p className="text-sm text-red-600">{error.message}</p>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {isLoading && <CardSkeleton count={10} />}
         {rooms?.map((room) => (
-          <div key={room.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div className="flex h-24 items-center justify-center gap-1.5 bg-gray-50 text-xs text-gray-400">
+          <div key={room.id} className="overflow-hidden rounded-lg border border-line bg-card shadow-sm">
+            <div className="flex h-24 items-center justify-center gap-1.5 bg-muted text-xs text-gray-400">
               <ImageOff className="h-4 w-4" />
               No photo
             </div>

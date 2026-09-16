@@ -16,6 +16,16 @@ export const useAuthStore = create((set) => ({
     set({ accessToken, user, tenant, permissions: new Set(permissions) });
   },
 
+  // Merges a partial tenant profile update (e.g. from the Settings screen)
+  // into the current session without touching auth tokens, and reapplies
+  // the brand color immediately if it changed.
+  updateTenant: (partial) =>
+    set((state) => {
+      const tenant = { ...state.tenant, ...partial };
+      applyTenantTheme(tenant);
+      return { tenant };
+    }),
+
   clearSession: () => {
     applyTenantTheme(null);
     set({ accessToken: null, user: null, tenant: null, permissions: new Set() });

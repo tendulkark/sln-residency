@@ -60,7 +60,7 @@ export default function RoomClosuresModal({ onClose }) {
       {closures?.length === 0 && <EmptyState icon={CalendarOff} title="No rooms are currently blocked out." />}
       <div className="space-y-2">
         {closures?.map((c) => (
-          <div key={c.id} className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2">
+          <div key={c.id} className="flex items-center justify-between rounded-md border border-line px-3 py-2">
             <div>
               <p className="text-sm font-medium text-gray-900">Room {c.room.roomNumber}</p>
               <p className="text-xs text-gray-500">
@@ -77,7 +77,7 @@ export default function RoomClosuresModal({ onClose }) {
       </div>
 
       {canManage && (
-        <form onSubmit={handleSubmit} className="mt-5 border-t border-gray-200 pt-4">
+        <form onSubmit={handleSubmit} className="mt-5 border-t border-line pt-4">
           <p className="mb-2 text-sm font-semibold text-gray-900">Block a room</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">

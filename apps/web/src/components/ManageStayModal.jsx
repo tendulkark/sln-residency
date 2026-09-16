@@ -7,13 +7,14 @@ import { useAuthStore } from "../store/authStore.js";
 import { Badge, Button, Input, Select } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 import ExtendStayModal from "./ExtendStayModal.jsx";
+import InvoiceModal from "./InvoiceModal.jsx";
 
 function AddChargeForm({ type, onAdd, onCancel, pending }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
 
   return (
-    <div className="mt-2 flex items-end gap-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+    <div className="mt-2 flex items-end gap-2 rounded-md border border-line bg-muted p-3">
       <div className="flex-1">
         <Input placeholder={type === "discount" ? "Reason (e.g. loyalty discount)" : "Description (e.g. Room service)"} value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
@@ -50,6 +51,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
   const [addFormType, setAddFormType] = useState(null); // "charge" | "discount" | null
   const [settleRows, setSettleRows] = useState([{ methodId: "", amount: "" }]);
   const [extendOpen, setExtendOpen] = useState(false);
+  const [invoiceModal, setInvoiceModal] = useState(null); // { autoGenerate } | null
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -131,8 +133,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
     },
     onSuccess: () => {
       invalidateAll();
-      window.print();
-      onClose();
+      setInvoiceModal({ autoGenerate: true, closeStayOnDone: true });
     },
     onError: (err) => setError(err.message),
   });
@@ -142,6 +143,22 @@ export default function ManageStayModal({ bookingId, onClose }) {
       <Modal title="Manage Stay" onClose={onClose}>
         <p className="text-sm text-gray-500">Loading…</p>
       </Modal>
+    );
+  }
+
+  // Only one Dialog is ever mounted at a time — both Manage Stay and the
+  // invoice carry [data-print-area] for window.print(), and having both in
+  // the DOM at once would print them on top of each other.
+  if (invoiceModal) {
+    return (
+      <InvoiceModal
+        bookingId={bookingId}
+        autoGenerate={invoiceModal.autoGenerate}
+        onClose={() => {
+          setInvoiceModal(null);
+          if (invoiceModal.closeStayOnDone) onClose();
+        }}
+      />
     );
   }
 
@@ -162,7 +179,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
 
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Billing & Charges</p>
 
-        <div className="rounded-md border border-gray-200 p-3">
+        <div className="rounded-md border border-line p-3">
           <div className="flex items-center justify-between">
             <p className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
               <Receipt className="h-4 w-4 text-gray-400" />
@@ -199,7 +216,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
           )}
         </div>
 
-        <div className="mt-3 rounded-md border border-gray-200 p-3">
+        <div className="mt-3 rounded-md border border-line p-3">
           <div className="flex items-center justify-between">
             <p className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
               <Tag className="h-4 w-4 text-gray-400" />
@@ -232,11 +249,11 @@ export default function ManageStayModal({ bookingId, onClose }) {
           )}
         </div>
 
-        <div className="mt-3 space-y-1.5 rounded-md border border-gray-200 p-3 text-sm">
+        <div className="mt-3 space-y-1.5 rounded-md border border-line p-3 text-sm">
           <Row label="Check-in" value={formatDate(primary.checkIn)} />
           <Row label="Check-out" value={formatDate(primary.checkOut)} />
           <Row label="Nights stayed" value={`${stay.summary.nights} night(s) · ${stay.bookings.length} room(s)`} />
-          <div className="my-1 border-t border-gray-100" />
+          <div className="my-1 border-t border-line-soft" />
           {stay.bookings.map((b) => (
             <Row key={b.id} label={`Room ${b.room.roomNumber}`} value={formatCurrency(b.totalAmount)} muted />
           ))}
@@ -246,10 +263,10 @@ export default function ManageStayModal({ bookingId, onClose }) {
           <Row label={`SGST (${stay.summary.taxRatePercent / 2}%) incl.`} value={formatCurrency(stay.summary.sgst)} muted />
           {stay.summary.chargesTotal > 0 && <Row label="Other charges" value={formatCurrency(stay.summary.chargesTotal)} />}
           {stay.summary.discountTotal > 0 && <Row label="Discount" value={`-${formatCurrency(stay.summary.discountTotal)}`} />}
-          <div className="my-1 border-t border-gray-100" />
+          <div className="my-1 border-t border-line-soft" />
           <Row label="Grand total" value={formatCurrency(stay.summary.grandTotal)} bold />
           <Row label="Advance paid" value={`-${formatCurrency(stay.summary.advancePaid)}`} />
-          <div className="my-1 border-t border-gray-100" />
+          <div className="my-1 border-t border-line-soft" />
           <Row
             label="Final balance due"
             value={formatCurrency(stay.summary.balanceDue)}
@@ -259,7 +276,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
         </div>
 
         {!isCheckedIn && stay.summary.balanceDue > 0 && permissions.has("payments.record") && (
-          <div className="mt-3 rounded-md border border-gray-200 p-3">
+          <div className="mt-3 rounded-md border border-line p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Settle Balance</p>
             {settleRows.map((row, i) => (
               <div key={i} className="mb-2 flex items-end gap-2">
@@ -305,7 +322,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-4 print:hidden">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 print:hidden">
           {!primary.status.isTerminal && (
             <Button variant="ghost" size="sm" onClick={() => setExtendOpen(true)}>
               <CalendarPlus className="h-4 w-4" />
@@ -332,6 +349,12 @@ export default function ManageStayModal({ bookingId, onClose }) {
               <Button variant="danger" size="sm" onClick={() => checkOut.mutate()} disabled={checkOut.isPending}>
                 <Printer className="h-4 w-4" />
                 {checkOut.isPending ? "Checking out…" : "Checkout & Print Bill"}
+              </Button>
+            )}
+            {isCheckedOut && permissions.has("invoices.view") && (
+              <Button variant="outline" size="sm" onClick={() => setInvoiceModal({ autoGenerate: false, closeStayOnDone: false })}>
+                <Printer className="h-4 w-4" />
+                Print Bill
               </Button>
             )}
             {isCheckedOut && <Badge tone="neutral">Checked-out</Badge>}

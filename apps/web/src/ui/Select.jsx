@@ -15,15 +15,15 @@ export default function Select({ label, options, value, onChange, placeholder = 
       <Listbox value={value ?? ""} onChange={onChange} disabled={disabled}>
         <div className="relative">
           <ListboxButton
-            className={`relative w-full rounded-md border bg-white py-2 pl-3 pr-9 text-left text-sm focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50 ${
-              error ? "border-red-300" : "border-gray-300"
+            className={`relative w-full rounded-md border bg-card py-2 pl-3 pr-9 text-left text-sm focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50 ${
+              error ? "border-red-300" : "border-line-strong"
             }`}
           >
             <span className={selected ? "text-gray-900" : "text-gray-400"}>{selected ? selected.label : placeholder}</span>
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </ListboxButton>
           <Transition as={Fragment} leave="transition ease-in duration-100" leaveFrom="opacity-100" leaveTo="opacity-0">
-            <ListboxOptions className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg focus:outline-none">
+            <ListboxOptions className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-line bg-card py-1 text-sm shadow-lg focus:outline-none">
               {options.length === 0 && <div className="px-3 py-2 text-gray-400">No options</div>}
               {options.map((option) => (
                 <ListboxOption

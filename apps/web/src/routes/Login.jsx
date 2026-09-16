@@ -32,24 +32,27 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-tint text-brand">
-            <Hotel className="h-6 w-6" />
+    <div className="divine-pattern flex min-h-screen items-center justify-center px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm overflow-hidden rounded-2xl border border-line bg-card shadow-lg">
+        <div className="divine-rule" />
+        <div className="space-y-4 p-8">
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-brand-tint text-brand ring-2 ring-gold-tint">
+              <Hotel className="h-6 w-6" />
+            </div>
+            <h1 className="font-display text-2xl font-semibold text-gray-900">Staff Sign In</h1>
+            <p className="text-sm text-gray-500">Sign in to your hotel's staff console</p>
           </div>
-          <h1 className="text-lg font-semibold text-gray-900">Staff Sign In</h1>
-          <p className="text-sm text-gray-500">SLN Residency staff console</p>
+
+          {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+
+          <Input id="email" label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input id="password" label="Password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+
+          <Button type="submit" disabled={submitting} className="w-full">
+            {submitting ? "Signing in…" : "Sign in"}
+          </Button>
         </div>
-
-        {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-
-        <Input id="email" label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Input id="password" label="Password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-
-        <Button type="submit" disabled={submitting} className="w-full">
-          {submitting ? "Signing in…" : "Sign in"}
-        </Button>
       </form>
     </div>
   );

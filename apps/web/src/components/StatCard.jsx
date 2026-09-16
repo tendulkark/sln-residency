@@ -19,7 +19,7 @@ export default function StatCard({ label, value, sublabel, badge, icon: Icon, to
         )}
       </div>
       <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-gray-900">{value}</span>
+        <span className="font-display text-2xl font-semibold text-gray-900">{value}</span>
         {badge && <span className="text-xs font-medium text-emerald-600">{badge}</span>}
       </div>
       {sublabel && <div className="mt-1 text-xs text-gray-500">{sublabel}</div>}

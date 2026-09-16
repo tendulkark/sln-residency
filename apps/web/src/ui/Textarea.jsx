@@ -1,5 +1,5 @@
 const FIELD_CLASSES =
-  "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
+  "w-full rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
 
 export default function Textarea({ label, error, className = "", id, ...props }) {
   const fieldId = id ?? props.name;

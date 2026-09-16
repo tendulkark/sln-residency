@@ -27,6 +27,7 @@ export const PERMISSIONS = [
   { code: "roles.manage", description: "Manage roles and their permissions" },
   { code: "reports.view", description: "View occupancy/revenue/GST reports" },
   { code: "auditlog.view", description: "View the audit log" },
+  { code: "settings.manage", description: "Manage hotel profile (name, address, logo, GSTIN) and branding" },
 ];
 
 // Default permission sets used only to seed a brand-new tenant's built-in
@@ -46,4 +47,5 @@ export const DEFAULT_EMPLOYEE_PERMISSION_CODES = [
   "payments.view",
   "payments.record",
   "invoices.view",
+  "invoices.generate",
 ];

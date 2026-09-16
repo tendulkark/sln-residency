@@ -9,8 +9,8 @@ export const button = cva(
     variants: {
       variant: {
         solid: "bg-brand text-white hover:bg-brand-dark focus-visible:ring-brand-ring",
-        outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-300",
-        ghost: "text-gray-600 hover:bg-gray-100 focus-visible:ring-gray-300",
+        outline: "border border-line-strong bg-card text-gray-700 hover:bg-muted focus-visible:ring-gray-300",
+        ghost: "text-gray-600 hover:bg-muted-strong focus-visible:ring-gray-300",
         danger: "border border-red-200 text-red-600 hover:bg-red-50 focus-visible:ring-red-300",
         success: "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-300",
       },

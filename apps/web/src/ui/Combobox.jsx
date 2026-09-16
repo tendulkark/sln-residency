@@ -18,14 +18,14 @@ export default function Combobox({ label, query, onQueryChange, options, onSelec
       <HeadlessCombobox value={null} onChange={(value) => value && onSelect(value)}>
         <div className="relative">
           <ComboboxInput
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            className="w-full rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             displayValue={() => query}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder={placeholder}
             autoComplete="off"
           />
           <Transition as={Fragment} leave="transition ease-in duration-100" leaveFrom="opacity-100" leaveTo="opacity-0">
-            <ComboboxOptions className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg focus:outline-none">
+            <ComboboxOptions className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-line bg-card py-1 text-sm shadow-lg focus:outline-none">
               {options.length === 0 ? (
                 <div className="px-3 py-2 text-gray-400">{createLabel ?? "No matches — a new record will be created"}</div>
               ) : (
