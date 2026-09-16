@@ -8,6 +8,7 @@ import RoomsSetupPage from "./routes/RoomsSetupPage.jsx";
 import HousekeepingPage from "./routes/HousekeepingPage.jsx";
 import ReservationsPage from "./routes/ReservationsPage.jsx";
 import SettingsPage from "./routes/SettingsPage.jsx";
+import ReportsPage from "./routes/ReportsPage.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
               { path: "housekeeping", element: <HousekeepingPage /> },
               { path: "reservations", element: <ReservationsPage /> },
               { path: "settings", element: <SettingsPage /> },
+              { path: "reports", element: <ReportsPage /> },
             ],
           },
         ],

@@ -31,6 +31,18 @@ export function endOfMonth(date) {
   return d;
 }
 
+export function startOfYear(date) {
+  const d = startOfDay(date);
+  d.setMonth(0, 1);
+  return d;
+}
+
+export function endOfYear(date) {
+  const d = startOfYear(date);
+  d.setFullYear(d.getFullYear() + 1);
+  return d;
+}
+
 export function rangeFor(mode, date) {
   const start = startOfDay(date);
   if (mode === "day") return { start, end: addDays(start, 1) };

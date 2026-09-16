@@ -15,6 +15,7 @@ import paymentsRoutes from "./routes/payments.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import invoicesRoutes from "./routes/invoices.routes.js";
 import tenantRoutes from "./routes/tenant.routes.js";
+import reportsRoutes from "./routes/reports.routes.js";
 
 export async function buildApp() {
   const fastify = Fastify({ logger: true });
@@ -35,6 +36,7 @@ export async function buildApp() {
   await fastify.register(dashboardRoutes);
   await fastify.register(invoicesRoutes);
   await fastify.register(tenantRoutes);
+  await fastify.register(reportsRoutes);
 
   fastify.get("/health", async () => ({ ok: true }));
 

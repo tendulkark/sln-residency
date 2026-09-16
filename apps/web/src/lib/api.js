@@ -51,3 +51,23 @@ export async function apiFetch(path, { retry = true, ...options } = {}) {
 
   return res.status === 204 ? null : res.json();
 }
+
+// For endpoints that return a file (e.g. a report's CSV export) rather than
+// JSON — fetches it with the same auth header as apiFetch, then hands the
+// browser a download via a throwaway object URL.
+export async function downloadFile(path, filename) {
+  const accessToken = useAuthStore.getState().accessToken;
+  const res = await fetch(`${API_URL}${path}`, {
+    credentials: "include",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

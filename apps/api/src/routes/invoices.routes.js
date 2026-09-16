@@ -68,34 +68,38 @@ export default async function invoicesRoutes(fastify) {
       let invoice = await fastify.prisma.invoice.findFirst({ where: { tenantId, bookingId: { in: bookingIds } } });
 
       if (!invoice) {
-        for (let attempt = 0; attempt < 3 && !invoice; attempt++) {
-          try {
-            invoice = await fastify.prisma.invoice.create({
-              data: {
-                tenantId,
-                bookingId: stay.primary.id,
-                invoiceNumber: await nextInvoiceNumber(fastify.prisma, tenantId),
-                subtotal: stay.summary.taxableValue,
-                taxRuleId: stay.taxRule?.id ?? null,
-                taxRateSnapshot: stay.summary.taxRatePercent,
-                taxAmount: stay.summary.cgst + stay.summary.sgst,
-                total: stay.summary.grandTotal,
-                generatedById: request.user.id,
-              },
-            });
-          } catch (err) {
-            if (err.code !== "P2002" || attempt === 2) throw err;
-          }
-        }
+        try {
+          invoice = await fastify.prisma.invoice.create({
+            data: {
+              tenantId,
+              bookingId: stay.primary.id,
+              invoiceNumber: await nextInvoiceNumber(fastify.prisma, tenantId),
+              subtotal: stay.summary.taxableValue,
+              taxRuleId: stay.taxRule?.id ?? null,
+              taxRateSnapshot: stay.summary.taxRatePercent,
+              taxAmount: stay.summary.cgst + stay.summary.sgst,
+              total: stay.summary.grandTotal,
+              generatedById: request.user.id,
+            },
+          });
 
-        await recordAudit(fastify.prisma, {
-          tenantId,
-          userId: request.user.id,
-          action: "invoice.generate",
-          entityType: "Invoice",
-          entityId: invoice.id,
-          metadata: { bookingId: stay.primary.id, invoiceNumber: invoice.invoiceNumber, total: invoice.total },
-        });
+          await recordAudit(fastify.prisma, {
+            tenantId,
+            userId: request.user.id,
+            action: "invoice.generate",
+            entityType: "Invoice",
+            entityId: invoice.id,
+            metadata: { bookingId: stay.primary.id, invoiceNumber: invoice.invoiceNumber, total: invoice.total },
+          });
+        } catch (err) {
+          if (err.code !== "P2002") throw err;
+          // Lost a race against a near-simultaneous "Checkout & Print Bill"
+          // (or a retried request) — the unique bookingId/invoiceNumber
+          // constraint means the invoice we wanted now exists; use it
+          // rather than generating a second one for the same stay.
+          invoice = await fastify.prisma.invoice.findFirst({ where: { tenantId, bookingId: { in: bookingIds } } });
+          if (!invoice) throw err;
+        }
       }
 
       const tenant = await fastify.prisma.tenant.findUnique({ where: { id: tenantId }, select: TENANT_LETTERHEAD_SELECT });

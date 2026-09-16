@@ -112,12 +112,12 @@ export default function SettingsPage() {
         <Input label="Hotel name" {...field("name")} />
         <Textarea label="Address" rows={3} placeholder="Street, city, state, PIN" {...field("address")} />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="Phone" {...field("phone")} />
           <Input label="Email" type="email" {...field("email")} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="GSTIN" placeholder="e.g. 33CRTPK9370H1Z7" {...field("gstin")} />
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Brand color</label>
