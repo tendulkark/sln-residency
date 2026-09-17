@@ -5,14 +5,12 @@ import { formatCurrency, formatDateTime, toDateInputValue, toTimeInputValue } fr
 import { Button, Input } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 
-// Mirrors the server's calendar-day billing rule in bookings.routes.js —
-// nights are counted by calendar day, not raw elapsed hours.
+// Mirrors the server's rolling-24h billing rule in lib/billing.js — nights
+// are counted in 24-hour blocks from the exact check-in timestamp, not by
+// calendar day.
 function nightsBetween(checkIn, checkOut) {
-  const inDay = new Date(checkIn);
-  inDay.setHours(0, 0, 0, 0);
-  const outDay = new Date(checkOut);
-  outDay.setHours(0, 0, 0, 0);
-  return Math.max(1, Math.round((outDay - inDay) / (24 * 60 * 60 * 1000)));
+  const ms = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+  return Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
 }
 
 export default function ExtendStayModal({ booking, onClose, onExtended }) {
@@ -25,12 +23,9 @@ export default function ExtendStayModal({ booking, onClose, onExtended }) {
   const newCheckOut = useMemo(() => new Date(`${date}T${time || "00:00"}`), [date, time]);
   const currentCheckOut = new Date(booking.checkOut);
   const isValid = newCheckOut > currentCheckOut;
-  const sameDay = toDateInputValue(newCheckOut) === toDateInputValue(currentCheckOut);
-  // nightsBetween is calendar-day based, so a same-calendar-day extension
-  // (however late) never bills an extra night — that's the whole point of
-  // the "half-day / hourly charge" field below.
   const originalNights = nightsBetween(new Date(booking.checkIn), currentCheckOut);
   const nights = nightsBetween(new Date(booking.checkIn), newCheckOut);
+  const extraNights = nights - originalNights;
   const newRoomTotal = Number(booking.ratePerNight) * nights;
 
   const extendMutation = useMutation({
@@ -71,14 +66,14 @@ export default function ExtendStayModal({ booking, onClose, onExtended }) {
           <Input label="New check-out time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
         </div>
 
-        {sameDay ? (
-          <p className="text-xs text-gray-500">Same-day extension — no extra night billed. Add the half-day / hourly charge below.</p>
-        ) : (
-          <p className="text-xs text-gray-500">This adds {nights - nightsBetween(new Date(booking.checkIn), currentCheckOut)} night(s) at the room's current rate.</p>
-        )}
+        <p className="text-xs text-gray-500">
+          {extraNights > 0
+            ? `Billed in rolling 24-hour blocks from check-in — this adds ${extraNights} night(s) at the room's current rate.`
+            : "Still within the current 24-hour block — no extra night billed. Add an optional charge below for a late checkout."}
+        </p>
 
         <Input
-          label="Additional charge (half-day / hours)"
+          label="Additional charge (optional, e.g. late checkout fee)"
           type="number"
           min="0"
           step="0.01"

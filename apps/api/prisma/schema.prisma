@@ -211,11 +211,13 @@ model Guest {
   tenantId      String
   name          String
   phone         String?
+  phone2        String? // secondary/alternate contact number
   email         String?
   idProofType   String?
   idProofNumber String?
   address       String?
-  gstin         String? // for a B2B tax invoice when the guest travels for business
+  companyName   String? // for a B2B tax invoice when the guest travels for business
+  gstin         String? // the company's GSTIN, printed alongside companyName on the invoice
   createdAt     DateTime @default(now())
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)

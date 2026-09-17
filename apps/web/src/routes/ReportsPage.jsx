@@ -265,8 +265,8 @@ function BookingsReportTab({ from, to }) {
                   <Td>{r.room}</Td>
                   <Td className="whitespace-nowrap">{r.roomType}</Td>
                   <Td className="whitespace-nowrap">{r.bookedBy ?? "-"}</Td>
-                  <Td className="whitespace-nowrap">{formatDate(r.checkIn)}</Td>
-                  <Td className="whitespace-nowrap">{formatDate(r.checkOut)}</Td>
+                  <Td className="whitespace-nowrap">{formatDateTime(r.checkIn)}</Td>
+                  <Td className="whitespace-nowrap">{formatDateTime(r.checkOut)}</Td>
                   <Td>{r.nights}</Td>
                   <Td className="whitespace-nowrap">{r.actualCheckIn ? formatDateTime(r.actualCheckIn) : "-"}</Td>
                   <Td className="whitespace-nowrap">{r.checkedInBy ?? "-"}</Td>

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api.js";
-import { toDateInputValue } from "../lib/format.js";
+import { toDateTimeInputValue } from "../lib/format.js";
 import { Button, Input, Textarea } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 
 export default function EditBookingModal({ booking, onClose }) {
   const queryClient = useQueryClient();
-  const [checkIn, setCheckIn] = useState(toDateInputValue(booking.checkIn));
-  const [checkOut, setCheckOut] = useState(toDateInputValue(booking.checkOut));
+  const [checkIn, setCheckIn] = useState(toDateTimeInputValue(booking.checkIn));
+  const [checkOut, setCheckOut] = useState(toDateTimeInputValue(booking.checkOut));
   const [adults, setAdults] = useState(booking.adults);
   const [children, setChildren] = useState(booking.children);
   const [ratePerNight, setRatePerNight] = useState(booking.ratePerNight);
@@ -45,8 +45,8 @@ export default function EditBookingModal({ booking, onClose }) {
         {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Check-in" type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required />
-          <Input label="Check-out" type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} required />
+          <Input label="Check-in" type="datetime-local" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required />
+          <Input label="Check-out" type="datetime-local" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} required />
         </div>
         <div className="grid grid-cols-3 gap-4">
           <Input label="Adults" type="number" min="1" value={adults} onChange={(e) => setAdults(e.target.value)} />

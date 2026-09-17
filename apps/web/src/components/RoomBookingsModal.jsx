@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Pencil, Plus, Users } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
-import { formatCurrency, formatDate } from "../lib/format.js";
+import { formatCurrency, formatDateTime } from "../lib/format.js";
 import { useAuthStore } from "../store/authStore.js";
 import { Badge, Button, EmptyState } from "../ui/index.js";
 import Modal from "./Modal.jsx";
@@ -62,7 +62,7 @@ export default function RoomBookingsModal({ room, onClose }) {
                     </span>
                   </p>
                   <p className="mt-1 text-sm text-gray-600">
-                    {formatDate(booking.checkIn)} → {formatDate(booking.checkOut)} · {formatCurrency(booking.totalAmount)}
+                    {formatDateTime(booking.checkIn)} → {formatDateTime(booking.checkOut)} · {formatCurrency(booking.totalAmount)}
                   </p>
                   {booking.groupCode && (
                     <p className="mt-1">

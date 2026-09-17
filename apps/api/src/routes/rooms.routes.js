@@ -2,6 +2,7 @@ import { roomSchema, updateRoomSchema, updateRoomStatusSchema } from "@sln/share
 import { requirePermission } from "../lib/permissions.js";
 import { recordAudit } from "../lib/audit.js";
 import { priceRoom } from "../lib/tax.js";
+import { findBookingConflict, findClosureConflict } from "../lib/availability.js";
 
 async function serializeRoom(fastify, tenantId, room) {
   const pricing = await priceRoom(fastify.prisma, tenantId, room.roomType.basePrice);
@@ -27,13 +28,34 @@ export default async function roomsRoutes(fastify) {
     "/rooms",
     { preHandler: [fastify.authenticate, requirePermission("rooms.view")] },
     async (request) => {
+      const tenantId = request.user.tenantId;
+      const { checkIn, checkOut } = request.query;
       const rooms = await fastify.prisma.room.findMany({
-        where: { tenantId: request.user.tenantId },
+        where: { tenantId },
         include: { roomType: true, status: true },
         orderBy: [{ floor: "asc" }, { roomNumber: "asc" }],
       });
 
-      return Promise.all(rooms.map((room) => serializeRoom(fastify, request.user.tenantId, room)));
+      // When a stay window is given, drop rooms that are already booked or
+      // closed for any part of it — availability is judged against the
+      // exact check-in/check-out timestamps, not just the room's current
+      // live status, so a room freeing up later today still shows correctly.
+      let available = rooms;
+      if (checkIn && checkOut) {
+        const checkInDate = new Date(checkIn);
+        const checkOutDate = new Date(checkOut);
+        const conflicts = await Promise.all(
+          rooms.map(async (room) => {
+            const bookingConflict = await findBookingConflict(fastify.prisma, { tenantId, roomId: room.id, checkIn: checkInDate, checkOut: checkOutDate });
+            if (bookingConflict) return true;
+            const closureConflict = await findClosureConflict(fastify.prisma, { tenantId, roomId: room.id, startDate: checkInDate, endDate: checkOutDate });
+            return Boolean(closureConflict);
+          })
+        );
+        available = rooms.filter((_, i) => !conflicts[i]);
+      }
+
+      return Promise.all(available.map((room) => serializeRoom(fastify, tenantId, room)));
     }
   );
 

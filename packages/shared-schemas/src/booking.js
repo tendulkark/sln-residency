@@ -12,6 +12,13 @@ const bookingDiscountSchema = z.object({
   amount: z.coerce.number().positive(),
 });
 
+// Ad-hoc charges (extra bed, fines, etc.) entered at booking-creation time,
+// alongside the existing post-creation "Add Charge" flow in Manage Stay.
+const bookingChargeInputSchema = z.object({
+  description: z.string().min(1),
+  amount: z.coerce.number().positive(),
+});
+
 // A booking is created either against an existing guest (guestId) or with
 // inline guest details (guest) that the API creates on the fly — never both.
 // It targets either a single room (roomId + ratePerNight, the existing
@@ -26,7 +33,19 @@ export const createBookingSchema = z
     roomId: z.string().min(1).optional(),
     roomIds: z.array(z.string().min(1)).min(2).optional(),
     guestId: z.string().min(1).optional(),
-    guest: guestSchema.pick({ name: true, phone: true, email: true }).optional(),
+    guest: guestSchema
+      .pick({
+        name: true,
+        phone: true,
+        phone2: true,
+        email: true,
+        idProofType: true,
+        idProofNumber: true,
+        address: true,
+        companyName: true,
+        gstin: true,
+      })
+      .optional(),
     checkIn: z.coerce.date(),
     checkOut: z.coerce.date(),
     adults: z.coerce.number().int().positive().default(1),
@@ -35,6 +54,7 @@ export const createBookingSchema = z
     notes: z.string().optional().nullable(),
     advancePayments: z.array(advancePaymentSchema).optional(),
     discount: bookingDiscountSchema.optional(),
+    charges: z.array(bookingChargeInputSchema).optional(),
     checkInImmediately: z.boolean().optional(),
   })
   .refine((data) => data.checkOut > data.checkIn, {

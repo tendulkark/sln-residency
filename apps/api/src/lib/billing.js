@@ -2,19 +2,29 @@ import { getApplicableTaxRule, splitInclusiveTax } from "./tax.js";
 
 export const BOOKING_INCLUDE = {
   room: { select: { id: true, roomNumber: true, floor: true, roomType: { select: { name: true } } } },
-  guest: { select: { id: true, name: true, phone: true, email: true, address: true, idProofType: true, idProofNumber: true } },
+  guest: {
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      phone2: true,
+      email: true,
+      address: true,
+      idProofType: true,
+      idProofNumber: true,
+      companyName: true,
+      gstin: true,
+    },
+  },
   status: { select: { id: true, code: true, label: true, color: true, isTerminal: true } },
 };
 
-// Nights are billed by calendar day (the standard hotel convention — a
-// guest checking out a few hours late on the same calendar day owes a
-// late-checkout fee, not a whole extra night), never by raw elapsed hours.
+// Nights are billed in rolling 24-hour blocks from the exact check-in
+// timestamp, not by calendar day — check in Mon 6pm / check out Tue 6pm is
+// 1 night, Tue 6:01pm is 2. A stay under 24h still bills as 1 night.
 export function nightsBetween(checkIn, checkOut) {
-  const inDay = new Date(checkIn);
-  inDay.setHours(0, 0, 0, 0);
-  const outDay = new Date(checkOut);
-  outDay.setHours(0, 0, 0, 0);
-  return Math.max(1, Math.round((outDay - inDay) / (24 * 60 * 60 * 1000)));
+  const ms = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+  return Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
 }
 
 // The full "Manage Stay" / invoice picture for a booking: itself plus every
