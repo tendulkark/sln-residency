@@ -12,10 +12,20 @@ const TENANT_LETTERHEAD_SELECT = {
   gstin: true,
 };
 
+// Based on the highest existing suffix, not a row count — a count-based
+// scheme collides forever once any invoice is missing from the sequence
+// (a rolled-back transaction, a deleted test row), since count() never
+// reflects the gap. The P2002 retry below still covers the remaining race
+// between two concurrent requests reading the same max at once.
 async function nextInvoiceNumber(prisma, tenantId) {
   const prefix = `INV-${new Date().getFullYear()}-`;
-  const count = await prisma.invoice.count({ where: { tenantId, invoiceNumber: { startsWith: prefix } } });
-  return `${prefix}${String(count + 1).padStart(5, "0")}`;
+  const latest = await prisma.invoice.findFirst({
+    where: { tenantId, invoiceNumber: { startsWith: prefix } },
+    orderBy: { invoiceNumber: "desc" },
+    select: { invoiceNumber: true },
+  });
+  const nextSeq = latest ? Number(latest.invoiceNumber.slice(prefix.length)) + 1 : 1;
+  return `${prefix}${String(nextSeq).padStart(5, "0")}`;
 }
 
 function invoiceView(invoice, tenant, stay) {

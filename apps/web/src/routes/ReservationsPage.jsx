@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus, Search, CalendarX2 } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
 import { rangeFor, addDays, startOfMonth, toISODate } from "../lib/dateRange.js";
-import { formatCurrency, formatDate } from "../lib/format.js";
+import { formatCurrency, formatDateTime } from "../lib/format.js";
 import BookingFormModal from "../components/BookingFormModal.jsx";
 import RecordPaymentModal from "../components/RecordPaymentModal.jsx";
 import { useAuthStore } from "../store/authStore.js";
@@ -204,7 +204,7 @@ export default function ReservationsPage() {
                   {booking.guest.name} · Room {booking.room.roomNumber}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {formatDate(booking.checkIn)} → {formatDate(booking.checkOut)} · {formatCurrency(booking.totalAmount)}
+                  {formatDateTime(booking.checkIn)} → {formatDateTime(booking.checkOut)} · {formatCurrency(booking.totalAmount)}
                 </p>
               </div>
               <div className="flex items-center gap-2">

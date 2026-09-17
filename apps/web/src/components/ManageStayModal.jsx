@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Receipt, Split, Tag, Trash2, CalendarPlus, LogIn, XCircle, Printer } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
-import { formatCurrency, formatDate } from "../lib/format.js";
+import { formatCurrency, formatDateTime } from "../lib/format.js";
 import { useAuthStore } from "../store/authStore.js";
 import { Badge, Button, Input, Select } from "../ui/index.js";
 import Modal from "./Modal.jsx";
@@ -250,8 +250,8 @@ export default function ManageStayModal({ bookingId, onClose }) {
         </div>
 
         <div className="mt-3 space-y-1.5 rounded-md border border-line p-3 text-sm">
-          <Row label="Check-in" value={formatDate(primary.checkIn)} />
-          <Row label="Check-out" value={formatDate(primary.checkOut)} />
+          <Row label="Check-in" value={formatDateTime(primary.checkIn)} />
+          <Row label="Check-out" value={formatDateTime(primary.checkOut)} />
           <Row label="Nights stayed" value={`${stay.summary.nights} night(s) · ${stay.bookings.length} room(s)`} />
           <div className="my-1 border-t border-line-soft" />
           {stay.bookings.map((b) => (

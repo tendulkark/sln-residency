@@ -80,8 +80,22 @@ export default async function bookingsRoutes(fastify) {
       if (!parsed.success) {
         return reply.code(400).send({ error: "Invalid payload", details: parsed.error.flatten() });
       }
-      const { roomId, roomIds, guestId, guest, checkIn, checkOut, adults, children, ratePerNight, notes, advancePayments, discount, checkInImmediately } =
-        parsed.data;
+      const {
+        roomId,
+        roomIds,
+        guestId,
+        guest,
+        checkIn,
+        checkOut,
+        adults,
+        children,
+        ratePerNight,
+        notes,
+        advancePayments,
+        discount,
+        charges,
+        checkInImmediately,
+      } = parsed.data;
       const tenantId = request.user.tenantId;
       const targetRoomIds = roomIds ?? [roomId];
 
@@ -126,7 +140,7 @@ export default async function bookingsRoutes(fastify) {
       const nights = nightsBetween(checkIn, checkOut);
       const now = new Date();
 
-      const { createdBookings, createdCharge } = await fastify.prisma.$transaction(async (tx) => {
+      const { createdBookings, createdCharges } = await fastify.prisma.$transaction(async (tx) => {
         const created = [];
         for (const room of rooms) {
           const rate = roomIds ? (await priceRoom(tx, tenantId, room.roomType.basePrice)).total : ratePerNight;
@@ -169,21 +183,37 @@ export default async function bookingsRoutes(fastify) {
           });
         }
 
-        let charge = null;
+        const createdCharges = [];
         if (discount) {
-          charge = await tx.bookingCharge.create({
-            data: {
-              tenantId,
-              bookingId: created[0].id,
-              type: "discount",
-              description: discount.description || "Discount",
-              amount: discount.amount,
-              createdById: request.user.id,
-            },
-          });
+          createdCharges.push(
+            await tx.bookingCharge.create({
+              data: {
+                tenantId,
+                bookingId: created[0].id,
+                type: "discount",
+                description: discount.description || "Discount",
+                amount: discount.amount,
+                createdById: request.user.id,
+              },
+            })
+          );
+        }
+        for (const item of charges ?? []) {
+          createdCharges.push(
+            await tx.bookingCharge.create({
+              data: {
+                tenantId,
+                bookingId: created[0].id,
+                type: "charge",
+                description: item.description,
+                amount: item.amount,
+                createdById: request.user.id,
+              },
+            })
+          );
         }
 
-        return { createdBookings: created, createdCharge: charge };
+        return { createdBookings: created, createdCharges };
       });
 
       for (const booking of createdBookings) {
@@ -206,13 +236,13 @@ export default async function bookingsRoutes(fastify) {
           metadata: { amount: payment.amount, atBookingCreation: true },
         });
       }
-      if (createdCharge) {
+      for (const charge of createdCharges) {
         await recordAudit(fastify.prisma, {
           tenantId,
           userId: request.user.id,
-          action: "bookingcharge.discount",
+          action: charge.type === "discount" ? "bookingcharge.discount" : "bookingcharge.create",
           entityType: "BookingCharge",
-          entityId: createdCharge.id,
+          entityId: charge.id,
           metadata: { atBookingCreation: true },
         });
       }

@@ -32,6 +32,12 @@ export function toTimeInputValue(dateLike) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+// YYYY-MM-DDTHH:MM in the viewer's local time, for an <input
+// type="datetime-local"> value.
+export function toDateTimeInputValue(dateLike) {
+  return `${toDateInputValue(dateLike)}T${toTimeInputValue(dateLike)}`;
+}
+
 export function formatDateTime(dateLike) {
   return new Date(dateLike).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 }

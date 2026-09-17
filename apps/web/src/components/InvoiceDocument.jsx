@@ -1,4 +1,5 @@
-import { formatCurrencyPrecise, formatDate } from "../lib/format.js";
+import { formatCurrencyPrecise, formatDate, formatDateTime } from "../lib/format.js";
+import { ID_PROOF_TYPES } from "@sln/shared-schemas";
 
 // Printable GST tax invoice — the letterhead (name/logo/address/GSTIN) comes
 // from Tenant profile fields (Settings screen), the numbers come from the
@@ -51,7 +52,23 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
           <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-brand">Billed To</p>
           <p className="text-sm font-bold uppercase text-gray-900">{primary.guest.name}</p>
           {primary.guest.phone && <p className="text-gray-700">Phone: {primary.guest.phone}</p>}
+          {primary.guest.phone2 && <p className="text-gray-700">Alt. Phone: {primary.guest.phone2}</p>}
+          {primary.guest.email && <p className="text-gray-700">Email: {primary.guest.email}</p>}
           {primary.guest.address && <p className="whitespace-pre-line text-gray-700">Address: {primary.guest.address}</p>}
+          {primary.guest.idProofType && (
+            <p className="text-gray-700">
+              {ID_PROOF_TYPES.find((t) => t.value === primary.guest.idProofType)?.label ?? primary.guest.idProofType}
+              {primary.guest.idProofNumber ? `: ${primary.guest.idProofNumber}` : ""}
+            </p>
+          )}
+          {primary.guest.companyName && (
+            <div className="mt-2 border-t border-brand/20 pt-2">
+              <p className="text-gray-700">
+                <span className="font-semibold text-gray-900">Company:</span> {primary.guest.companyName}
+              </p>
+              {primary.guest.gstin && <p className="text-gray-700">Company GSTIN: {primary.guest.gstin}</p>}
+            </div>
+          )}
         </div>
         <div className="rounded-md bg-brand-tint p-3">
           <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-brand">Stay Details</p>
@@ -59,10 +76,10 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
             <span className="font-semibold text-gray-900">Room:</span> {roomLabel}
           </p>
           <p className="text-gray-700">
-            <span className="font-semibold text-gray-900">Check-In:</span> {formatDate(primary.checkIn)}
+            <span className="font-semibold text-gray-900">Check-In:</span> {formatDateTime(primary.checkIn)}
           </p>
           <p className="text-gray-700">
-            <span className="font-semibold text-gray-900">Check-Out:</span> {formatDate(primary.checkOut)}
+            <span className="font-semibold text-gray-900">Check-Out:</span> {formatDateTime(primary.checkOut)}
           </p>
           <p className="text-gray-700">
             <span className="font-semibold text-gray-900">Total Nights:</span> {summary.nights}
