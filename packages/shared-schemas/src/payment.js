@@ -6,4 +6,7 @@ export const recordPaymentSchema = z.object({
   statusId: z.string().min(1),
   amount: z.coerce.number().positive(),
   referenceNote: z.string().optional().nullable(),
+  // When the guest actually paid, if different from "now" — defaults to
+  // the moment the payment is recorded.
+  paidAt: z.coerce.date().optional(),
 });

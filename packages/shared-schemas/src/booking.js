@@ -5,6 +5,10 @@ const advancePaymentSchema = z.object({
   amount: z.coerce.number().positive(),
   methodId: z.string().min(1),
   statusId: z.string().min(1),
+  // When the guest actually paid, if different from "now" (e.g. staff
+  // entering a cash advance that was collected earlier) — defaults to the
+  // moment the payment is recorded.
+  paidAt: z.coerce.date().optional(),
 });
 
 const bookingDiscountSchema = z.object({

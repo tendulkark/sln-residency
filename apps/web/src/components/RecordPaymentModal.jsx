@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api.js";
+import { toDateTimeInputValue } from "../lib/format.js";
 import { Button, Input, Select } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 
@@ -15,6 +16,7 @@ export default function RecordPaymentModal({ booking, onClose }) {
   const [statusId, setStatusId] = useState("");
   const [amount, setAmount] = useState(booking.totalAmount ?? "");
   const [referenceNote, setReferenceNote] = useState("");
+  const [paidAt, setPaidAt] = useState(toDateTimeInputValue(new Date()));
   const [error, setError] = useState(null);
 
   const paidStatus = paymentStatuses?.find((s) => s.code === "paid");
@@ -43,6 +45,7 @@ export default function RecordPaymentModal({ booking, onClose }) {
       statusId: statusId || paidStatus?.id,
       amount: Number(amount),
       referenceNote: referenceNote || undefined,
+      paidAt: paidAt ? new Date(paidAt).toISOString() : undefined,
     });
   }
 
@@ -60,6 +63,7 @@ export default function RecordPaymentModal({ booking, onClose }) {
           onChange={(e) => setReferenceNote(e.target.value)}
           placeholder="UPI txn id, cheque no., etc."
         />
+        <Input label="Paid on" type="datetime-local" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>

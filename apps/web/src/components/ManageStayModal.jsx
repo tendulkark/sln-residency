@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Receipt, Split, Tag, Trash2, CalendarPlus, LogIn, XCircle, Printer } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
-import { formatCurrency, formatDateTime } from "../lib/format.js";
+import { formatCurrency, formatDateTime, toDateTimeInputValue } from "../lib/format.js";
 import { useAuthStore } from "../store/authStore.js";
 import { Badge, Button, GstCalculator, Input, Select, computeGst } from "../ui/index.js";
 import Modal from "./Modal.jsx";
@@ -72,14 +72,14 @@ export default function ManageStayModal({ bookingId, onClose }) {
   const paidStatus = paymentStatuses?.find((s) => s.code === "paid");
 
   const [addFormType, setAddFormType] = useState(null); // "charge" | "discount" | null
-  const [settleRows, setSettleRows] = useState([{ methodId: "", amount: "" }]);
+  const [settleRows, setSettleRows] = useState([{ methodId: "", amount: "", paidAt: toDateTimeInputValue(new Date()) }]);
   const [extendOpen, setExtendOpen] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(null); // { autoGenerate } | null
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (stay?.summary.balanceDue > 0 && settleRows.length === 1 && !settleRows[0].amount) {
-      setSettleRows([{ methodId: "", amount: stay.summary.balanceDue }]);
+      setSettleRows([{ methodId: "", amount: stay.summary.balanceDue, paidAt: toDateTimeInputValue(new Date()) }]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stay?.summary.balanceDue]);
@@ -122,6 +122,28 @@ export default function ManageStayModal({ bookingId, onClose }) {
     onError: (err) => setError(err.message),
   });
 
+  // Shared by the pre-checkin "Check In" action (which bundles whatever
+  // advance is entered alongside the status change) and the standalone
+  // "Record Payment" action (for a mid-stay top-up or final settlement
+  // once the guest is already checked in) — a guest doesn't always pay at
+  // the moment staff happens to be looking at this screen, so each row
+  // carries its own "paid on" time instead of always defaulting to now.
+  async function submitSettleRows() {
+    const validRows = settleRows.filter((r) => r.methodId && Number(r.amount) > 0);
+    for (const row of validRows) {
+      await apiFetch("/payments", {
+        method: "POST",
+        body: JSON.stringify({
+          bookingId,
+          methodId: row.methodId,
+          statusId: paidStatus?.id,
+          amount: Number(row.amount),
+          ...(row.paidAt ? { paidAt: new Date(row.paidAt).toISOString() } : {}),
+        }),
+      });
+    }
+  }
+
   const checkIn = useMutation({
     mutationFn: async () => {
       const bookingStatuses = await apiFetch("/statuses?domain=booking");
@@ -130,17 +152,20 @@ export default function ManageStayModal({ bookingId, onClose }) {
       for (const b of stay.bookings) {
         await apiFetch(`/bookings/${b.id}/status`, { method: "PATCH", body: JSON.stringify({ statusId: checkedInStatus.id, actualCheckIn: now }) });
       }
-      const validRows = settleRows.filter((r) => r.methodId && Number(r.amount) > 0);
-      for (const row of validRows) {
-        await apiFetch("/payments", {
-          method: "POST",
-          body: JSON.stringify({ bookingId, methodId: row.methodId, statusId: paidStatus?.id, amount: Number(row.amount) }),
-        });
-      }
+      await submitSettleRows();
     },
     onSuccess: () => {
       invalidateAll();
       onClose();
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  const recordPayment = useMutation({
+    mutationFn: submitSettleRows,
+    onSuccess: () => {
+      invalidateAll();
+      setSettleRows([{ methodId: "", amount: "", paidAt: toDateTimeInputValue(new Date()) }]);
     },
     onError: (err) => setError(err.message),
   });
@@ -311,41 +336,63 @@ export default function ManageStayModal({ bookingId, onClose }) {
           />
         </div>
 
-        {!isCheckedIn && stay.summary.balanceDue > 0 && permissions.has("payments.record") && (
+        {stay.payments.length > 0 && (
           <div className="mt-3 rounded-md border border-line p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Payment History</p>
+            {stay.payments.map((p) => (
+              <div key={p.id} className="mt-1 flex items-center justify-between text-sm first:mt-0">
+                <span className="text-gray-700">
+                  {p.method.name} · {formatDateTime(p.recordedAt)}
+                </span>
+                <span className="font-medium text-gray-900">{formatCurrency(p.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!isCheckedOut && stay.summary.balanceDue > 0 && permissions.has("payments.record") && (
+          <div className="mt-3 rounded-md border border-line p-3 print:hidden">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Settle Balance</p>
             {settleRows.map((row, i) => (
-              <div key={i} className="mb-2 flex items-end gap-2">
-                <div className="flex-1">
-                  <Select
-                    label={i === 0 ? "Payment method" : undefined}
-                    options={methodOptions}
-                    value={row.methodId}
-                    onChange={(v) => setSettleRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, methodId: v } : r)))}
-                    placeholder="Select method"
-                  />
+              <div key={i} className="mb-2 space-y-2 rounded-md border border-line-soft p-2">
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Select
+                      label={i === 0 ? "Payment method" : undefined}
+                      options={methodOptions}
+                      value={row.methodId}
+                      onChange={(v) => setSettleRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, methodId: v } : r)))}
+                      placeholder="Select method"
+                    />
+                  </div>
+                  <div className="w-32">
+                    <Input
+                      label={i === 0 ? "Amount" : undefined}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.amount}
+                      onChange={(e) => setSettleRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, amount: e.target.value } : r)))}
+                    />
+                  </div>
+                  {settleRows.length > 1 && (
+                    <Button variant="ghost" size="sm" onClick={() => setSettleRows((rows) => rows.filter((_, idx) => idx !== i))}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
-                <div className="w-32">
-                  <Input
-                    label={i === 0 ? "Amount" : undefined}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={row.amount}
-                    onChange={(e) => setSettleRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, amount: e.target.value } : r)))}
-                  />
-                </div>
-                {settleRows.length > 1 && (
-                  <Button variant="ghost" size="sm" onClick={() => setSettleRows((rows) => rows.filter((_, idx) => idx !== i))}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+                <Input
+                  label="Paid on"
+                  type="datetime-local"
+                  value={row.paidAt}
+                  onChange={(e) => setSettleRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, paidAt: e.target.value } : r)))}
+                />
               </div>
             ))}
             <div className="flex items-center justify-between">
               <button
                 type="button"
-                onClick={() => setSettleRows((rows) => [...rows, { methodId: "", amount: "" }])}
+                onClick={() => setSettleRows((rows) => [...rows, { methodId: "", amount: "", paidAt: toDateTimeInputValue(new Date()) }])}
                 className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
               >
                 <Split className="h-3.5 w-3.5" />
@@ -355,6 +402,13 @@ export default function ManageStayModal({ bookingId, onClose }) {
                 Entered: {formatCurrency(settleTotal)} / Due: {formatCurrency(stay.summary.balanceDue)}
               </p>
             </div>
+            {isCheckedIn && (
+              <div className="mt-2 flex justify-end">
+                <Button size="sm" onClick={() => recordPayment.mutate()} disabled={recordPayment.isPending || settleTotal <= 0}>
+                  {recordPayment.isPending ? "Recording…" : "Record Payment"}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -363,6 +417,12 @@ export default function ManageStayModal({ bookingId, onClose }) {
             <Button variant="ghost" size="sm" onClick={() => setExtendOpen(true)}>
               <CalendarPlus className="h-4 w-4" />
               Extend Stay
+            </Button>
+          )}
+          {!isCheckedOut && (
+            <Button variant="ghost" size="sm" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" />
+              Print
             </Button>
           )}
           <div className="ml-auto flex gap-2">

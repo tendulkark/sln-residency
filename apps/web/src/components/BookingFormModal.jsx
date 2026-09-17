@@ -7,7 +7,7 @@ import { formatCurrency, toDateTimeInputValue } from "../lib/format.js";
 import { Button, Combobox, GstCalculator, Input, Select, Switch, Textarea, computeGst } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 
-const EMPTY_PAYMENT_ROW = { amount: "", methodId: "" };
+const EMPTY_PAYMENT_ROW = { amount: "", methodId: "", paidAt: "" };
 const EMPTY_CHARGE_ROW = { description: "", gstAmount: "", gstRate: "", gstMode: "exclude" };
 const ID_PROOF_OPTIONS = ID_PROOF_TYPES.map((t) => ({ value: t.value, label: t.label }));
 
@@ -180,7 +180,14 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
       children: Number(children),
       notes: notes || undefined,
       ...(validPayments.length > 0
-        ? { advancePayments: validPayments.map((r) => ({ amount: Number(r.amount), methodId: r.methodId, statusId: paidStatus?.id })) }
+        ? {
+            advancePayments: validPayments.map((r) => ({
+              amount: Number(r.amount),
+              methodId: r.methodId,
+              statusId: paidStatus?.id,
+              ...(r.paidAt ? { paidAt: new Date(r.paidAt).toISOString() } : {}),
+            })),
+          }
         : {}),
       ...(validCharges.length > 0
         ? {
@@ -374,37 +381,45 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Payment</p>
 
           {paymentRows.map((row, i) => (
-            <div key={i} className="flex items-end gap-2">
-              <div className="flex-1">
-                <Input
-                  label={`Amount ${i + 1}`}
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={row.amount}
-                  onChange={(e) => updatePaymentRow(i, { amount: e.target.value })}
-                />
+            <div key={i} className="space-y-2 rounded-md border border-line p-2">
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Input
+                    label={`Amount ${i + 1}`}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={row.amount}
+                    onChange={(e) => updatePaymentRow(i, { amount: e.target.value })}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Select
+                    label={`Method${i > 0 ? ` ${i + 1}` : ""}`}
+                    options={methodOptions}
+                    value={row.methodId}
+                    onChange={(v) => updatePaymentRow(i, { methodId: v })}
+                    placeholder="Select method"
+                  />
+                </div>
+                {paymentRows.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPaymentRows((rows) => rows.filter((_, idx) => idx !== i))}
+                    aria-label="Remove payment"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
-              <div className="flex-1">
-                <Select
-                  label={`Method${i > 0 ? ` ${i + 1}` : ""}`}
-                  options={methodOptions}
-                  value={row.methodId}
-                  onChange={(v) => updatePaymentRow(i, { methodId: v })}
-                  placeholder="Select method"
-                />
-              </div>
-              {paymentRows.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPaymentRows((rows) => rows.filter((_, idx) => idx !== i))}
-                  aria-label="Remove payment"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
+              <Input
+                label="Paid on (optional — defaults to now)"
+                type="datetime-local"
+                value={row.paidAt}
+                onChange={(e) => updatePaymentRow(i, { paidAt: e.target.value })}
+              />
             </div>
           ))}
           <button

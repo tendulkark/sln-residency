@@ -49,7 +49,7 @@ export default async function paymentsRoutes(fastify) {
       if (!parsed.success) {
         return reply.code(400).send({ error: "Invalid payload", details: parsed.error.flatten() });
       }
-      const { bookingId, methodId, statusId, amount, referenceNote } = parsed.data;
+      const { bookingId, methodId, statusId, amount, referenceNote, paidAt } = parsed.data;
       const tenantId = request.user.tenantId;
 
       const booking = await fastify.prisma.booking.findFirst({ where: { id: bookingId, tenantId } });
@@ -62,7 +62,16 @@ export default async function paymentsRoutes(fastify) {
       if (!status) return reply.code(400).send({ error: "Unknown payment status" });
 
       const payment = await fastify.prisma.payment.create({
-        data: { tenantId, bookingId, methodId, statusId, amount, referenceNote, recordedById: request.user.id },
+        data: {
+          tenantId,
+          bookingId,
+          methodId,
+          statusId,
+          amount,
+          referenceNote,
+          recordedById: request.user.id,
+          ...(paidAt ? { recordedAt: paidAt } : {}),
+        },
         include: { method: true, status: true },
       });
 
