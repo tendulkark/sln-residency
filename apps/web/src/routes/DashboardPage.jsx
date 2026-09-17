@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { DoorOpen, Wallet, AlertTriangle, CreditCard, CalendarOff, Plus, Search } from "lucide-react";
 import { apiFetch } from "../lib/api.js";
 import { toISODate, rangeFor } from "../lib/dateRange.js";
-import { formatCurrency } from "../lib/format.js";
+import { formatCurrency, toTimeInputValue } from "../lib/format.js";
 import StatCard from "../components/StatCard.jsx";
 import RoomBoardCard from "../components/RoomBoardCard.jsx";
 import BookingFormModal from "../components/BookingFormModal.jsx";
@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const permissions = useAuthStore((s) => s.permissions);
   const [viewMode, setViewMode] = useState("day");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState(toTimeInputValue(new Date()));
   const [floorFilter, setFloorFilter] = useState(null);
   const [bucketFilter, setBucketFilter] = useState(null);
   const [search, setSearch] = useState("");
@@ -40,6 +41,17 @@ export default function DashboardPage() {
   const [closuresOpen, setClosuresOpen] = useState(false);
 
   const dateISO = toISODate(selectedDate);
+  // What room-board/"Room status" answer — availability as of this exact
+  // date+time, not just "sometime this calendar day". Bookings now carry
+  // exact check-in/check-out timestamps (rolling 24h billing), so a room
+  // freed up this morning and re-let tonight needs a point-in-time check
+  // to show correctly, not a whole-day overlap check.
+  const asOfDate = useMemo(() => {
+    const [hours, minutes] = selectedTime.split(":").map(Number);
+    const d = new Date(selectedDate);
+    d.setHours(hours || 0, minutes || 0, 0, 0);
+    return d;
+  }, [selectedDate, selectedTime]);
 
   const { data: summary } = useQuery({
     queryKey: ["dashboard-summary", dateISO],
@@ -47,9 +59,9 @@ export default function DashboardPage() {
   });
 
   const { data: board, isLoading } = useQuery({
-    queryKey: ["dashboard-room-board", dateISO, floorFilter, search],
+    queryKey: ["dashboard-room-board", dateISO, selectedTime, floorFilter, search],
     queryFn: () => {
-      const params = new URLSearchParams({ date: dateISO });
+      const params = new URLSearchParams({ date: dateISO, time: selectedTime });
       if (floorFilter) params.set("floor", floorFilter);
       if (search) params.set("search", search);
       return apiFetch(`/dashboard/room-board?${params.toString()}`);
@@ -83,9 +95,10 @@ export default function DashboardPage() {
     <div>
       <PageHeader
         title="Hotel Dashboard"
-        subtitle={`${selectedDate.toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })} · ${
-          board?.length ? Math.round((bucketCounts.occupied / board.length) * 100) : 0
-        }% occupancy · live from front desk`}
+        subtitle={`${asOfDate.toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}, ${asOfDate.toLocaleTimeString(
+          "en-IN",
+          { hour: "numeric", minute: "2-digit" }
+        )} · ${board?.length ? Math.round((bucketCounts.occupied / board.length) * 100) : 0}% occupancy as of this time`}
         actions={
           <>
             {permissions.has("roomclosures.manage") && (
@@ -151,26 +164,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="mb-4 rounded-xl border border-line bg-card p-4 shadow-sm">
-        <p className="mb-3 text-sm font-semibold text-gray-900">Room status</p>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-          {BUCKETS.map((b) => (
-            <button
-              key={b.code}
-              onClick={() => setBucketFilter(bucketFilter === b.code ? null : b.code)}
-              className={`rounded-lg border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring ${
-                bucketFilter === b.code ? "border-brand ring-1 ring-brand" : "border-line"
-              }`}
-            >
-              <p className="text-xs uppercase text-gray-500">{b.label}</p>
-              <p className="text-lg font-semibold text-gray-900">{bucketCounts[b.code] ?? 0}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl
             options={VIEW_MODES}
             value={viewMode}
@@ -188,6 +183,15 @@ export default function DashboardPage() {
             }}
             className="rounded-md border border-line-strong px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
+          <input
+            type="time"
+            value={selectedTime}
+            onChange={(e) => {
+              setSelectedTime(e.target.value);
+              setViewMode("custom");
+            }}
+            className="rounded-md border border-line-strong px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {floors.map((floor) => (
@@ -198,6 +202,26 @@ export default function DashboardPage() {
           <div className="w-48">
             <Input icon={Search} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Room, guest or type" />
           </div>
+        </div>
+      </div>
+
+      <div className="mb-4 rounded-xl border border-line bg-card p-4 shadow-sm">
+        <p className="mb-3 text-sm font-semibold text-gray-900">
+          Room status <span className="font-normal text-gray-500">as of {asOfDate.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</span>
+        </p>
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          {BUCKETS.map((b) => (
+            <button
+              key={b.code}
+              onClick={() => setBucketFilter(bucketFilter === b.code ? null : b.code)}
+              className={`rounded-lg border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring ${
+                bucketFilter === b.code ? "border-brand ring-1 ring-brand" : "border-line"
+              }`}
+            >
+              <p className="text-xs uppercase text-gray-500">{b.label}</p>
+              <p className="text-lg font-semibold text-gray-900">{bucketCounts[b.code] ?? 0}</p>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -221,7 +245,7 @@ export default function DashboardPage() {
       ))}
 
       {bookingModal && (
-        <BookingFormModal defaultRoomId={bookingModal.roomId} defaultDate={selectedDate} onClose={() => setBookingModal(null)} />
+        <BookingFormModal defaultRoomId={bookingModal.roomId} defaultDate={asOfDate} onClose={() => setBookingModal(null)} />
       )}
       {roomBookingsModal && <RoomBookingsModal room={roomBookingsModal} onClose={() => setRoomBookingsModal(null)} />}
       {closuresOpen && <RoomClosuresModal onClose={() => setClosuresOpen(false)} />}

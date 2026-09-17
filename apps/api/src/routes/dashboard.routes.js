@@ -22,6 +22,21 @@ function endOfDay(dateStr) {
   return d;
 }
 
+// The exact moment to check room availability against — defaults to
+// midnight when no time is given, otherwise that date at the given
+// HH:mm. Bookings now carry exact check-in/check-out timestamps (rolling
+// 24h billing), so "is this room free" is a point-in-time question, not
+// just a same-calendar-day one — a room checked out at 6am and re-let at
+// 8pm the same day is free in between, not occupied all day.
+function resolveAsOf(dateStr, timeStr) {
+  const asOf = startOfDay(dateStr);
+  if (typeof timeStr === "string" && /^\d{2}:\d{2}$/.test(timeStr)) {
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    asOf.setHours(hours, minutes, 0, 0);
+  }
+  return asOf;
+}
+
 function addDays(date, days) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
@@ -101,9 +116,8 @@ export default async function dashboardRoutes(fastify) {
     { preHandler: [fastify.authenticate, requirePermission("rooms.view")] },
     async (request) => {
       const tenantId = request.user.tenantId;
-      const { date, floor, status, search } = request.query;
-      const dayStart = startOfDay(date);
-      const dayEnd = endOfDay(date);
+      const { date, time, floor, status, search } = request.query;
+      const asOf = resolveAsOf(date, time);
 
       const rooms = await fastify.prisma.room.findMany({
         where: {
@@ -126,20 +140,26 @@ export default async function dashboardRoutes(fastify) {
 
       const [closures, coveringBookings, upcomingBookings] = await Promise.all([
         fastify.prisma.roomClosure.findMany({
-          where: { tenantId, roomId: { in: roomIds }, startDate: { lt: dayEnd }, endDate: { gt: dayStart } },
+          where: { tenantId, roomId: { in: roomIds }, startDate: { lte: asOf }, endDate: { gt: asOf } },
         }),
         fastify.prisma.booking.findMany({
           where: {
             tenantId,
             roomId: { in: roomIds },
             status: { isTerminal: false },
-            checkIn: { lt: dayEnd },
-            checkOut: { gt: dayStart },
+            checkIn: { lte: asOf },
+            // A checked-in guest keeps occupying the room past their
+            // scheduled checkout until an actual checkout is recorded —
+            // otherwise an overdue/late checkout would silently vanish
+            // from the board the instant the clock passes checkOut, even
+            // though nobody has checked them out yet. A reservation that
+            // hasn't been checked in stays strictly bounded to its window.
+            OR: [{ checkOut: { gt: asOf } }, { status: { code: "checked_in" } }],
           },
           include: { guest: true, status: true },
         }),
         fastify.prisma.booking.findMany({
-          where: { tenantId, roomId: { in: roomIds }, status: { isTerminal: false }, checkIn: { gte: dayEnd } },
+          where: { tenantId, roomId: { in: roomIds }, status: { isTerminal: false }, checkIn: { gt: asOf } },
           select: { roomId: true },
         }),
       ]);
@@ -193,6 +213,9 @@ export default async function dashboardRoutes(fastify) {
                 checkOut: primaryBooking.checkOut,
                 statusCode: primaryBooking.status.code,
                 statusLabel: primaryBooking.status.label,
+                // Checked in, past their scheduled checkout, not checked
+                // out yet — the case that used to vanish from the board.
+                isOverdue: primaryBooking.status.code === "checked_in" && primaryBooking.checkOut <= asOf,
               }
             : null,
         };
