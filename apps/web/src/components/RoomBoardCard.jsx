@@ -37,10 +37,11 @@ export default function RoomBoardCard({ room, onClick }) {
               </span>
             )}
           </p>
-          <p>
+          <p className={room.guest.isOverdue ? "font-semibold text-red-600" : undefined}>
             {room.guest.statusCode === "checked_in"
               ? `Checked in · out ${new Date(room.guest.checkOut).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
               : `${formatTime(room.guest.checkIn)} · ${room.guest.statusLabel}`}
+            {room.guest.isOverdue && " · Late checkout"}
           </p>
         </div>
       ) : room.closure ? (
