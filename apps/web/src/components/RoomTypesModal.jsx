@@ -2,17 +2,20 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api.js";
 import { formatCurrency } from "../lib/format.js";
-import { Button, Input } from "../ui/index.js";
+import { Button, GstCalculator, Input, computeGst } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 
-const EMPTY_FORM = { name: "", basePrice: "", capacity: 2, amenities: "" };
+const EMPTY_FORM = { name: "", capacity: 2, amenities: "" };
+const EMPTY_GST = { amount: "", ratePercent: "", mode: "include" };
 
 export default function RoomTypesModal({ onClose }) {
   const queryClient = useQueryClient();
   const { data: roomTypes, isLoading } = useQuery({ queryKey: ["room-types"], queryFn: () => apiFetch("/room-types") });
   const [form, setForm] = useState(EMPTY_FORM);
+  const [gst, setGst] = useState(EMPTY_GST);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState(null);
+  const basePrice = computeGst(gst.amount, gst.ratePercent, gst.mode).exclusiveAmount;
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["room-types"] });
@@ -24,6 +27,7 @@ export default function RoomTypesModal({ onClose }) {
     onSuccess: () => {
       invalidate();
       setForm(EMPTY_FORM);
+      setGst(EMPTY_GST);
     },
     onError: (err) => setError(err.message),
   });
@@ -34,6 +38,7 @@ export default function RoomTypesModal({ onClose }) {
       invalidate();
       setEditingId(null);
       setForm(EMPTY_FORM);
+      setGst(EMPTY_GST);
     },
     onError: (err) => setError(err.message),
   });
@@ -48,7 +53,7 @@ export default function RoomTypesModal({ onClose }) {
     setError(null);
     const payload = {
       name: form.name,
-      basePrice: Number(form.basePrice),
+      basePrice,
       capacity: Number(form.capacity),
       amenities: form.amenities
         .split(",")
@@ -61,7 +66,10 @@ export default function RoomTypesModal({ onClose }) {
 
   function startEdit(rt) {
     setEditingId(rt.id);
-    setForm({ name: rt.name, basePrice: rt.basePrice, capacity: rt.capacity, amenities: (rt.amenities ?? []).join(", ") });
+    setForm({ name: rt.name, capacity: rt.capacity, amenities: (rt.amenities ?? []).join(", ") });
+    // Stored basePrice is always GST-exclusive, so "include" (add GST on
+    // top of the entered amount) reproduces it as the calculator's input.
+    setGst({ amount: rt.basePrice, ratePercent: "", mode: "include" });
   }
 
   return (
@@ -95,16 +103,29 @@ export default function RoomTypesModal({ onClose }) {
         <p className="mb-2 text-sm font-semibold text-gray-900">{editingId ? "Edit room type" : "Add room type"}</p>
         <div className="grid grid-cols-2 gap-3">
           <Input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Base price (excl. tax)"
-            value={form.basePrice}
-            onChange={(e) => setForm({ ...form, basePrice: e.target.value })}
-          />
           <Input type="number" placeholder="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
-          <Input placeholder="Amenities (comma separated)" value={form.amenities} onChange={(e) => setForm({ ...form, amenities: e.target.value })} />
+          <div className="col-span-2">
+            <Input placeholder="Amenities (comma separated)" value={form.amenities} onChange={(e) => setForm({ ...form, amenities: e.target.value })} />
+          </div>
         </div>
+
+        <div className="mt-4 rounded-md border border-line p-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Nightly price — enter either the guest-facing price ("Exclude GST", GST gets backed out) or the base cost ("Include GST", GST gets
+            added on top)
+          </p>
+          <GstCalculator
+            compact
+            amount={gst.amount}
+            ratePercent={gst.ratePercent}
+            mode={gst.mode}
+            onAmountChange={(v) => setGst({ ...gst, amount: v })}
+            onRateChange={(v) => setGst({ ...gst, ratePercent: v })}
+            onModeChange={(v) => setGst({ ...gst, mode: v })}
+          />
+          <p className="mt-2 text-xs text-gray-500">Base price saved (excl. tax): {formatCurrency(basePrice)}</p>
+        </div>
+
         <div className="mt-3 flex justify-end gap-2">
           {editingId && (
             <Button
@@ -113,12 +134,13 @@ export default function RoomTypesModal({ onClose }) {
               onClick={() => {
                 setEditingId(null);
                 setForm(EMPTY_FORM);
+                setGst(EMPTY_GST);
               }}
             >
               Cancel edit
             </Button>
           )}
-          <Button size="sm" onClick={submitForm}>
+          <Button size="sm" onClick={submitForm} disabled={!basePrice}>
             {editingId ? "Save changes" : "Add room type"}
           </Button>
         </div>

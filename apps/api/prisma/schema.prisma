@@ -275,6 +275,11 @@ model BookingCharge {
   type        String // "charge" | "discount"
   description String
   amount      Decimal  @db.Decimal(10, 2)
+  // GST rate applied to this charge's amount (which is GST-inclusive, same
+  // convention as Booking.totalAmount) — null/0 for an untaxed charge and
+  // always null for a discount, which reduces the taxable room value
+  // instead of carrying its own tax.
+  taxRatePercent Decimal? @db.Decimal(5, 2)
   createdById String
   createdAt   DateTime @default(now())
 

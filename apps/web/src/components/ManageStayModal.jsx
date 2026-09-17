@@ -4,37 +4,60 @@ import { Plus, Receipt, Split, Tag, Trash2, CalendarPlus, LogIn, XCircle, Printe
 import { apiFetch } from "../lib/api.js";
 import { formatCurrency, formatDateTime } from "../lib/format.js";
 import { useAuthStore } from "../store/authStore.js";
-import { Badge, Button, Input, Select } from "../ui/index.js";
+import { Badge, Button, GstCalculator, Input, Select, computeGst } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 import ExtendStayModal from "./ExtendStayModal.jsx";
 import InvoiceModal from "./InvoiceModal.jsx";
 
 function AddChargeForm({ type, onAdd, onCancel, pending }) {
   const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
+  const [gst, setGst] = useState({ amount: "", ratePercent: "", mode: "exclude" });
+  const result = computeGst(gst.amount, gst.ratePercent, gst.mode);
+  // A charge is billed to the guest, so what's saved is always the
+  // GST-inclusive amount (matches Booking.totalAmount's convention).
+  const amount = result.inclusiveAmount;
 
   return (
-    <div className="mt-2 flex items-end gap-2 rounded-md border border-line bg-muted p-3">
-      <div className="flex-1">
-        <Input placeholder={type === "discount" ? "Reason (e.g. loyalty discount)" : "Description (e.g. Room service)"} value={description} onChange={(e) => setDescription(e.target.value)} />
+    <div className="mt-2 space-y-2 rounded-md border border-line bg-muted p-3">
+      <Input
+        placeholder={type === "discount" ? "Reason (e.g. loyalty discount)" : "Description (e.g. Room service)"}
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
+      {type === "discount" ? (
+        <Input type="number" min="0" step="0.01" placeholder="Amount" value={gst.amount} onChange={(e) => setGst({ ...gst, amount: e.target.value })} />
+      ) : (
+        <GstCalculator
+          compact
+          amount={gst.amount}
+          ratePercent={gst.ratePercent}
+          mode={gst.mode}
+          onAmountChange={(v) => setGst({ ...gst, amount: v })}
+          onRateChange={(v) => setGst({ ...gst, ratePercent: v })}
+          onModeChange={(v) => setGst({ ...gst, mode: v })}
+        />
+      )}
+      <div className="flex justify-end gap-2">
+        <Button
+          size="sm"
+          disabled={pending || !description.trim() || !amount}
+          onClick={() => {
+            onAdd({
+              type,
+              description: description.trim(),
+              amount: type === "discount" ? Number(gst.amount) : amount,
+              ...(type === "charge" && Number(gst.ratePercent) > 0 ? { taxRatePercent: Number(gst.ratePercent) } : {}),
+            });
+            setDescription("");
+            setGst({ amount: "", ratePercent: "", mode: "exclude" });
+          }}
+        >
+          Add
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
       </div>
-      <div className="w-28">
-        <Input type="number" min="0" step="0.01" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
-      </div>
-      <Button
-        size="sm"
-        disabled={pending || !description.trim() || !amount}
-        onClick={() => {
-          onAdd({ type, description: description.trim(), amount: Number(amount) });
-          setDescription("");
-          setAmount("");
-        }}
-      >
-        Add
-      </Button>
-      <Button size="sm" variant="ghost" onClick={onCancel}>
-        Cancel
-      </Button>
     </div>
   );
 }
@@ -258,10 +281,23 @@ export default function ManageStayModal({ bookingId, onClose }) {
             <Row key={b.id} label={`Room ${b.room.roomNumber}`} value={formatCurrency(b.totalAmount)} muted />
           ))}
           <Row label="Rooms total (incl. GST)" value={formatCurrency(stay.summary.roomsInclTax)} />
-          <Row label="Taxable value (rooms)" value={formatCurrency(stay.summary.taxableValue)} muted />
-          <Row label={`CGST (${stay.summary.taxRatePercent / 2}%) incl.`} value={formatCurrency(stay.summary.cgst)} muted />
-          <Row label={`SGST (${stay.summary.taxRatePercent / 2}%) incl.`} value={formatCurrency(stay.summary.sgst)} muted />
-          {stay.summary.chargesTotal > 0 && <Row label="Other charges" value={formatCurrency(stay.summary.chargesTotal)} />}
+          <Row label="Taxable value" value={formatCurrency(stay.summary.taxableValue)} muted />
+          <Row
+            label={stay.summary.chargesTaxAmount > 0 ? "CGST incl." : `CGST (${stay.summary.taxRatePercent / 2}%) incl.`}
+            value={formatCurrency(stay.summary.cgst)}
+            muted
+          />
+          <Row
+            label={stay.summary.chargesTaxAmount > 0 ? "SGST incl." : `SGST (${stay.summary.taxRatePercent / 2}%) incl.`}
+            value={formatCurrency(stay.summary.sgst)}
+            muted
+          />
+          {stay.summary.chargesTotal > 0 && (
+            <Row
+              label={stay.summary.chargesTaxAmount > 0 ? `Other charges (GST ${formatCurrency(stay.summary.chargesTaxAmount)} incl.)` : "Other charges"}
+              value={formatCurrency(stay.summary.chargesTotal)}
+            />
+          )}
           {stay.summary.discountTotal > 0 && <Row label="Discount" value={`-${formatCurrency(stay.summary.discountTotal)}`} />}
           <div className="my-1 border-t border-line-soft" />
           <Row label="Grand total" value={formatCurrency(stay.summary.grandTotal)} bold />

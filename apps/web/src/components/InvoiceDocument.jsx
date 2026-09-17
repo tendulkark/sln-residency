@@ -148,9 +148,15 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
           <TotalRow label="Sub Total (Rooms)" value={summary.roomsInclTax} />
           {summary.discountTotal > 0 && <TotalRow label="Less Discount" value={-summary.discountTotal} muted />}
           <TotalRow label="Taxable Value" value={summary.taxableValue} muted />
-          <TotalRow label={`CGST (${halfRate}%) incl.`} value={summary.cgst} muted />
-          <TotalRow label={`SGST (${halfRate}%) incl.`} value={summary.sgst} muted />
-          {summary.chargesTotal > 0 && <TotalRow label="Other Charges" value={summary.chargesTotal} muted />}
+          <TotalRow label={summary.chargesTaxAmount > 0 ? "CGST incl." : `CGST (${halfRate}%) incl.`} value={summary.cgst} muted />
+          <TotalRow label={summary.chargesTaxAmount > 0 ? "SGST incl." : `SGST (${halfRate}%) incl.`} value={summary.sgst} muted />
+          {summary.chargesTotal > 0 && (
+            <TotalRow
+              label={summary.chargesTaxAmount > 0 ? `Other Charges (GST ${formatCurrencyPrecise(summary.chargesTaxAmount)} incl.)` : "Other Charges"}
+              value={summary.chargesTotal}
+              muted
+            />
+          )}
           <div className="my-1.5 border-t border-gray-200" />
           <TotalRow label="Grand Total" value={summary.grandTotal} bold />
           <TotalRow label="Less Advance Paid" value={-summary.advancePaid} muted />
