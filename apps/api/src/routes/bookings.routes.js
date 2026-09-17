@@ -131,7 +131,7 @@ export default async function bookingsRoutes(fastify) {
         if (!method) return reply.code(400).send({ error: "Unknown payment method" });
         const status = await fastify.prisma.status.findFirst({ where: { id: payment.statusId, tenantId, domain: "payment" } });
         if (!status) return reply.code(400).send({ error: "Unknown payment status" });
-        resolvedPayments.push({ amount: payment.amount, methodId: method.id, statusId: status.id });
+        resolvedPayments.push({ amount: payment.amount, methodId: method.id, statusId: status.id, paidAt: payment.paidAt });
       }
 
       const occupiedRoomStatus = checkInImmediately ? await fastify.prisma.status.findFirst({ where: { tenantId, domain: "room", code: "occupied" } }) : null;
@@ -179,6 +179,7 @@ export default async function bookingsRoutes(fastify) {
               amount: payment.amount,
               referenceNote: groupCode ? `Advance for group ${groupCode}` : undefined,
               recordedById: request.user.id,
+              ...(payment.paidAt ? { recordedAt: payment.paidAt } : {}),
             },
           });
         }
