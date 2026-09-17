@@ -207,6 +207,7 @@ export default async function bookingsRoutes(fastify) {
                 type: "charge",
                 description: item.description,
                 amount: item.amount,
+                taxRatePercent: item.taxRatePercent ?? null,
                 createdById: request.user.id,
               },
             })

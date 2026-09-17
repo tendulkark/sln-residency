@@ -60,7 +60,8 @@ export async function computeStayBreakdown(prisma, tenantId, bookingId) {
   ]);
 
   const roomsInclTax = bookings.reduce((sum, b) => sum + Number(b.totalAmount), 0);
-  const chargesTotal = charges.filter((c) => c.type === "charge").reduce((sum, c) => sum + Number(c.amount), 0);
+  const chargeRows = charges.filter((c) => c.type === "charge");
+  const chargesTotal = chargeRows.reduce((sum, c) => sum + Number(c.amount), 0);
   const discountTotal = charges.filter((c) => c.type === "discount").reduce((sum, c) => sum + Number(c.amount), 0);
 
   // A discount reduces the room charge's taxable base — GST is split off
@@ -69,7 +70,26 @@ export async function computeStayBreakdown(prisma, tenantId, bookingId) {
   // taxed and understate the taxable value on the printed invoice).
   const netRoomsInclTax = Math.round((roomsInclTax - discountTotal) * 100) / 100;
   const taxRule = await getApplicableTaxRule(prisma, tenantId, netRoomsInclTax);
-  const taxSplit = taxRule ? splitInclusiveTax(netRoomsInclTax, taxRule.ratePercent) : { taxable: netRoomsInclTax, cgst: 0, sgst: 0, taxAmount: 0 };
+  const roomTaxSplit = taxRule ? splitInclusiveTax(netRoomsInclTax, taxRule.ratePercent) : { taxable: netRoomsInclTax, cgst: 0, sgst: 0, taxAmount: 0 };
+
+  // Each charge (extra bed, damages, ...) carries its own GST-inclusive
+  // amount and its own rate — set via the GST calculator when the charge
+  // was added, since ancillary items can be taxed at a different slab than
+  // room tariff. Summed alongside the room split so invoice/report totals
+  // reflect every rupee of GST actually collected, not just on rooms.
+  const chargesTaxSplit = chargeRows.reduce(
+    (acc, c) => {
+      const rate = Number(c.taxRatePercent) || 0;
+      const split = rate > 0 ? splitInclusiveTax(Number(c.amount), rate) : { taxable: Number(c.amount), cgst: 0, sgst: 0, taxAmount: 0 };
+      return {
+        taxable: Math.round((acc.taxable + split.taxable) * 100) / 100,
+        cgst: Math.round((acc.cgst + split.cgst) * 100) / 100,
+        sgst: Math.round((acc.sgst + split.sgst) * 100) / 100,
+        taxAmount: Math.round((acc.taxAmount + split.taxAmount) * 100) / 100,
+      };
+    },
+    { taxable: 0, cgst: 0, sgst: 0, taxAmount: 0 }
+  );
 
   const grandTotal = Math.round((roomsInclTax + chargesTotal - discountTotal) * 100) / 100;
   const advancePaid = payments
@@ -86,11 +106,12 @@ export async function computeStayBreakdown(prisma, tenantId, bookingId) {
     summary: {
       nights: nightsBetween(primary.checkIn, primary.checkOut),
       roomsInclTax,
-      taxableValue: taxSplit.taxable,
+      taxableValue: Math.round((roomTaxSplit.taxable + chargesTaxSplit.taxable) * 100) / 100,
       taxRatePercent: taxRule ? Number(taxRule.ratePercent) : 0,
-      cgst: taxSplit.cgst,
-      sgst: taxSplit.sgst,
+      cgst: Math.round((roomTaxSplit.cgst + chargesTaxSplit.cgst) * 100) / 100,
+      sgst: Math.round((roomTaxSplit.sgst + chargesTaxSplit.sgst) * 100) / 100,
       chargesTotal,
+      chargesTaxAmount: chargesTaxSplit.taxAmount,
       discountTotal,
       grandTotal,
       advancePaid,

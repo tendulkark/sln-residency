@@ -16,6 +16,11 @@ export default function RoomBookingsModal({ room, onClose }) {
     queryKey: ["bookings", "room", room.id],
     queryFn: () => apiFetch(`/bookings?roomId=${room.id}&activeOnly=true`),
   });
+  // Checked-out (and cancelled/no-show) stays are history, not something
+  // staff act on here — arriving, checked-in and reserved bookings are the
+  // ones this quick-management view is for. Past stays are reprintable
+  // from Reports instead of cluttering this list.
+  const activeBookings = bookings?.filter((b) => !b.status.isTerminal);
 
   const [newBookingOpen, setNewBookingOpen] = useState(false);
   const [editBooking, setEditBooking] = useState(null);
@@ -38,12 +43,12 @@ export default function RoomBookingsModal({ room, onClose }) {
       >
         {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
 
-        {bookings?.length === 0 && (
-          <EmptyState icon={CalendarDays} title="No bookings for this room" subtitle="Create one with New Booking above." />
+        {activeBookings?.length === 0 && (
+          <EmptyState icon={CalendarDays} title="No active bookings for this room" subtitle="Past stays are reprintable from Reports." />
         )}
 
         <div className="space-y-3">
-          {bookings?.map((booking) => (
+          {activeBookings?.map((booking) => (
             <div
               key={booking.id}
               role="button"

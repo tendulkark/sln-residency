@@ -77,7 +77,8 @@ export default function RoomsSetupPage() {
               <p className="mt-2 text-xs text-gray-500">{(room.roomType.amenities ?? []).join(", ") || "No amenities listed"}</p>
 
               <p className="mt-2 text-xs text-gray-500">
-                Base {formatCurrency(room.pricing.basePrice)} · CGST {formatCurrency(room.pricing.cgst)} · SGST {formatCurrency(room.pricing.sgst)}
+                Base {formatCurrency(room.pricing.basePrice)} · CGST {formatCurrency(room.pricing.cgst)} · SGST {formatCurrency(room.pricing.sgst)} · GST{" "}
+                {room.pricing.ratePercent}%
               </p>
               <p className="mt-1 text-lg font-semibold text-emerald-700">{formatCurrency(room.pricing.total)}/night</p>
 

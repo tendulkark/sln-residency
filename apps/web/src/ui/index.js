@@ -15,3 +15,4 @@ export { default as Skeleton, CardSkeleton } from "./Skeleton.jsx";
 export { default as PageHeader } from "./PageHeader.jsx";
 export { default as DonutChart } from "./DonutChart.jsx";
 export { default as MiniBarChart } from "./MiniBarChart.jsx";
+export { default as GstCalculator, computeGst } from "./GstCalculator.jsx";

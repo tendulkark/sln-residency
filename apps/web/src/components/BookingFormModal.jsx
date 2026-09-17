@@ -4,11 +4,11 @@ import { Plus, Trash2 } from "lucide-react";
 import { ID_PROOF_TYPES } from "@sln/shared-schemas";
 import { apiFetch } from "../lib/api.js";
 import { formatCurrency, toDateTimeInputValue } from "../lib/format.js";
-import { Button, Combobox, Input, Select, Switch, Textarea } from "../ui/index.js";
+import { Button, Combobox, GstCalculator, Input, Select, Switch, Textarea, computeGst } from "../ui/index.js";
 import Modal from "./Modal.jsx";
 
 const EMPTY_PAYMENT_ROW = { amount: "", methodId: "" };
-const EMPTY_CHARGE_ROW = { description: "", amount: "" };
+const EMPTY_CHARGE_ROW = { description: "", gstAmount: "", gstRate: "", gstMode: "exclude" };
 const ID_PROOF_OPTIONS = ID_PROOF_TYPES.map((t) => ({ value: t.value, label: t.label }));
 
 // Nights are billed in rolling 24-hour blocks from the exact check-in
@@ -89,7 +89,8 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
   const nightlyRate = isGroupBooking ? groupRoomsTotal : Number(ratePerNight || selectedRoom?.pricing.total || 0);
   const roomsTotal = nightlyRate * nights;
   const discountAmount = Number(discount) || 0;
-  const chargesTotal = chargeRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const chargeResults = chargeRows.map((r) => ({ ...r, ...computeGst(r.gstAmount, r.gstRate, r.gstMode) }));
+  const chargesTotal = chargeResults.reduce((sum, r) => sum + r.inclusiveAmount, 0);
   const grandTotal = Math.max(0, roomsTotal + chargesTotal - discountAmount);
   const enteredTotal = paymentRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
   const balance = grandTotal - enteredTotal;
@@ -151,10 +152,10 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
     if (!selectedGuestId && !guestName.trim()) return setError("Enter a guest name");
     if (!selectedGuestId && !guestPhone.trim()) return setError("Enter a guest phone number");
     if (paymentRows.some((r) => Number(r.amount) > 0 && !r.methodId)) return setError("Choose a payment method for every amount entered");
-    if (chargeRows.some((r) => Number(r.amount) > 0 && !r.description.trim())) return setError("Enter a description for every charge amount");
+    if (chargeResults.some((r) => r.inclusiveAmount > 0 && !r.description.trim())) return setError("Enter a description for every charge amount");
 
     const validPayments = paymentRows.filter((r) => r.methodId && Number(r.amount) > 0);
-    const validCharges = chargeRows.filter((r) => r.description.trim() && Number(r.amount) > 0);
+    const validCharges = chargeResults.filter((r) => r.description.trim() && r.inclusiveAmount > 0);
 
     createBooking.mutate({
       ...(isGroupBooking ? { roomIds: groupRoomIds } : { roomId, ratePerNight: Number(ratePerNight || selectedRoom?.pricing.total || 0) }),
@@ -181,7 +182,15 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
       ...(validPayments.length > 0
         ? { advancePayments: validPayments.map((r) => ({ amount: Number(r.amount), methodId: r.methodId, statusId: paidStatus?.id })) }
         : {}),
-      ...(validCharges.length > 0 ? { charges: validCharges.map((r) => ({ description: r.description.trim(), amount: Number(r.amount) })) } : {}),
+      ...(validCharges.length > 0
+        ? {
+            charges: validCharges.map((r) => ({
+              description: r.description.trim(),
+              amount: r.inclusiveAmount,
+              ...(Number(r.gstRate) > 0 ? { taxRatePercent: Number(r.gstRate) } : {}),
+            })),
+          }
+        : {}),
       ...(discountAmount > 0 ? { discount: { amount: discountAmount } } : {}),
       ...(checkInImmediately ? { checkInImmediately: true } : {}),
     });
@@ -410,34 +419,35 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
           <div className="border-t border-line pt-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Other charges (extra bed, fines, etc.)</p>
             {chargeRows.map((row, i) => (
-              <div key={i} className="mb-2 flex items-end gap-2">
-                <div className="flex-1">
-                  <Input
-                    label="Description"
-                    placeholder="e.g. Extra bed"
-                    value={row.description}
-                    onChange={(e) => updateChargeRow(i, { description: e.target.value })}
-                  />
+              <div key={i} className="mb-2 space-y-2 rounded-md border border-line p-2">
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Input
+                      label="Description"
+                      placeholder="e.g. Extra bed"
+                      value={row.description}
+                      onChange={(e) => updateChargeRow(i, { description: e.target.value })}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setChargeRows((rows) => rows.filter((_, idx) => idx !== i))}
+                    aria-label="Remove charge"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-                <div className="w-32">
-                  <Input
-                    label="Amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={row.amount}
-                    onChange={(e) => updateChargeRow(i, { amount: e.target.value })}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setChargeRows((rows) => rows.filter((_, idx) => idx !== i))}
-                  aria-label="Remove charge"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <GstCalculator
+                  compact
+                  amount={row.gstAmount}
+                  ratePercent={row.gstRate}
+                  mode={row.gstMode}
+                  onAmountChange={(v) => updateChargeRow(i, { gstAmount: v })}
+                  onRateChange={(v) => updateChargeRow(i, { gstRate: v })}
+                  onModeChange={(v) => updateChargeRow(i, { gstMode: v })}
+                />
               </div>
             ))}
             <button

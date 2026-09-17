@@ -17,6 +17,7 @@ const bookingDiscountSchema = z.object({
 const bookingChargeInputSchema = z.object({
   description: z.string().min(1),
   amount: z.coerce.number().positive(),
+  taxRatePercent: z.coerce.number().min(0).max(100).optional(),
 });
 
 // A booking is created either against an existing guest (guestId) or with
