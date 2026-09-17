@@ -28,7 +28,10 @@ export async function apiFetch(path, { retry = true, ...options } = {}) {
     ...options,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      // Only send Content-Type: application/json when there's actually a
+      // body — Fastify's JSON body parser rejects a bodiless request (e.g.
+      // DELETE) that still declares a JSON content type.
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers,
     },

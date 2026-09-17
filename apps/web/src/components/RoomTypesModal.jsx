@@ -69,7 +69,11 @@ export default function RoomTypesModal({ onClose }) {
     setForm({ name: rt.name, capacity: rt.capacity, amenities: (rt.amenities ?? []).join(", ") });
     // Stored basePrice is always GST-exclusive, so "include" (add GST on
     // top of the entered amount) reproduces it as the calculator's input.
-    setGst({ amount: rt.basePrice, ratePercent: "", mode: "include" });
+    // The rate itself isn't stored on the room type — it's looked up live
+    // from the tenant's TaxRule at pricing time — so prefill it from that
+    // same live lookup (rt.pricing.ratePercent) rather than leaving it
+    // blank, which made a previously-taxed price look untaxed on reopen.
+    setGst({ amount: rt.basePrice, ratePercent: rt.pricing.ratePercent || "", mode: "include" });
   }
 
   return (
@@ -84,8 +88,10 @@ export default function RoomTypesModal({ onClose }) {
             <div>
               <p className="text-sm font-medium text-gray-900">{rt.name}</p>
               <p className="text-xs text-gray-500">
-                {formatCurrency(rt.basePrice)} base · capacity {rt.capacity} · {rt._count?.rooms ?? 0} room(s)
+                Base {formatCurrency(rt.pricing.basePrice)} · CGST {formatCurrency(rt.pricing.cgst)} · SGST {formatCurrency(rt.pricing.sgst)} · GST{" "}
+                {rt.pricing.ratePercent}% · capacity {rt.capacity} · {rt._count?.rooms ?? 0} room(s)
               </p>
+              <p className="text-sm font-semibold text-emerald-700">{formatCurrency(rt.pricing.total)}/night</p>
             </div>
             <div className="flex gap-1">
               <Button variant="ghost" size="sm" onClick={() => startEdit(rt)}>

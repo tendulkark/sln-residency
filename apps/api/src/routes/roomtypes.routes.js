@@ -1,17 +1,26 @@
 import { roomTypeSchema, updateRoomTypeSchema } from "@sln/shared-schemas";
 import { requirePermission } from "../lib/permissions.js";
 import { recordAudit } from "../lib/audit.js";
+import { priceRoom } from "../lib/tax.js";
 
 export default async function roomTypesRoutes(fastify) {
   fastify.get(
     "/room-types",
     { preHandler: [fastify.authenticate, requirePermission("roomtypes.view")] },
     async (request) => {
-      return fastify.prisma.roomType.findMany({
-        where: { tenantId: request.user.tenantId },
+      const tenantId = request.user.tenantId;
+      const roomTypes = await fastify.prisma.roomType.findMany({
+        where: { tenantId },
         orderBy: { basePrice: "asc" },
         include: { _count: { select: { rooms: true } } },
       });
+
+      // Live GST breakdown for each type's base price — the same TaxRule
+      // lookup used for room pricing/booking, so what's shown here always
+      // matches what a booking against this type actually bills.
+      return Promise.all(
+        roomTypes.map(async (rt) => ({ ...rt, pricing: await priceRoom(fastify.prisma, tenantId, rt.basePrice) }))
+      );
     }
   );
 
