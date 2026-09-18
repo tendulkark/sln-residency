@@ -1,6 +1,6 @@
 import argon2 from "argon2";
 import { loginSchema } from "@sln/shared-schemas";
-import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/tokens.js";
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from "#src/lib/tokens.js";
 
 const REFRESH_COOKIE = "refreshToken";
 const REFRESH_COOKIE_OPTS = {

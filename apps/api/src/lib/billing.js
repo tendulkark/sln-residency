@@ -1,4 +1,4 @@
-import { getApplicableTaxRule, splitInclusiveTax } from "./tax.js";
+import { getApplicableTaxRule, splitInclusiveTax } from "#src/lib/tax.js";
 
 export const BOOKING_INCLUDE = {
   room: { select: { id: true, roomNumber: true, floor: true, roomType: { select: { name: true } } } },

@@ -1,4 +1,4 @@
-import { requirePermission } from "../lib/permissions.js";
+import { requirePermission } from "#src/lib/permissions.js";
 
 function startOfDay(dateStr) {
   const d = dateStr ? new Date(dateStr) : new Date();

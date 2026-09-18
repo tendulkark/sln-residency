@@ -1,20 +1,26 @@
-import Input from "./Input.jsx";
+import Input from "@/ui/Input.jsx";
+
+// The only two GST modes that exist anywhere in the app — every caller
+// (room pricing, booking charges, Manage Stay charges) imports these
+// instead of writing the "include"/"exclude" literals itself.
+export const GST_MODE = { INCLUDE: "include", EXCLUDE: "exclude" };
 
 function round2(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
 
 // Pure GST math, shared by the full calculator card and any compact inline
-// use. "exclude" means the entered amount already has GST folded in and we
-// back the tax out of it (net = amount / (1 + rate/100)); "include" means
-// the entered amount is the pre-tax figure and we add GST on top (gross =
-// amount * (1 + rate/100)). Mirrors the server's splitTax/splitInclusiveTax
-// in lib/tax.js so a price set here bills identically at booking time.
+// use. GST_MODE.EXCLUDE means the entered amount already has GST folded in
+// and we back the tax out of it (net = amount / (1 + rate/100));
+// GST_MODE.INCLUDE means the entered amount is the pre-tax figure and we
+// add GST on top (gross = amount * (1 + rate/100)). Mirrors the server's
+// splitTax/splitInclusiveTax in lib/tax.js so a price set here bills
+// identically at booking time.
 export function computeGst(amount, ratePercent, mode) {
   const amt = Number(amount) || 0;
   const rate = Number(ratePercent) || 0;
 
-  if (mode === "exclude") {
+  if (mode === GST_MODE.EXCLUDE) {
     const net = round2(amt / (1 + rate / 100));
     const taxAmount = round2(amt - net);
     return { taxAmount, resultAmount: net, resultLabel: "Net amount", exclusiveAmount: net, inclusiveAmount: amt };
@@ -43,8 +49,8 @@ export default function GstCalculator({ amount, ratePercent, mode, onAmountChang
       </div>
 
       <div className={`grid grid-cols-2 gap-2 ${compact ? "" : "gap-3"}`}>
-        <GstModeOption label="Include GST" checked={mode === "include"} onSelect={() => onModeChange("include")} />
-        <GstModeOption label="Exclude GST" checked={mode === "exclude"} onSelect={() => onModeChange("exclude")} />
+        <GstModeOption label="Include GST" checked={mode === GST_MODE.INCLUDE} onSelect={() => onModeChange(GST_MODE.INCLUDE)} />
+        <GstModeOption label="Exclude GST" checked={mode === GST_MODE.EXCLUDE} onSelect={() => onModeChange(GST_MODE.EXCLUDE)} />
       </div>
 
       <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">

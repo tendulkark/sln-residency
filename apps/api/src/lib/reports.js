@@ -1,4 +1,4 @@
-import { nightsBetween } from "./billing.js";
+import { nightsBetween } from "#src/lib/billing.js";
 
 // Local-calendar-date helpers — mirrors dashboard.routes.js's localDateLabel
 // convention (never toISOString(), which shifts a date back a day in IST).

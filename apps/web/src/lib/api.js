@@ -1,4 +1,4 @@
-import { useAuthStore } from "../store/authStore.js";
+import { useAuthStore } from "@/modules/auth/authStore.js";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 

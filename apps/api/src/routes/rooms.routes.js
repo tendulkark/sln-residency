@@ -1,8 +1,8 @@
 import { roomSchema, updateRoomSchema, updateRoomStatusSchema } from "@sln/shared-schemas";
-import { requirePermission } from "../lib/permissions.js";
-import { recordAudit } from "../lib/audit.js";
-import { priceRoom } from "../lib/tax.js";
-import { findBookingConflict, findClosureConflict } from "../lib/availability.js";
+import { requirePermission } from "#src/lib/permissions.js";
+import { recordAudit } from "#src/lib/audit.js";
+import { priceRoom } from "#src/lib/tax.js";
+import { findBookingConflict, findClosureConflict } from "#src/lib/availability.js";
 
 async function serializeRoom(fastify, tenantId, room) {
   const pricing = await priceRoom(fastify.prisma, tenantId, room.roomType.basePrice);
