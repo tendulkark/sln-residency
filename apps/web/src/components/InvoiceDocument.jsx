@@ -6,7 +6,7 @@ import { ID_PROOF_TYPES } from "@sln/shared-schemas";
 // tax-snapshotted Invoice row plus the live stay breakdown. Renders inside
 // a Dialog's [data-print-area] panel, so @media print in index.css already
 // hides everything else on the page.
-export default function InvoiceDocument({ invoice, tenant, bookings, charges, payments, summary }) {
+export default function InvoiceDocument({ invoice, tenant, bookings, charges, payments, summary, provisional = false }) {
   const primary = bookings[0];
   const roomLabel = bookings.map((b) => `${b.room.roomNumber} (${b.room.roomType.name})`).join(", ");
   const totalGuests = bookings.reduce((sum, b) => sum + b.adults + b.children, 0);
@@ -37,11 +37,13 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
         )}
 
         <div className="shrink-0 text-right">
-          <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">TAX INVOICE</h2>
-          <p className="mt-2 text-gray-700">
-            Invoice No: <span className="font-semibold text-gray-900">{invoice.invoiceNumber}</span>
-          </p>
-          <p className="text-gray-700">
+          <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">{provisional ? "PROVISIONAL BILL" : "TAX INVOICE"}</h2>
+          {!provisional && (
+            <p className="mt-2 text-gray-700">
+              Invoice No: <span className="font-semibold text-gray-900">{invoice.invoiceNumber}</span>
+            </p>
+          )}
+          <p className={provisional ? "mt-2 text-gray-700" : "text-gray-700"}>
             Date: <span className="font-semibold text-gray-900">{formatDate(invoice.generatedAt)}</span>
           </p>
         </div>
@@ -168,7 +170,7 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
       </div>
 
       <div className="flex items-center justify-between border-t border-gray-200 px-6 py-3 text-xs text-gray-500">
-        <p>System Generated Invoice</p>
+        <p>{provisional ? "Provisional Bill — Not a Tax Invoice" : "System Generated Invoice"}</p>
         <p>Authorized Signatory</p>
       </div>
     </div>
