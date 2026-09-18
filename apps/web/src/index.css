@@ -40,7 +40,23 @@
 body {
   background-color: var(--color-surface);
   font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   @apply text-gray-900;
+}
+
+/*
+ * The serif "divine" display face reads thin/loose at UI sizes with
+ * Tailwind's default tracking, so every font-display heading gets a
+ * slightly tighter default here — component classNames still control
+ * font-weight/size per call site (see PageHeader, Dialog, AdminShell,
+ * Login), which now all standardize on font-bold for one consistent
+ * heading weight instead of the semibold/bold mix that existed before.
+ */
+.font-display {
+  letter-spacing: -0.01em;
 }
 
 @keyframes skeleton-pulse {

@@ -34,7 +34,7 @@ export default function Dialog({ title, actions, onClose, children, wide = false
             <DialogPanel data-print-area className={`w-full overflow-hidden ${wide ? "max-w-2xl" : "max-w-md"} rounded-xl bg-card shadow-lg`}>
               <div className="divine-rule print:hidden" />
               <div className="flex items-center justify-between border-b border-line px-5 py-4 print:hidden">
-                <DialogTitle className="font-display text-lg font-semibold text-gray-900">{title}</DialogTitle>
+                <DialogTitle className="font-display text-xl font-bold text-gray-900">{title}</DialogTitle>
                 <div className="flex items-center gap-2">
                   {actions}
                   <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Close">

@@ -6,7 +6,7 @@ export default function PageHeader({ title, subtitle, icon: Icon, actions }) {
   return (
     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="flex items-center gap-2 font-display text-[26px] font-semibold leading-tight tracking-tight text-gray-900">
+        <h1 className="flex items-center gap-2 font-display text-[28px] font-bold leading-tight tracking-tight text-gray-900">
           {Icon && <Icon className="h-5 w-5 text-brand" />}
           {title}
         </h1>

@@ -51,7 +51,7 @@ function SidebarContent({ collapsed, tenant, user, permissions, onNavigate, onLo
         )}
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate font-display text-base font-semibold text-gray-900">{tenant?.name ?? "Staff Console"}</p>
+            <p className="truncate font-display text-lg font-bold text-gray-900">{tenant?.name ?? "Staff Console"}</p>
             <p className="text-xs text-gray-500">Staff console</p>
           </div>
         )}
@@ -144,7 +144,7 @@ export default function AdminShell() {
             <Hotel className="h-3.5 w-3.5" />
           </div>
         )}
-        <p className="truncate font-display text-base font-semibold text-gray-900">{tenant?.name ?? "Staff Console"}</p>
+        <p className="truncate font-display text-lg font-bold text-gray-900">{tenant?.name ?? "Staff Console"}</p>
       </div>
 
       <Transition show={mobileNavOpen} as={Fragment}>

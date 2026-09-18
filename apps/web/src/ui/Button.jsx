@@ -15,7 +15,7 @@ export const button = cva(
         success: "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-300",
       },
       size: {
-        sm: "px-2.5 py-1.5 text-xs",
+        sm: "px-3 py-1.5 text-sm",
         md: "px-3.5 py-2 text-sm",
       },
     },
