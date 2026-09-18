@@ -1,6 +1,6 @@
 import { recordPaymentSchema } from "@sln/shared-schemas";
-import { requirePermission } from "../lib/permissions.js";
-import { recordAudit } from "../lib/audit.js";
+import { requirePermission } from "#src/lib/permissions.js";
+import { recordAudit } from "#src/lib/audit.js";
 
 function dayRange(dateStr) {
   const start = dateStr ? new Date(dateStr) : new Date();

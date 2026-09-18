@@ -1,6 +1,6 @@
-import { requirePermission } from "../lib/permissions.js";
-import { recordAudit } from "../lib/audit.js";
-import { computeStayBreakdown } from "../lib/billing.js";
+import { requirePermission } from "#src/lib/permissions.js";
+import { recordAudit } from "#src/lib/audit.js";
+import { computeStayBreakdown } from "#src/lib/billing.js";
 
 const TENANT_LETTERHEAD_SELECT = {
   name: true,

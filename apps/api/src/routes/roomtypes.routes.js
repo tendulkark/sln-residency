@@ -1,7 +1,7 @@
 import { roomTypeSchema, updateRoomTypeSchema } from "@sln/shared-schemas";
-import { requirePermission } from "../lib/permissions.js";
-import { recordAudit } from "../lib/audit.js";
-import { priceRoom } from "../lib/tax.js";
+import { requirePermission } from "#src/lib/permissions.js";
+import { recordAudit } from "#src/lib/audit.js";
+import { priceRoom } from "#src/lib/tax.js";
 
 export default async function roomTypesRoutes(fastify) {
   fastify.get(

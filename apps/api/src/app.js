@@ -1,21 +1,21 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
-import { env } from "./config/env.js";
-import prismaPlugin from "./plugins/prisma.js";
-import authPlugin from "./plugins/auth.js";
-import authRoutes from "./routes/auth.routes.js";
-import roomsRoutes from "./routes/rooms.routes.js";
-import roomTypesRoutes from "./routes/roomtypes.routes.js";
-import roomClosuresRoutes from "./routes/room-closures.routes.js";
-import statusesRoutes from "./routes/statuses.routes.js";
-import guestsRoutes from "./routes/guests.routes.js";
-import bookingsRoutes from "./routes/bookings.routes.js";
-import paymentsRoutes from "./routes/payments.routes.js";
-import dashboardRoutes from "./routes/dashboard.routes.js";
-import invoicesRoutes from "./routes/invoices.routes.js";
-import tenantRoutes from "./routes/tenant.routes.js";
-import reportsRoutes from "./routes/reports.routes.js";
+import { env } from "#src/config/env.js";
+import prismaPlugin from "#src/plugins/prisma.js";
+import authPlugin from "#src/plugins/auth.js";
+import authRoutes from "#src/routes/auth.routes.js";
+import roomsRoutes from "#src/routes/rooms.routes.js";
+import roomTypesRoutes from "#src/routes/roomtypes.routes.js";
+import roomClosuresRoutes from "#src/routes/room-closures.routes.js";
+import statusesRoutes from "#src/routes/statuses.routes.js";
+import guestsRoutes from "#src/routes/guests.routes.js";
+import bookingsRoutes from "#src/routes/bookings.routes.js";
+import paymentsRoutes from "#src/routes/payments.routes.js";
+import dashboardRoutes from "#src/routes/dashboard.routes.js";
+import invoicesRoutes from "#src/routes/invoices.routes.js";
+import tenantRoutes from "#src/routes/tenant.routes.js";
+import reportsRoutes from "#src/routes/reports.routes.js";
 
 export async function buildApp() {
   const fastify = Fastify({ logger: true });

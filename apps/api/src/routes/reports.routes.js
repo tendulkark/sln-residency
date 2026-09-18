@@ -1,5 +1,5 @@
-import { requirePermission } from "../lib/permissions.js";
-import { startOfDay, endOfDayExclusive, addDays, localDateLabel, buildBookingReportRows, summarizeBookingRows, rowsToCsv } from "../lib/reports.js";
+import { requirePermission } from "#src/lib/permissions.js";
+import { startOfDay, endOfDayExclusive, addDays, localDateLabel, buildBookingReportRows, summarizeBookingRows, rowsToCsv } from "#src/lib/reports.js";
 
 function parseBookingsQuery(query) {
   return {

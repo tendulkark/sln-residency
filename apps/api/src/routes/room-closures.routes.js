@@ -1,7 +1,7 @@
 import { roomClosureSchema } from "@sln/shared-schemas";
-import { requirePermission } from "../lib/permissions.js";
-import { recordAudit } from "../lib/audit.js";
-import { findClosureConflict, findBookingConflict } from "../lib/availability.js";
+import { requirePermission } from "#src/lib/permissions.js";
+import { recordAudit } from "#src/lib/audit.js";
+import { findClosureConflict, findBookingConflict } from "#src/lib/availability.js";
 
 export default async function roomClosuresRoutes(fastify) {
   fastify.get(

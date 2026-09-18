@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { buildApp } from "./app.js";
-import { env } from "./config/env.js";
+import { buildApp } from "#src/app.js";
+import { env } from "#src/config/env.js";
 
 const fastify = await buildApp();
 

@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -57,6 +58,14 @@ export default defineConfig(({ mode }) => {
         devOptions: { enabled: false },
       }),
     ],
+    resolve: {
+      alias: {
+        // Every import in the app is written as "@/..." from src, never a
+        // relative "./"/"../" chain — one alias here is the only place that
+        // ever needs to change if src ever moves.
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+      },
+    },
     server: {
       port: 5173,
     },

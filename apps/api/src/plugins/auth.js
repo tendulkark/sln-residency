@@ -1,5 +1,5 @@
 import fp from "fastify-plugin";
-import { verifyAccessToken } from "../lib/tokens.js";
+import { verifyAccessToken } from "#src/lib/tokens.js";
 
 // Decorates the request with `authenticate`, a preHandler that verifies the
 // bearer access token and loads the caller's tenant/role/permissions onto

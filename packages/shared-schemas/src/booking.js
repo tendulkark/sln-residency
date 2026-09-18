@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { guestSchema } from "./guest.js";
+import { guestSchema } from "#src/guest.js";
 
 const advancePaymentSchema = z.object({
   amount: z.coerce.number().positive(),
