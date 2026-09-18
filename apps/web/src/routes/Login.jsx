@@ -40,7 +40,7 @@ export default function Login() {
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-brand-tint text-brand ring-2 ring-gold-tint">
               <Hotel className="h-6 w-6" />
             </div>
-            <h1 className="font-display text-2xl font-semibold text-gray-900">Staff Sign In</h1>
+            <h1 className="font-display text-2xl font-bold text-gray-900">Staff Sign In</h1>
             <p className="text-sm text-gray-500">Sign in to your hotel's staff console</p>
           </div>
 
