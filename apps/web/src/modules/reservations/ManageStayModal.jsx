@@ -232,9 +232,13 @@ export default function ManageStayModal({ bookingId, onClose }) {
   return (
     <>
       <Modal title={`Manage Stay - Room ${roomLabel}`} onClose={onClose} wide>
-        <p className="mb-4 text-sm text-gray-500">
-          Guest: {primary.guest.name} {primary.guest.phone && `• Ph: ${primary.guest.phone}`}
-        </p>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <p className="text-sm text-gray-500">
+            Guest: <span className="font-medium text-gray-900">{primary.guest.name}</span>{" "}
+            {primary.guest.phone && `• Ph: ${primary.guest.phone}`}
+          </p>
+          <Badge color={primary.status.color}>{primary.status.label}</Badge>
+        </div>
 
         {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
@@ -423,19 +427,21 @@ export default function ManageStayModal({ bookingId, onClose }) {
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4 print:hidden">
-          {!primary.status.isTerminal && (
-            <Button variant="ghost" size="sm" onClick={() => setExtendOpen(true)}>
-              <CalendarPlus className="h-4 w-4" />
-              Extend Stay
-            </Button>
-          )}
-          {!isCheckedOut && (
-            <Button variant="ghost" size="sm" onClick={() => setProvisionalBillOpen(true)}>
-              <Printer className="h-4 w-4" />
-              Print
-            </Button>
-          )}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted p-3 print:hidden">
+          <div className="flex gap-1">
+            {!primary.status.isTerminal && (
+              <Button variant="ghost" size="sm" onClick={() => setExtendOpen(true)}>
+                <CalendarPlus className="h-4 w-4" />
+                Extend Stay
+              </Button>
+            )}
+            {!isCheckedOut && (
+              <Button variant="ghost" size="sm" onClick={() => setProvisionalBillOpen(true)}>
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+            )}
+          </div>
           <div className="ml-auto flex gap-2">
             <Button variant="outline" size="sm" onClick={onClose}>
               Close
@@ -464,8 +470,6 @@ export default function ManageStayModal({ bookingId, onClose }) {
                 Print Bill
               </Button>
             )}
-            {isCheckedOut && <Badge tone="neutral">Checked-out</Badge>}
-            {primary.status.code === "cancelled" && <Badge tone="danger">Cancelled</Badge>}
           </div>
         </div>
       </Modal>

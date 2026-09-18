@@ -388,67 +388,75 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
 
         <Textarea label="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
 
-        <div className="space-y-3 rounded-md border border-line-strong bg-brand-tint p-3">
+        <div className="space-y-4 rounded-md border border-line-strong bg-brand-tint p-3">
           <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand/75">
             <Wallet className="h-3.5 w-3.5" />
             Payment
           </p>
 
-          {paymentRows.map((row, i) => (
-            <div key={i} className="space-y-2 rounded-md border border-line bg-card p-2">
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <Input
-                    label={`Amount ${i + 1}`}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={row.amount}
-                    onChange={(e) => updatePaymentRow(i, { amount: e.target.value })}
-                  />
+          {/* Each concern below (amount collected / extra charges / discount &
+              check-in / the running totals) gets its own white card with its
+              own heading, instead of being one long stack of fields inside the
+              tinted wrapper — that's what made this section read as one
+              undifferentiated block. */}
+          <div className="space-y-3 rounded-md border border-line bg-card p-3 shadow-sm">
+            <p className="text-sm font-semibold text-gray-900">Amount collected now</p>
+            {paymentRows.map((row, i) => (
+              <div key={i} className={`space-y-2 ${paymentRows.length > 1 ? "rounded-md border border-line-soft p-2" : ""}`}>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Input
+                      label={`Amount ${i + 1}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={row.amount}
+                      onChange={(e) => updatePaymentRow(i, { amount: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Select
+                      label={`Method${i > 0 ? ` ${i + 1}` : ""}`}
+                      options={methodOptions}
+                      value={row.methodId}
+                      onChange={(v) => updatePaymentRow(i, { methodId: v })}
+                      placeholder="Select method"
+                    />
+                  </div>
+                  {paymentRows.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPaymentRows((rows) => rows.filter((_, idx) => idx !== i))}
+                      aria-label="Remove payment"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <Select
-                    label={`Method${i > 0 ? ` ${i + 1}` : ""}`}
-                    options={methodOptions}
-                    value={row.methodId}
-                    onChange={(v) => updatePaymentRow(i, { methodId: v })}
-                    placeholder="Select method"
-                  />
-                </div>
-                {paymentRows.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPaymentRows((rows) => rows.filter((_, idx) => idx !== i))}
-                    aria-label="Remove payment"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+                <Input
+                  label="Paid on (optional — defaults to now)"
+                  type="datetime-local"
+                  value={row.paidAt}
+                  onChange={(e) => updatePaymentRow(i, { paidAt: e.target.value })}
+                />
               </div>
-              <Input
-                label="Paid on (optional — defaults to now)"
-                type="datetime-local"
-                value={row.paidAt}
-                onChange={(e) => updatePaymentRow(i, { paidAt: e.target.value })}
-              />
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setPaymentRows((rows) => [...rows, { ...EMPTY_PAYMENT_ROW }])}
-            className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add payment method
-          </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setPaymentRows((rows) => [...rows, { ...EMPTY_PAYMENT_ROW }])}
+              className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add payment method
+            </button>
+          </div>
 
-          <div className="border-t border-line-soft pt-3">
-            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">Other charges (extra bed, fines, etc.)</p>
+          <div className="space-y-3 rounded-md border border-line bg-card p-3 shadow-sm">
+            <p className="text-sm font-semibold text-gray-900">Other charges (extra bed, fines, etc.)</p>
             {chargeRows.map((row, i) => (
-              <div key={i} className="mb-2 space-y-2 rounded-md border border-line bg-card p-2">
+              <div key={i} className="space-y-2 rounded-md border border-line-soft p-2">
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
                     <Input
@@ -489,14 +497,15 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
             </button>
           </div>
 
-          <Input label="Discount (optional)" type="number" min="0" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} />
-
-          <Switch
-            label="Check in immediately"
-            description="Guest is arriving now — skip the separate check-in step"
-            checked={checkInImmediately}
-            onChange={setCheckInImmediately}
-          />
+          <div className="space-y-3 rounded-md border border-line bg-card p-3 shadow-sm">
+            <Input label="Discount (optional)" type="number" min="0" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+            <Switch
+              label="Check in immediately"
+              description="Guest is arriving now — skip the separate check-in step"
+              checked={checkInImmediately}
+              onChange={setCheckInImmediately}
+            />
+          </div>
 
           <div className="grid grid-cols-6 gap-2 rounded-md border-2 border-brand bg-card p-3 text-center shadow-sm">
             <SummaryStat label="Nights" value={nights} />
