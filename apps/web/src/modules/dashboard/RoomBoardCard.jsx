@@ -1,10 +1,6 @@
 import { Users } from "lucide-react";
 import { formatCurrency, formatTime } from "@/lib/format.js";
-
-// "reserved" and "closed" are computed buckets (not rows in the tenant's
-// Status table), so they need a color of their own; every other bucket
-// reuses the room's real Status color, which stays fully tenant-editable.
-const SYNTHETIC_BUCKET_COLOR = { reserved: "#9333ea", closed: "#6b7280" };
+import { SYNTHETIC_BUCKET_COLOR } from "@/modules/dashboard/constants.js";
 
 export default function RoomBoardCard({ room, onClick }) {
   const color = SYNTHETIC_BUCKET_COLOR[room.bucket] ?? room.roomStatus.color;
@@ -13,8 +9,8 @@ export default function RoomBoardCard({ room, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="flex flex-col rounded-lg border p-4 text-left shadow-sm transition hover:shadow-md"
-      style={{ backgroundColor: `${color}14`, borderColor: `${color}33` }}
+      className="flex flex-col rounded-lg border-2 p-4 text-left shadow-sm transition hover:shadow-md"
+      style={{ backgroundColor: `${color}24`, borderColor: `${color}70` }}
     >
       <div className="flex items-start justify-between">
         <div>

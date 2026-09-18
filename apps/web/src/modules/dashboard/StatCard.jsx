@@ -11,7 +11,7 @@ export default function StatCard({ label, value, sublabel, badge, icon: Icon, to
   return (
     <Card className={toneClasses.card}>
       <div className="flex items-start justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-brand/75">{label}</p>
         {Icon && (
           <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${toneClasses.iconWrap}`}>
             <Icon className="h-4 w-4" />

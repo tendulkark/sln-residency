@@ -23,3 +23,11 @@ export const dashboardRoomBoardKey = (dateISO, time, floorFilter, search) => [
   floorFilter,
   search,
 ];
+
+// "reserved" and "closed" are computed room-board buckets, not rows in the
+// tenant's Status table, so they need a color of their own — every other
+// bucket reuses the room's real Status color, which stays fully
+// tenant-editable. Shared by RoomBoardCard (per-room tile) and
+// DashboardPage (the bucket-count summary strip) so both color a bucket
+// identically.
+export const SYNTHETIC_BUCKET_COLOR = { reserved: "#9333ea", closed: "#6b7280" };
