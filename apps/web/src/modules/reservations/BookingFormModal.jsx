@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, User, Building2, Wallet } from "lucide-react";
 import { ID_PROOF_TYPES } from "@sln/shared-schemas";
 import { apiFetch } from "@/lib/api.js";
 import { formatCurrency, toDateTimeInputValue } from "@/lib/format.js";
@@ -237,7 +237,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
         {isGroupBooking ? (
           <div className="space-y-1">
             <span className="block text-sm font-medium text-gray-700">Rooms</span>
-            <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-line-strong p-2">
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-line-strong bg-muted p-2">
               {rooms?.map((room) => (
                 <label key={room.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted">
                   <input type="checkbox" checked={groupRoomIds.includes(room.id)} onChange={() => toggleGroupRoom(room.id)} className="accent-brand" />
@@ -273,8 +273,11 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
           </div>
         )}
 
-        <div className="space-y-3 rounded-md border border-line p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Guest info</p>
+        <div className="space-y-3 rounded-md border border-line-strong bg-muted p-3">
+          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand/75">
+            <User className="h-3.5 w-3.5" />
+            Guest info
+          </p>
 
           <Combobox
             label="Guest name"
@@ -353,8 +356,11 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
           </div>
         </div>
 
-        <div className="space-y-3 rounded-md border border-line p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Company info (optional, for GST claim)</p>
+        <div className="space-y-3 rounded-md border border-line-strong bg-gold-tint p-3">
+          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gold-dark">
+            <Building2 className="h-3.5 w-3.5" />
+            Company info (optional, for GST claim)
+          </p>
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Company name"
@@ -382,11 +388,14 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
 
         <Textarea label="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
 
-        <div className="space-y-3 rounded-md border border-line p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Payment</p>
+        <div className="space-y-3 rounded-md border border-line-strong bg-brand-tint p-3">
+          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand/75">
+            <Wallet className="h-3.5 w-3.5" />
+            Payment
+          </p>
 
           {paymentRows.map((row, i) => (
-            <div key={i} className="space-y-2 rounded-md border border-line p-2">
+            <div key={i} className="space-y-2 rounded-md border border-line bg-card p-2">
               <div className="flex items-end gap-2">
                 <div className="flex-1">
                   <Input
@@ -436,10 +445,10 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
             Add payment method
           </button>
 
-          <div className="border-t border-line pt-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Other charges (extra bed, fines, etc.)</p>
+          <div className="border-t border-line-soft pt-3">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">Other charges (extra bed, fines, etc.)</p>
             {chargeRows.map((row, i) => (
-              <div key={i} className="mb-2 space-y-2 rounded-md border border-line p-2">
+              <div key={i} className="mb-2 space-y-2 rounded-md border border-line bg-card p-2">
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
                     <Input
@@ -489,7 +498,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
             onChange={setCheckInImmediately}
           />
 
-          <div className="grid grid-cols-6 gap-2 rounded-md bg-muted p-3 text-center">
+          <div className="grid grid-cols-6 gap-2 rounded-md border-2 border-brand bg-card p-3 text-center shadow-sm">
             <SummaryStat label="Nights" value={nights} />
             <SummaryStat label="Rate" value={formatCurrency(nightlyRate)} />
             <SummaryStat label="Charges" value={formatCurrency(chargesTotal)} />

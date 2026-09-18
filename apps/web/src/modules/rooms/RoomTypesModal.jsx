@@ -117,7 +117,7 @@ export default function RoomTypesModal({ onClose }) {
         </div>
 
         <div className="mt-4 rounded-md border border-line p-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">
             Nightly price — enter either the guest-facing price ("Exclude GST", GST gets backed out) or the base cost ("Include GST", GST gets
             added on top)
           </p>

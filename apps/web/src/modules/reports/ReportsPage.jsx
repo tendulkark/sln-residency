@@ -165,7 +165,7 @@ function BookingsReportTab({ from, to }) {
         <StatCard label="Cancelled" value={data?.counts.cancelled ?? "—"} />
       </div>
 
-      <div className="mb-4 flex items-center gap-3 rounded-lg border border-line bg-card p-3 print:hidden">
+      <div className="mb-4 flex items-center gap-3 rounded-lg border border-line-strong bg-muted p-3 print:hidden">
         <Switch checked={checkoutBasis} onChange={setCheckoutBasis} />
         <p className="text-xs text-gray-500">
           {checkoutBasis
@@ -175,12 +175,12 @@ function BookingsReportTab({ from, to }) {
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-line bg-card p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Bookings by Status</p>
+        <div className="rounded-lg border border-line-strong bg-brand-tint p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand/75">Bookings by Status</p>
           <DonutChart data={(data?.byStatus ?? []).map((s) => ({ label: s.label, value: s.count, color: s.color }))} />
         </div>
-        <div className="rounded-lg border border-line bg-card p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Bookings by Room Type</p>
+        <div className="rounded-lg border border-line-strong bg-gold-tint p-4">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gold-dark">Bookings by Room Type</p>
           <DonutChart data={(data?.byRoomType ?? []).map((rt, i) => ({ label: rt.name, value: rt.count, color: PALETTE[i % PALETTE.length] }))} />
         </div>
       </div>
@@ -222,7 +222,7 @@ function BookingsReportTab({ from, to }) {
       {data && data.rows.length === 0 && <EmptyState icon={ReceiptText} title="No bookings in this range" subtitle="Try widening the date range or clearing filters." />}
 
       {data && data.rows.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
+        <div className="overflow-x-auto rounded-lg border border-line-strong bg-card shadow-sm">
           <table className="w-full min-w-[1900px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-muted text-xs uppercase tracking-wide text-gray-500">
@@ -257,7 +257,7 @@ function BookingsReportTab({ from, to }) {
             </thead>
             <tbody>
               {data.rows.map((r, i) => (
-                <tr key={r.id} className="border-b border-line-soft align-top hover:bg-muted">
+                <tr key={r.id} className="border-b border-line-soft align-top odd:bg-muted/40 hover:bg-brand-tint">
                   <Td>{(data.page - 1) * data.pageSize + i + 1}</Td>
                   <Td>
                     {r.invoiceNumber && (
@@ -331,8 +331,8 @@ function RevenueReportTab({ from, to }) {
             ))}
           </div>
 
-          <div className="rounded-lg border border-line bg-card p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Daily Collections</p>
+          <div className="rounded-lg border border-line-strong bg-muted p-4">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand/75">Daily Collections</p>
             <MiniBarChart data={data.daily.map((d) => ({ label: d.date, value: d.amount }))} format={formatCurrency} />
           </div>
 
@@ -364,8 +364,8 @@ function OccupancyReportTab({ from, to }) {
             <StatCard label="Total Rooms" value={data.totalRooms} />
           </div>
 
-          <div className="rounded-lg border border-line bg-card p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Daily Occupancy %</p>
+          <div className="rounded-lg border border-line-strong bg-muted p-4">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand/75">Daily Occupancy %</p>
             <MiniBarChart data={data.daily.map((d) => ({ label: d.date, value: d.occupancyPercent }))} format={(v) => `${v}%`} />
           </div>
         </>
@@ -397,11 +397,11 @@ function GstReportTab({ from, to }) {
           </div>
 
           {data.byRate.length > 0 && (
-            <div className="mb-4 rounded-lg border border-line bg-card p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">By Tax Rate</p>
+            <div className="mb-4 rounded-lg border border-line-strong bg-gold-tint p-4">
+              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gold-dark">By Tax Rate</p>
               <div className="space-y-2">
                 {data.byRate.map((r) => (
-                  <div key={r.ratePercent} className="flex items-center justify-between text-sm">
+                  <div key={r.ratePercent} className="flex items-center justify-between rounded-md bg-card px-3 py-2 text-sm shadow-sm">
                     <span className="text-gray-700">
                       GST {r.ratePercent}% · {r.count} invoice(s)
                     </span>
@@ -417,7 +417,7 @@ function GstReportTab({ from, to }) {
           {data.rows.length === 0 ? (
             <EmptyState icon={ReceiptText} title="No invoices generated in this range" />
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-line bg-card">
+            <div className="overflow-x-auto rounded-lg border border-line-strong bg-card shadow-sm">
               <table className="w-full border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-line bg-muted text-xs uppercase tracking-wide text-gray-500">
@@ -433,7 +433,7 @@ function GstReportTab({ from, to }) {
                 </thead>
                 <tbody>
                   {data.rows.map((r) => (
-                    <tr key={r.invoiceNumber} className="border-b border-line-soft hover:bg-muted">
+                    <tr key={r.invoiceNumber} className="border-b border-line-soft odd:bg-muted/40 hover:bg-brand-tint">
                       <Td className="font-medium text-gray-900">{r.invoiceNumber}</Td>
                       <Td className="whitespace-nowrap">{formatDate(r.date)}</Td>
                       <Td className="whitespace-nowrap">{r.guestName}</Td>

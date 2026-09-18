@@ -238,12 +238,12 @@ export default function ManageStayModal({ bookingId, onClose }) {
 
         {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Billing & Charges</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">Billing & Charges</p>
 
-        <div className="rounded-md border border-line p-3">
+        <div className="rounded-md border border-line-strong bg-muted p-3">
           <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
-              <Receipt className="h-4 w-4 text-gray-400" />
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+              <Receipt className="h-4 w-4 text-brand" />
               Other Charges (Food, Damages, etc.)
             </p>
             {permissions.has("bookings.edit") && addFormType !== "charge" && (
@@ -277,10 +277,10 @@ export default function ManageStayModal({ bookingId, onClose }) {
           )}
         </div>
 
-        <div className="mt-3 rounded-md border border-line p-3">
+        <div className="mt-3 rounded-md border border-line-strong bg-gold-tint p-3">
           <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
-              <Tag className="h-4 w-4 text-gray-400" />
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+              <Tag className="h-4 w-4 text-gold-dark" />
               Discount / Concession (optional)
             </p>
             {permissions.has("bookings.edit") && addFormType !== "discount" && (
@@ -310,7 +310,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
           )}
         </div>
 
-        <div className="mt-3 space-y-1.5 rounded-md border border-line p-3 text-sm">
+        <div className="mt-3 space-y-1.5 rounded-md border border-line-strong bg-card p-3 text-sm shadow-sm">
           <Row label="Check-in" value={formatDateTime(primary.checkIn)} />
           <Row label="Check-out" value={formatDateTime(primary.checkOut)} />
           <Row label="Nights stayed" value={`${stay.summary.nights} night(s) · ${stay.bookings.length} room(s)`} />
@@ -350,8 +350,8 @@ export default function ManageStayModal({ bookingId, onClose }) {
         </div>
 
         {stay.payments.length > 0 && (
-          <div className="mt-3 rounded-md border border-line p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Payment History</p>
+          <div className="mt-3 rounded-md border border-line-strong bg-muted p-3">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">Payment History</p>
             {stay.payments.map((p) => (
               <div key={p.id} className="mt-1 flex items-center justify-between text-sm first:mt-0">
                 <span className="text-gray-700">
@@ -364,10 +364,10 @@ export default function ManageStayModal({ bookingId, onClose }) {
         )}
 
         {!isCheckedOut && stay.summary.balanceDue > 0 && permissions.has("payments.record") && (
-          <div className="mt-3 rounded-md border border-line p-3 print:hidden">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Settle Balance</p>
+          <div className="mt-3 rounded-md border-2 border-brand bg-brand-tint p-3 shadow-sm print:hidden">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">Settle Balance</p>
             {settleRows.map((row, i) => (
-              <div key={i} className="mb-2 space-y-2 rounded-md border border-line-soft p-2">
+              <div key={i} className="mb-2 space-y-2 rounded-md border border-line bg-card p-2">
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
                     <Select

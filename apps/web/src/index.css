@@ -14,6 +14,14 @@
  * plain grays every surface used to reach for (bg-white, border-gray-200,
  * border-gray-300, bg-gray-50/100) with warm, brand-tinted equivalents, so
  * every card/input/divider in the app re-themes together from here.
+ *
+ * --color-surface and --color-card used to sit ~4% apart (#fbf6ea vs
+ * #fffdf8) — close enough that a card was nearly invisible against the
+ * page behind it, which is why the whole app read as "one flat white
+ * screen" instead of clearly bounded sections. Surface is now a deeper,
+ * more saturated cream (closer to aged temple stone) and card is pure
+ * white, so every panel visibly sits "on top of" the page without
+ * touching a single component — see also --shadow-card below.
  */
 @theme {
   --color-brand: #7a1f3d;
@@ -25,16 +33,26 @@
   --color-gold-dark: color-mix(in srgb, var(--color-gold) 80%, black);
   --color-gold-tint: color-mix(in srgb, var(--color-gold) 14%, white);
 
-  --color-surface: #fbf6ea;
-  --color-card: #fffdf8;
-  --color-line: color-mix(in srgb, var(--color-brand) 10%, #e7e0cf);
-  --color-line-soft: color-mix(in srgb, var(--color-brand) 6%, #efe9db);
-  --color-line-strong: color-mix(in srgb, var(--color-brand) 16%, #d8cfb8);
-  --color-muted: color-mix(in srgb, var(--color-brand) 4%, #f7f2e6);
-  --color-muted-strong: color-mix(in srgb, var(--color-brand) 8%, #efe6d2);
+  --color-surface: #f2e8d1;
+  --color-card: #ffffff;
+  --color-line: color-mix(in srgb, var(--color-brand) 16%, #d9cca4);
+  --color-line-soft: color-mix(in srgb, var(--color-brand) 9%, #e7dcc0);
+  --color-line-strong: color-mix(in srgb, var(--color-brand) 26%, #c7b489);
+  --color-muted: color-mix(in srgb, var(--color-brand) 5%, #f4ecd9);
+  --color-muted-strong: color-mix(in srgb, var(--color-brand) 11%, #ecdfbe);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Cormorant Garamond", "Georgia", serif;
+
+  /*
+   * Tailwind's default shadow-sm/shadow are near-black at very low alpha,
+   * which reads as almost nothing against a warm cream page — every card
+   * in the app uses shadow-sm, so warming and deepening it here (instead
+   * of touching each component) is what actually makes a panel look
+   * "lifted" off the surface rather than just outlined.
+   */
+  --shadow-sm: 0 1px 3px 0 color-mix(in srgb, var(--color-brand) 14%, transparent), 0 1px 2px -1px color-mix(in srgb, var(--color-brand) 10%, transparent);
+  --shadow-md: 0 4px 10px -2px color-mix(in srgb, var(--color-brand) 18%, transparent), 0 2px 6px -2px color-mix(in srgb, var(--color-brand) 12%, transparent);
 }
 
 body {

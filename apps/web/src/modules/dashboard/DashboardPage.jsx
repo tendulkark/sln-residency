@@ -11,7 +11,7 @@ import RoomBookingsModal from "@/modules/reservations/RoomBookingsModal.jsx";
 import RoomClosuresModal from "@/modules/housekeeping/RoomClosuresModal.jsx";
 import { Button, Chip, Input, SegmentedControl, CardSkeleton, PageHeader } from "@/ui/index.js";
 import { useAuthStore } from "@/modules/auth/authStore.js";
-import { dashboardSummaryKey, dashboardRoomBoardKey } from "@/modules/dashboard/constants.js";
+import { dashboardSummaryKey, dashboardRoomBoardKey, SYNTHETIC_BUCKET_COLOR } from "@/modules/dashboard/constants.js";
 
 const VIEW_MODES = [
   { value: "day", label: "Day" },
@@ -74,6 +74,20 @@ export default function DashboardPage() {
     const counts = Object.fromEntries(BUCKETS.map((b) => [b.code, 0]));
     for (const room of board ?? []) counts[room.bucket] = (counts[room.bucket] ?? 0) + 1;
     return counts;
+  }, [board]);
+
+  // Each tile borrows the same color a room in that bucket already renders
+  // with on the board below (or the synthetic reserved/closed color) —
+  // never a new hardcoded status color, just reusing what the tenant's own
+  // Status rows already say, so the summary strip and the room grid always
+  // agree on what each color means.
+  const bucketColors = useMemo(() => {
+    const colors = {};
+    for (const b of BUCKETS) {
+      const room = (board ?? []).find((r) => r.bucket === b.code);
+      colors[b.code] = SYNTHETIC_BUCKET_COLOR[b.code] ?? room?.roomStatus.color ?? "#9ca3af";
+    }
+    return colors;
   }, [board]);
 
   const filteredBoard = bucketFilter ? (board ?? []).filter((r) => r.bucket === bucketFilter) : board ?? [];
@@ -211,18 +225,27 @@ export default function DashboardPage() {
           Room status <span className="font-normal text-gray-500">as of {asOfDate.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</span>
         </p>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-          {BUCKETS.map((b) => (
-            <button
-              key={b.code}
-              onClick={() => setBucketFilter(bucketFilter === b.code ? null : b.code)}
-              className={`rounded-lg border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring ${
-                bucketFilter === b.code ? "border-brand ring-1 ring-brand" : "border-line"
-              }`}
-            >
-              <p className="text-xs uppercase text-gray-500">{b.label}</p>
-              <p className="text-lg font-semibold text-gray-900">{bucketCounts[b.code] ?? 0}</p>
-            </button>
-          ))}
+          {BUCKETS.map((b) => {
+            const color = bucketColors[b.code];
+            const active = bucketFilter === b.code;
+            return (
+              <button
+                key={b.code}
+                onClick={() => setBucketFilter(active ? null : b.code)}
+                className="rounded-lg border-2 p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
+                style={{
+                  backgroundColor: `${color}1f`,
+                  borderColor: active ? color : `${color}55`,
+                  boxShadow: active ? `0 0 0 1px ${color}` : undefined,
+                }}
+              >
+                <p className="text-xs font-semibold uppercase" style={{ color }}>
+                  {b.label}
+                </p>
+                <p className="text-lg font-bold text-gray-900">{bucketCounts[b.code] ?? 0}</p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -234,7 +257,7 @@ export default function DashboardPage() {
 
       {roomsByFloor.map(([floor, rooms]) => (
         <div key={floor} className="mb-6">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">
             Floor {floor} · {rooms.length} rooms
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
