@@ -8,6 +8,7 @@ import { Badge, Button, GstCalculator, Input, Select, computeGst } from "../ui/i
 import Modal from "./Modal.jsx";
 import ExtendStayModal from "./ExtendStayModal.jsx";
 import InvoiceModal from "./InvoiceModal.jsx";
+import ProvisionalBillModal from "./ProvisionalBillModal.jsx";
 
 function AddChargeForm({ type, onAdd, onCancel, pending }) {
   const [description, setDescription] = useState("");
@@ -75,6 +76,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
   const [settleRows, setSettleRows] = useState([{ methodId: "", amount: "", paidAt: toDateTimeInputValue(new Date()) }]);
   const [extendOpen, setExtendOpen] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(null); // { autoGenerate } | null
+  const [provisionalBillOpen, setProvisionalBillOpen] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -122,12 +124,13 @@ export default function ManageStayModal({ bookingId, onClose }) {
     onError: (err) => setError(err.message),
   });
 
-  // Shared by the pre-checkin "Check In" action (which bundles whatever
-  // advance is entered alongside the status change) and the standalone
-  // "Record Payment" action (for a mid-stay top-up or final settlement
-  // once the guest is already checked in) — a guest doesn't always pay at
-  // the moment staff happens to be looking at this screen, so each row
-  // carries its own "paid on" time instead of always defaulting to now.
+  // Shared by the "Check In" action (which bundles whatever advance is
+  // entered alongside the status change) and the standalone "Record
+  // Payment" action, available any time there's a balance due — before
+  // check-in (guest pays more ahead of arrival), mid-stay, or at final
+  // settlement — since a guest doesn't always pay at the moment staff
+  // happens to be looking at this screen, each row carries its own
+  // "paid on" time instead of always defaulting to now.
   async function submitSettleRows() {
     const validRows = settleRows.filter((r) => r.methodId && Number(r.amount) > 0);
     for (const row of validRows) {
@@ -194,9 +197,10 @@ export default function ManageStayModal({ bookingId, onClose }) {
     );
   }
 
-  // Only one Dialog is ever mounted at a time — both Manage Stay and the
-  // invoice carry [data-print-area] for window.print(), and having both in
-  // the DOM at once would print them on top of each other.
+  // Only one Dialog is ever mounted at a time — Manage Stay, the invoice,
+  // and the provisional bill all carry [data-print-area] for window.print(),
+  // and having more than one in the DOM at once would print them on top of
+  // each other.
   if (invoiceModal) {
     return (
       <InvoiceModal
@@ -208,6 +212,10 @@ export default function ManageStayModal({ bookingId, onClose }) {
         }}
       />
     );
+  }
+
+  if (provisionalBillOpen) {
+    return <ProvisionalBillModal stay={stay} onClose={() => setProvisionalBillOpen(false)} />;
   }
 
   const primary = stay.bookings[0];
@@ -402,13 +410,11 @@ export default function ManageStayModal({ bookingId, onClose }) {
                 Entered: {formatCurrency(settleTotal)} / Due: {formatCurrency(stay.summary.balanceDue)}
               </p>
             </div>
-            {isCheckedIn && (
-              <div className="mt-2 flex justify-end">
-                <Button size="sm" onClick={() => recordPayment.mutate()} disabled={recordPayment.isPending || settleTotal <= 0}>
-                  {recordPayment.isPending ? "Recording…" : "Record Payment"}
-                </Button>
-              </div>
-            )}
+            <div className="mt-2 flex justify-end">
+              <Button size="sm" onClick={() => recordPayment.mutate()} disabled={recordPayment.isPending || settleTotal <= 0}>
+                {recordPayment.isPending ? "Recording…" : "Record Payment"}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -420,7 +426,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
             </Button>
           )}
           {!isCheckedOut && (
-            <Button variant="ghost" size="sm" onClick={() => window.print()}>
+            <Button variant="ghost" size="sm" onClick={() => setProvisionalBillOpen(true)}>
               <Printer className="h-4 w-4" />
               Print
             </Button>
