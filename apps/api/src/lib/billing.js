@@ -1,5 +1,45 @@
 import { getApplicableTaxRule, splitInclusiveTax } from "#src/lib/tax.js";
 
+// Based on the highest existing suffix, not a row count — a count-based
+// scheme collides forever once any invoice is missing from the sequence
+// (a rolled-back transaction, a deleted test row), since count() never
+// reflects the gap. Callers that can race (concurrent booking creation,
+// concurrent checkout) still need their own P2002 retry — this alone only
+// closes the gap-after-deletion case, not the read-then-write race.
+export async function nextInvoiceNumber(prisma, tenantId) {
+  const prefix = `INV-${new Date().getFullYear()}-`;
+  const latest = await prisma.invoice.findFirst({
+    where: { tenantId, invoiceNumber: { startsWith: prefix } },
+    orderBy: { invoiceNumber: "desc" },
+    select: { invoiceNumber: true },
+  });
+  const nextSeq = latest ? Number(latest.invoiceNumber.slice(prefix.length)) + 1 : 1;
+  return `${prefix}${String(nextSeq).padStart(5, "0")}`;
+}
+
+// Reserves a real, permanent invoice number for a stay the moment it's
+// booked — not at checkout — so it's visible on every print from booking
+// onward. `stay` is the breakdown at reservation time (usually just the
+// room charge plus whatever charges/discount/advance were entered on the
+// booking form); isFinalized stays false until checkout recomputes final
+// figures against the TaxRule active *then* and locks them in.
+export async function createReservedInvoice(prisma, { tenantId, bookingId, generatedById, stay }) {
+  return prisma.invoice.create({
+    data: {
+      tenantId,
+      bookingId,
+      invoiceNumber: await nextInvoiceNumber(prisma, tenantId),
+      subtotal: stay.summary.taxableValue,
+      taxRuleId: stay.taxRule?.id ?? null,
+      taxRateSnapshot: stay.summary.taxRatePercent,
+      taxAmount: stay.summary.cgst + stay.summary.sgst,
+      total: stay.summary.grandTotal,
+      generatedById,
+      isFinalized: false,
+    },
+  });
+}
+
 export const BOOKING_INCLUDE = {
   room: { select: { id: true, roomNumber: true, floor: true, roomType: { select: { name: true } } } },
   guest: {

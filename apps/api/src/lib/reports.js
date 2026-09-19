@@ -80,7 +80,13 @@ export async function buildBookingReportRows(prisma, tenantId, { from, to, statu
   const [charges, payments, invoices, statusLogs] = await Promise.all([
     prisma.bookingCharge.findMany({ where: { bookingId: { in: bookingIds } } }),
     prisma.payment.findMany({ where: { bookingId: { in: bookingIds } }, include: { method: true, status: true } }),
-    prisma.invoice.findMany({ where: { bookingId: { in: bookingIds } } }),
+    // Only a finalized, active invoice counts toward a booking's reported
+    // tax figures/invoice number — a cancelled one was replaced and
+    // shouldn't double up (or stand in for) what the reissued invoice
+    // already reports, and a merely-reserved (pre-checkout) number isn't a
+    // real tax document yet, so this audit-facing report shouldn't imply
+    // one was issued.
+    prisma.invoice.findMany({ where: { bookingId: { in: bookingIds }, isCancelled: false, isFinalized: true } }),
     prisma.auditLog.findMany({
       where: { tenantId, entityType: "Booking", entityId: { in: bookingIds }, action: "booking.status_change" },
       include: { user: { select: { name: true } } },

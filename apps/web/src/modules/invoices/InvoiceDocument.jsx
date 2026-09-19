@@ -38,12 +38,13 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
 
         <div className="shrink-0 text-right">
           <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">{provisional ? "PROVISIONAL BILL" : "TAX INVOICE"}</h2>
-          {!provisional && (
+          {invoice.invoiceNumber && (
             <p className="mt-2 text-gray-700">
               Invoice No: <span className="font-semibold text-gray-900">{invoice.invoiceNumber}</span>
+              {provisional && <span className="ml-1 text-xs text-gray-400">(reserved — finalized at checkout)</span>}
             </p>
           )}
-          <p className={provisional ? "mt-2 text-gray-700" : "text-gray-700"}>
+          <p className={invoice.invoiceNumber ? "text-gray-700" : "mt-2 text-gray-700"}>
             Date: <span className="font-semibold text-gray-900">{formatDate(invoice.generatedAt)}</span>
           </p>
         </div>
