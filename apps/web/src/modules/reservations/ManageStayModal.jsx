@@ -220,7 +220,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
   }
 
   if (provisionalBillOpen) {
-    return <ProvisionalBillModal stay={stay} onClose={() => setProvisionalBillOpen(false)} />;
+    return <ProvisionalBillModal bookingId={bookingId} stay={stay} onClose={() => setProvisionalBillOpen(false)} />;
   }
 
   const primary = stay.bookings[0];

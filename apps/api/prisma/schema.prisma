@@ -109,6 +109,7 @@ model User {
   bookingsCreated Booking[]    @relation("BookingCreatedBy")
   paymentsRecorded Payment[]   @relation("PaymentRecordedBy")
   invoicesGenerated Invoice[]  @relation("InvoiceGeneratedBy")
+  invoicesCancelled Invoice[]  @relation("InvoiceCancelledBy")
   auditLogs        AuditLog[]
   roomClosuresCreated RoomClosure[] @relation("RoomClosureCreatedBy")
   bookingChargesCreated BookingCharge[] @relation("BookingChargeCreatedBy")
@@ -351,29 +352,64 @@ model TaxRule {
 }
 
 model Invoice {
-  id               String   @id @default(cuid())
-  tenantId         String
-  bookingId        String
-  invoiceNumber    String
-  subtotal         Decimal  @db.Decimal(10, 2)
-  taxRuleId        String?
-  taxRateSnapshot  Decimal  @db.Decimal(5, 2) @default(0)
-  taxAmount        Decimal  @db.Decimal(10, 2) @default(0)
-  total            Decimal  @db.Decimal(10, 2)
-  generatedById    String
-  generatedAt      DateTime @default(now())
+  id                 String    @id @default(cuid())
+  tenantId           String
+  bookingId          String
+  invoiceNumber      String
+  subtotal           Decimal   @db.Decimal(10, 2)
+  taxRuleId          String?
+  taxRateSnapshot    Decimal   @db.Decimal(5, 2) @default(0)
+  taxAmount          Decimal   @db.Decimal(10, 2) @default(0)
+  total              Decimal   @db.Decimal(10, 2)
+  generatedById      String
+  generatedAt        DateTime  @default(now())
+  // A real, permanent invoice number is reserved the moment a booking is
+  // created (bookings.routes.js) — not at checkout — so it's visible on
+  // every print from booking onward, per product decision 2026-09-18.
+  // isFinalized stays false until checkout recomputes the final taxable
+  // figures and locks them in (invoices.routes.js `POST /bookings/:id/
+  // invoice`) — that recompute, not the earlier reservation, is the
+  // "invoice-generation time" AI_RULES.md #4 means when it says tax is
+  // computed using the TaxRule active on that date. subtotal/taxAmount/
+  // total before finalization are a preview only, openly labeled
+  // "PROVISIONAL BILL" on the printed document.
+  isFinalized        Boolean   @default(false)
+  // An invoice is never edited or hard-deleted (AI_RULES.md #4 — it's a
+  // legally-numbered tax document). A wrong *finalized* one is cancelled —
+  // kept forever, number never reused — and reissued as a brand-new invoice
+  // in the same transaction (invoices.routes.js `POST /invoices/:id/
+  // cancel`). An unfinalized (pre-checkout) one is cancelled automatically
+  // if its booking itself is cancelled (bookings.routes.js status route) —
+  // otherwise it just keeps following the booking, since nothing about a
+  // reserved-but-not-yet-final invoice needs a reissue; the booking is
+  // still directly editable.
+  isCancelled        Boolean   @default(false)
+  cancelledAt        DateTime?
+  cancelledById      String?
+  cancellationReason String?
+  // Set on the *new* invoice created by a cancel+reissue — points back at
+  // the invoice it replaces, so the paper trail stays traceable. Unique
+  // because a cancelled invoice is reissued at most once, atomically,
+  // right when it's cancelled.
+  supersedesInvoiceId String? @unique
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  booking     Booking  @relation(fields: [bookingId], references: [id])
-  taxRule     TaxRule? @relation(fields: [taxRuleId], references: [id])
-  generatedBy User     @relation("InvoiceGeneratedBy", fields: [generatedById], references: [id])
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking      Booking  @relation(fields: [bookingId], references: [id])
+  taxRule      TaxRule? @relation(fields: [taxRuleId], references: [id])
+  generatedBy  User     @relation("InvoiceGeneratedBy", fields: [generatedById], references: [id])
+  cancelledBy  User?    @relation("InvoiceCancelledBy", fields: [cancelledById], references: [id])
+  supersedes   Invoice? @relation("InvoiceSupersedes", fields: [supersedesInvoiceId], references: [id])
+  supersededBy Invoice? @relation("InvoiceSupersedes")
 
   @@unique([tenantId, invoiceNumber])
-  // A stay gets exactly one tax invoice — this is what actually makes
-  // invoice generation idempotent under a race (two near-simultaneous
-  // "Checkout & Print Bill" clicks), not just the find-existing-else-create
-  // check in invoices.routes.js, which alone can't close that race.
-  @@unique([bookingId])
+  // Replaces the old plain @@unique([bookingId]): a booking can now have
+  // more than one Invoice row over time (cancelled ones stay for the
+  // record), but at most one *active* one. Postgres partial unique indexes
+  // aren't expressible in Prisma's schema DSL, so this constraint is
+  // created by raw SQL in the
+  // 20260918160000_invoice_cancel_reissue migration, not derived from this
+  // file — don't expect `prisma migrate dev` to regenerate it from here.
+  @@index([bookingId])
   @@index([tenantId])
 }
 

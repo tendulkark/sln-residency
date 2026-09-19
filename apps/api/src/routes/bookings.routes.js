@@ -3,7 +3,7 @@ import { requirePermission } from "#src/lib/permissions.js";
 import { recordAudit } from "#src/lib/audit.js";
 import { findBookingConflict, findClosureConflict } from "#src/lib/availability.js";
 import { priceRoom } from "#src/lib/tax.js";
-import { BOOKING_INCLUDE, nightsBetween, computeStayBreakdown } from "#src/lib/billing.js";
+import { BOOKING_INCLUDE, nightsBetween, computeStayBreakdown, createReservedInvoice } from "#src/lib/billing.js";
 
 function startOfToday() {
   const d = new Date();
@@ -140,82 +140,122 @@ export default async function bookingsRoutes(fastify) {
       const nights = nightsBetween(checkIn, checkOut);
       const now = new Date();
 
-      const { createdBookings, createdCharges } = await fastify.prisma.$transaction(async (tx) => {
-        const created = [];
-        for (const room of rooms) {
-          const rate = roomIds ? (await priceRoom(tx, tenantId, room.roomType.basePrice)).total : ratePerNight;
-          const booking = await tx.booking.create({
-            data: {
-              tenantId,
-              roomId: room.id,
-              guestId: resolvedGuestId,
-              statusId: initialStatus.id,
-              groupCode,
-              checkIn,
-              checkOut,
-              adults,
-              children,
-              ratePerNight: rate,
-              totalAmount: rate * nights,
-              notes,
-              createdById: request.user.id,
-              ...(checkInImmediately ? { actualCheckIn: now } : {}),
-            },
-            include: BOOKING_INCLUDE,
-          });
-          created.push(booking);
-          if (occupiedRoomStatus) {
-            await tx.room.update({ where: { id: room.id }, data: { statusId: occupiedRoomStatus.id } });
-          }
-        }
+      // Reserving the invoice number inside this transaction means a P2002
+      // on the tenantId+invoiceNumber race (two staff creating bookings at
+      // the same instant, both computing the same "next" number) rolls back
+      // the whole thing — bookings included. Retry the entire transaction
+      // once in that specific case; anything else (a real conflict, a bad
+      // input) still fails immediately.
+      let createdBookings, createdCharges, invoice;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const result = await fastify.prisma.$transaction(async (tx) => {
+            const created = [];
+            for (const room of rooms) {
+              const rate = roomIds ? (await priceRoom(tx, tenantId, room.roomType.basePrice)).total : ratePerNight;
+              const booking = await tx.booking.create({
+                data: {
+                  tenantId,
+                  roomId: room.id,
+                  guestId: resolvedGuestId,
+                  statusId: initialStatus.id,
+                  groupCode,
+                  checkIn,
+                  checkOut,
+                  adults,
+                  children,
+                  ratePerNight: rate,
+                  totalAmount: rate * nights,
+                  notes,
+                  createdById: request.user.id,
+                  ...(checkInImmediately ? { actualCheckIn: now } : {}),
+                },
+                include: BOOKING_INCLUDE,
+              });
+              created.push(booking);
+              if (occupiedRoomStatus) {
+                await tx.room.update({ where: { id: room.id }, data: { statusId: occupiedRoomStatus.id } });
+              }
+            }
 
-        for (const payment of resolvedPayments) {
-          await tx.payment.create({
-            data: {
+            for (const payment of resolvedPayments) {
+              await tx.payment.create({
+                data: {
+                  tenantId,
+                  bookingId: created[0].id,
+                  methodId: payment.methodId,
+                  statusId: payment.statusId,
+                  amount: payment.amount,
+                  referenceNote: groupCode ? `Advance for group ${groupCode}` : undefined,
+                  recordedById: request.user.id,
+                  ...(payment.paidAt ? { recordedAt: payment.paidAt } : {}),
+                },
+              });
+            }
+
+            const createdCharges = [];
+            if (discount) {
+              createdCharges.push(
+                await tx.bookingCharge.create({
+                  data: {
+                    tenantId,
+                    bookingId: created[0].id,
+                    type: "discount",
+                    description: discount.description || "Discount",
+                    amount: discount.amount,
+                    createdById: request.user.id,
+                  },
+                })
+              );
+            }
+            for (const item of charges ?? []) {
+              createdCharges.push(
+                await tx.bookingCharge.create({
+                  data: {
+                    tenantId,
+                    bookingId: created[0].id,
+                    type: "charge",
+                    description: item.description,
+                    amount: item.amount,
+                    taxRatePercent: item.taxRatePercent ?? null,
+                    createdById: request.user.id,
+                  },
+                })
+              );
+            }
+
+            // One reserved invoice per stay — tied to the group's primary
+            // booking (created[0]), same convention computeStayBreakdown and
+            // every other invoice route already use for a group booking.
+            // Computed inside this same transaction so it picks up whatever
+            // charges/discount/advance payment were entered right on the
+            // booking form, not just the bare room rate.
+            const stayForInvoice = await computeStayBreakdown(tx, tenantId, created[0].id);
+            const invoice = await createReservedInvoice(tx, {
               tenantId,
               bookingId: created[0].id,
-              methodId: payment.methodId,
-              statusId: payment.statusId,
-              amount: payment.amount,
-              referenceNote: groupCode ? `Advance for group ${groupCode}` : undefined,
-              recordedById: request.user.id,
-              ...(payment.paidAt ? { recordedAt: payment.paidAt } : {}),
-            },
+              generatedById: request.user.id,
+              stay: stayForInvoice,
+            });
+
+            return { createdBookings: created, createdCharges, invoice };
           });
+          ({ createdBookings, createdCharges, invoice } = result);
+          break;
+        } catch (err) {
+          const isInvoiceNumberClash = err.code === "P2002" && String(err.meta?.target ?? "").includes("invoiceNumber");
+          if (!isInvoiceNumberClash || attempt === 1) throw err;
         }
+      }
 
-        const createdCharges = [];
-        if (discount) {
-          createdCharges.push(
-            await tx.bookingCharge.create({
-              data: {
-                tenantId,
-                bookingId: created[0].id,
-                type: "discount",
-                description: discount.description || "Discount",
-                amount: discount.amount,
-                createdById: request.user.id,
-              },
-            })
-          );
-        }
-        for (const item of charges ?? []) {
-          createdCharges.push(
-            await tx.bookingCharge.create({
-              data: {
-                tenantId,
-                bookingId: created[0].id,
-                type: "charge",
-                description: item.description,
-                amount: item.amount,
-                taxRatePercent: item.taxRatePercent ?? null,
-                createdById: request.user.id,
-              },
-            })
-          );
-        }
-
-        return { createdBookings: created, createdCharges };
+      await recordAudit(fastify.prisma, {
+        tenantId,
+        userId: request.user.id,
+        action: "invoice.reserve",
+        entityType: "Invoice",
+        entityId: invoice.id,
+        metadata: { bookingId: createdBookings[0].id, invoiceNumber: invoice.invoiceNumber, groupCode },
       });
 
       for (const booking of createdBookings) {
@@ -358,6 +398,32 @@ export default async function bookingsRoutes(fastify) {
         entityId: booking.id,
         metadata: { statusCode: status.code },
       });
+
+      // A cancelled booking's reserved invoice (its number was assigned the
+      // moment it was booked — billing.js createReservedInvoice) is
+      // cancelled right along with it, so a dead booking never leaves a
+      // phantom "active" invoice sitting in the Invoices list. In practice
+      // this only ever touches an unfinalized one — Cancel Booking is only
+      // offered before check-in, well before a stay's invoice is finalized
+      // at checkout — but the check is unconditional so it's still correct
+      // if that ever changes.
+      if (status.code === "cancelled") {
+        const activeInvoice = await fastify.prisma.invoice.findFirst({ where: { tenantId, bookingId: booking.id, isCancelled: false } });
+        if (activeInvoice) {
+          await fastify.prisma.invoice.update({
+            where: { id: activeInvoice.id },
+            data: { isCancelled: true, cancelledAt: new Date(), cancelledById: request.user.id, cancellationReason: "Booking cancelled" },
+          });
+          await recordAudit(fastify.prisma, {
+            tenantId,
+            userId: request.user.id,
+            action: "invoice.cancel",
+            entityType: "Invoice",
+            entityId: activeInvoice.id,
+            metadata: { invoiceNumber: activeInvoice.invoiceNumber, reason: "Booking cancelled", bookingId: booking.id },
+          });
+        }
+      }
 
       // Check-in/check-out flips the room's own housekeeping status.
       const roomStatusCode = status.code === "checked_in" ? "occupied" : status.code === "checked_out" ? "dirty" : null;

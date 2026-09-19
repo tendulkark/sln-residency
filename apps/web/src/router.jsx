@@ -16,6 +16,8 @@ import SettingsPage from "@/modules/settings/SettingsPage.jsx";
 import { SETTINGS_ROUTE_PATH } from "@/modules/settings/constants.js";
 import ReportsPage from "@/modules/reports/ReportsPage.jsx";
 import { REPORTS_ROUTE_PATH } from "@/modules/reports/constants.js";
+import InvoicesPage from "@/modules/invoices/InvoicesPage.jsx";
+import { INVOICES_ROUTE_PATH } from "@/modules/invoices/constants.js";
 
 // Each nested `path` below is its module's own ROUTE_PATH with the leading
 // "/" stripped, since react-router wants a relative segment for children of
@@ -41,6 +43,7 @@ export const router = createBrowserRouter([
               { path: asChildPath(RESERVATIONS_ROUTE_PATH), element: <ReservationsPage /> },
               { path: asChildPath(SETTINGS_ROUTE_PATH), element: <SettingsPage /> },
               { path: asChildPath(REPORTS_ROUTE_PATH), element: <ReportsPage /> },
+              { path: asChildPath(INVOICES_ROUTE_PATH), element: <InvoicesPage /> },
             ],
           },
         ],

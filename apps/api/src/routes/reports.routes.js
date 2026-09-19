@@ -126,7 +126,11 @@ export default async function reportsRoutes(fastify) {
       const toDate = endOfDayExclusive(to);
 
       const invoices = await fastify.prisma.invoice.findMany({
-        where: { tenantId, generatedAt: { gte: fromDate, lt: toDate } },
+        // Cancelled invoices never collected GST that's still owed — a
+        // cancel+reissue's replacement carries the real, current figures.
+        // A merely-reserved (pre-checkout) invoice hasn't collected
+        // anything yet either, so it's excluded until it's finalized.
+        where: { tenantId, isCancelled: false, isFinalized: true, generatedAt: { gte: fromDate, lt: toDate } },
         include: { booking: { include: { guest: true, room: true } } },
         orderBy: { generatedAt: "asc" },
       });

@@ -10,6 +10,7 @@ import { ROOMS_NAV_ITEM } from "@/modules/rooms/constants.js";
 import { HOUSEKEEPING_NAV_ITEM } from "@/modules/housekeeping/constants.js";
 import { RESERVATIONS_NAV_ITEM } from "@/modules/reservations/constants.js";
 import { REPORTS_NAV_ITEM } from "@/modules/reports/constants.js";
+import { INVOICES_NAV_ITEM } from "@/modules/invoices/constants.js";
 import { SETTINGS_NAV_ITEM } from "@/modules/settings/constants.js";
 import { LOGIN_ROUTE_PATH } from "@/modules/auth/constants.js";
 
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   ROOMS_NAV_ITEM,
   HOUSEKEEPING_NAV_ITEM,
   RESERVATIONS_NAV_ITEM,
+  INVOICES_NAV_ITEM,
   REPORTS_NAV_ITEM,
   SETTINGS_NAV_ITEM,
   // Staff management lands in a later phase.
