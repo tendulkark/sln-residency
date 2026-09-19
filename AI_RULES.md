@@ -29,10 +29,20 @@ explicitly asked later.
    menu item in React is a UX nicety, never a security boundary. Every
    backend route must check the caller's permissions before touching data
    (see `apps/api/src/lib/permissions.js`).
-4. GST/tax is computed server-side, at invoice-generation time, using the
-   `TaxRule` row active on that date — never trust a tax amount sent from
-   the client. Invoices snapshot the rate/rule used so past invoices never
-   change when an Admin edits future rates.
+4. GST/tax is computed server-side. An invoice **number** is reserved the
+   moment a booking is created, but the actual tax figures are computed and
+   locked in only at checkout (invoice *finalization*), using the `TaxRule`
+   row active at that moment — never trust a tax amount sent from the
+   client, and never treat a pre-checkout reserved number as a real tax
+   computation. A finalized invoice snapshots the rate/rule used so past
+   invoices never change when an Admin edits future rates. A finalized
+   invoice is never edited or hard-deleted — a wrong one is cancelled (kept
+   forever, reason/who/when recorded, number never reused) and a
+   replacement is reissued under the next number, atomically, in the same
+   transaction (`invoices.routes.js` `POST /invoices/:id/cancel`). An
+   unfinalized (reserved, pre-checkout) invoice needs no such ceremony —
+   just edit the booking directly; the same reserved number keeps following
+   it.
 5. Payments are entered by staff after the fact (cash/UPI/card/etc. already
    collected at the desk) — do not build a checkout flow, do not integrate a
    payment gateway, do not process card details.
@@ -64,9 +74,20 @@ explicitly asked later.
       (derived from room status, no new table), and a Reservations calendar.
 - [x] Phase 3 — Manual payments & GST: tax_rules engine and record-payment UI
       (`lib/tax.js`, `payments.routes.js`), plus invoice generation with
-      snapshotted tax (`lib/billing.js`, `invoices.routes.js`) — a stay gets
-      exactly one sequentially-numbered tax invoice (`Invoice.bookingId` is
-      unique), printable from Manage Stay or reprinted from Reports.
+      snapshotted tax (`lib/billing.js`, `invoices.routes.js`). A real,
+      permanent, sequential invoice number is reserved the instant a
+      booking is created (`createReservedInvoice`, called from
+      `bookings.routes.js`'s `POST /bookings`); checkout finalizes that
+      same number's tax figures (`Invoice.isFinalized`) rather than issuing
+      a new one, so the number on the Provisional Bill at booking time is
+      the exact number on the final Tax Invoice. A stay has at most one
+      *active* invoice at a time (a partial unique index on
+      `bookingId WHERE isCancelled = false`, since it's no longer "exactly
+      one, ever"). A finalized invoice that's wrong is cancelled and
+      reissued under a fresh number, never edited/deleted — see rule #4.
+      Printable from Manage Stay, reprinted from Reports, or found/managed
+      from the dedicated **Invoices** module (search/filter by number,
+      guest, room, date, status; cancel & reissue from there too).
 - [ ] Phase 4 — Admin controls: room types/pricing management (Rooms Setup)
       and hotel profile/branding (Settings) are in; manage roles/permissions,
       statuses, tax rules, and staff accounts are still outstanding.
