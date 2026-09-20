@@ -19,5 +19,10 @@ export const bookingsByRoomKey = (roomId) => [BOOKINGS_QUERY_KEY, "room", roomId
 export const BOOKING_STAY_QUERY_KEY = "booking-stay";
 export const bookingStayKey = (bookingId) => [BOOKING_STAY_QUERY_KEY, bookingId];
 
+// Batch paid/balance figures for a set of bookings — the Reservations month
+// view's day-detail popover (DayBookingsModal).
+export const BOOKING_STAY_SUMMARIES_QUERY_KEY = "booking-stay-summaries";
+export const bookingStaySummariesKey = (bookingIds) => [BOOKING_STAY_SUMMARIES_QUERY_KEY, [...bookingIds].sort().join(",")];
+
 export const GUESTS_QUERY_KEY = "guests";
 export const guestsKey = (search) => [GUESTS_QUERY_KEY, search];

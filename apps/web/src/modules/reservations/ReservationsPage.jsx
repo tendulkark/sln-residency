@@ -5,6 +5,9 @@ import { apiFetch } from "@/lib/api.js";
 import { rangeFor, addDays, startOfMonth, toISODate } from "@/lib/dateRange.js";
 import { formatCurrency, formatDateTime } from "@/lib/format.js";
 import BookingFormModal from "@/modules/reservations/BookingFormModal.jsx";
+import DayBookingsModal from "@/modules/reservations/DayBookingsModal.jsx";
+import ManageStayModal from "@/modules/reservations/ManageStayModal.jsx";
+import MonthYearPicker from "@/modules/reservations/MonthYearPicker.jsx";
 import RecordPaymentModal from "@/modules/payments/RecordPaymentModal.jsx";
 import { useAuthStore } from "@/modules/auth/authStore.js";
 import { Badge, Button, CardSkeleton, EmptyState, Input, SegmentedControl, PageHeader } from "@/ui/index.js";
@@ -19,33 +22,21 @@ const VIEW_MODES = [
   { value: "month", label: "Month" },
 ];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MAX_LANES = 4;
+// A day's occupied-room count relative to the hotel's total room count,
+// colored so a front-desk glance across the month spots busy days —
+// thresholds are a display convenience, not tenant-configurable data.
+function occupancyTone(occupied, total) {
+  if (total <= 0) return "bg-muted-strong text-gray-500";
+  const pct = occupied / total;
+  if (pct >= 0.9) return "bg-red-100 text-red-700";
+  if (pct >= 0.6) return "bg-amber-100 text-amber-700";
+  return "bg-emerald-100 text-emerald-700";
+}
 
-function layoutWeek(bookings, weekStart) {
-  const weekEnd = addDays(weekStart, 7);
-  const touching = bookings
-    .filter((b) => new Date(b.checkIn) < weekEnd && new Date(b.checkOut) > weekStart)
-    .sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn));
-
-  const lanes = []; // lanes[i] = end-day-index of the last booking placed in that lane
-  const placed = [];
-  const overflow = [];
-
-  for (const booking of touching) {
-    const startCol = Math.max(0, Math.floor((new Date(booking.checkIn) - weekStart) / 86400000));
-    const endCol = Math.min(7, Math.ceil((new Date(booking.checkOut) - weekStart) / 86400000));
-    let lane = lanes.findIndex((laneEnd) => laneEnd <= startCol);
-    if (lane === -1) lane = lanes.length;
-
-    if (lane >= MAX_LANES) {
-      overflow.push(booking);
-      continue;
-    }
-    lanes[lane] = endCol;
-    placed.push({ booking, startCol, endCol, lane });
-  }
-
-  return { placed, overflowCount: overflow.length };
+// Every booking whose [checkIn, checkOut) span touches this calendar day.
+function bookingsForDay(bookings, day) {
+  const dayEnd = addDays(day, 1);
+  return bookings.filter((b) => new Date(b.checkIn) < dayEnd && new Date(b.checkOut) > day);
 }
 
 export default function ReservationsPage() {
@@ -56,6 +47,8 @@ export default function ReservationsPage() {
   const [search, setSearch] = useState("");
   const [bookingModal, setBookingModal] = useState(false);
   const [paymentModal, setPaymentModal] = useState(null);
+  const [manageBookingId, setManageBookingId] = useState(null);
+  const [dayDetail, setDayDetail] = useState(null); // Date | null — the month grid's "+N more" / day-cell click
 
   const { start, end } = rangeFor(viewMode, anchorDate);
 
@@ -70,6 +63,16 @@ export default function ReservationsPage() {
 
   const { data: bookingStatuses } = useQuery({ queryKey: statusesKey("booking"), queryFn: () => apiFetch("/statuses?domain=booking") });
   const statusByCode = useMemo(() => Object.fromEntries((bookingStatuses ?? []).map((s) => [s.code, s])), [bookingStatuses]);
+
+  // Total room count is the denominator for each day's occupancy pill in
+  // the month grid — only fetched when the viewer can actually see rooms,
+  // and the pill itself just disappears otherwise rather than erroring.
+  const { data: allRooms } = useQuery({
+    queryKey: [ROOMS_QUERY_KEY],
+    queryFn: () => apiFetch("/rooms"),
+    enabled: permissions.has("rooms.view"),
+  });
+  const totalRooms = allRooms?.length ?? 0;
 
   const transitionStatus = useMutation({
     mutationFn: ({ bookingId, statusId, extra }) =>
@@ -117,16 +120,25 @@ export default function ReservationsPage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setAnchorDate(new Date())}>
             Today
           </Button>
-          <Button variant="outline" size="sm" onClick={() => shift(-1)} aria-label="Previous">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => shift(1)} aria-label="Next">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" onClick={() => shift(-1)} aria-label="Previous">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {viewMode === "month" ? (
+              <MonthYearPicker anchorDate={anchorDate} onSelect={setAnchorDate} />
+            ) : (
+              <span className="px-1 text-sm font-semibold text-gray-900">
+                {anchorDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={() => shift(1)} aria-label="Next">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="w-56">
             <Input icon={Search} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search guest / room" />
           </div>
@@ -141,59 +153,86 @@ export default function ReservationsPage() {
       )}
 
       {viewMode === "month" && !isLoading && (
-        // Seven fixed columns don't shrink to a phone width — scroll
-        // horizontally instead of squeezing every cell unreadable.
-        <div className="overflow-x-auto rounded-xl border border-line bg-card shadow-sm">
-          <div className="min-w-[700px]">
-            <div className="grid grid-cols-7 border-b border-line bg-muted">
-              {DAY_LABELS.map((d) => (
-                <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500">
-                  {d}
-                </div>
+        <div className="rounded-xl border border-line bg-card shadow-sm">
+          {bookingStatuses?.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-3 py-2">
+              {bookingStatuses.map((s) => (
+                <span key={s.id} className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+                  {s.label}
+                </span>
               ))}
             </div>
-            {weeks.map((weekStart) => {
-              const { placed, overflowCount } = layoutWeek(bookings ?? [], weekStart);
-              const lanesUsed = Math.max(1, ...placed.map((p) => p.lane + 1), overflowCount > 0 ? 1 : 0);
-
-              return (
-                <div key={weekStart.toISOString()} className="grid grid-cols-7 border-b border-line-soft" style={{ minHeight: `${28 + lanesUsed * 24}px` }}>
+          )}
+          {/* Seven fixed columns don't shrink to a phone width — scroll
+              horizontally instead of squeezing every cell unreadable. */}
+          <div className="overflow-x-auto">
+            <div className="min-w-[840px]">
+              <div className="grid grid-cols-7 border-b border-line bg-muted">
+                {DAY_LABELS.map((d) => (
+                  <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500">
+                    {d}
+                  </div>
+                ))}
+              </div>
+              {weeks.map((weekStart) => (
+                <div key={weekStart.toISOString()} className="grid grid-cols-7 border-b border-line-soft">
                   {Array.from({ length: 7 }).map((_, i) => {
                     const day = addDays(weekStart, i);
                     const inMonth = day.getMonth() === currentMonth;
                     const isToday = toISODate(day) === toISODate(new Date());
+                    const dayBookings = bookingsForDay(bookings ?? [], day).sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn));
+                    // Cancelled/no-show bookings never actually occupied the
+                    // room, so they're excluded from the occupancy count
+                    // (but still listed in the day's booking detail).
+                    const occupiedRooms = new Set(
+                      dayBookings.filter((b) => b.status.code !== "cancelled" && b.status.code !== "no_show").map((b) => b.room.id)
+                    );
+                    const visible = dayBookings.slice(0, 3);
+                    const hiddenCount = dayBookings.length - visible.length;
+
                     return (
-                      <div key={i} className={`border-r border-line-soft p-1 ${inMonth ? "" : "bg-muted text-gray-300"}`}>
-                        <span className={`text-xs ${isToday ? "flex h-5 w-5 items-center justify-center rounded-full bg-brand font-semibold text-white" : "text-gray-500"}`}>
-                          {day.getDate()}
-                        </span>
-                      </div>
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => dayBookings.length > 0 && setDayDetail(day)}
+                        className={`flex min-h-[108px] flex-col gap-1 border-r border-line-soft p-1.5 text-left last:border-r-0 ${
+                          inMonth ? "bg-card hover:bg-muted" : "bg-muted/60"
+                        } ${dayBookings.length === 0 ? "cursor-default" : ""}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                              isToday ? "bg-brand font-semibold text-white" : inMonth ? "text-gray-500" : "text-gray-300"
+                            }`}
+                          >
+                            {day.getDate()}
+                          </span>
+                          {inMonth && totalRooms > 0 && (
+                            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${occupancyTone(occupiedRooms.size, totalRooms)}`}>
+                              {occupiedRooms.size}/{totalRooms}
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-0.5">
+                          {visible.map((b) => (
+                            <span
+                              key={b.id}
+                              className="block truncate rounded px-1 py-0.5 text-[10px] font-semibold text-white"
+                              style={{ backgroundColor: b.status.color }}
+                              title={`${b.guest.name} · Room ${b.room.roomNumber} · ${b.status.label}`}
+                            >
+                              {b.guest.name} · {b.room.roomNumber}
+                            </span>
+                          ))}
+                          {hiddenCount > 0 && <span className="block text-[10px] font-semibold text-brand">+{hiddenCount} more</span>}
+                        </div>
+                      </button>
                     );
                   })}
-
-                  <div className="col-span-7 -mt-6 grid grid-cols-7 gap-y-[2px] px-1">
-                    {placed.map(({ booking, startCol, endCol, lane }) => (
-                      <button
-                        key={booking.id}
-                        onClick={() => permissions.has("payments.record") && setPaymentModal(booking)}
-                        className="truncate rounded px-1.5 py-0.5 text-left text-[10px] font-semibold text-white"
-                        style={{
-                          gridColumnStart: startCol + 1,
-                          gridColumnEnd: endCol + 1,
-                          gridRow: lane + 1,
-                          backgroundColor: booking.status.color,
-                          marginTop: `${lane * 20}px`,
-                        }}
-                        title={`${booking.guest.name} · Room ${booking.room.roomNumber} · ${booking.status.label}`}
-                      >
-                        {booking.guest.name} · {booking.room.roomNumber}
-                      </button>
-                    ))}
-                    {overflowCount > 0 && <span className="col-span-7 px-1 text-[10px] text-gray-500">+{overflowCount} more</span>}
-                  </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -249,6 +288,18 @@ export default function ReservationsPage() {
 
       {bookingModal && <BookingFormModal defaultDate={anchorDate} onClose={() => setBookingModal(false)} />}
       {paymentModal && permissions.has("payments.record") && <RecordPaymentModal booking={paymentModal} onClose={() => setPaymentModal(null)} />}
+      {dayDetail && (
+        <DayBookingsModal
+          date={dayDetail}
+          bookings={bookingsForDay(bookings ?? [], dayDetail).sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn))}
+          onSelectBooking={(booking) => {
+            setDayDetail(null);
+            setManageBookingId(booking.id);
+          }}
+          onClose={() => setDayDetail(null)}
+        />
+      )}
+      {manageBookingId && <ManageStayModal bookingId={manageBookingId} onClose={() => setManageBookingId(null)} />}
     </div>
   );
 }
