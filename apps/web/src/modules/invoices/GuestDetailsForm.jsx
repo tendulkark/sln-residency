@@ -21,13 +21,13 @@ export default function GuestDetailsForm({ value, onChange }) {
           Guest info
         </p>
         <Input label="Guest name" value={value.name ?? ""} onChange={(e) => set("name")(e.target.value)} required />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="Mobile number" value={value.phone ?? ""} onChange={(e) => set("phone")(e.target.value)} />
           <Input label="Alternate mobile number (optional)" value={value.phone2 ?? ""} onChange={(e) => set("phone2")(e.target.value)} />
         </div>
         <Input label="Email (optional)" type="email" value={value.email ?? ""} onChange={(e) => set("email")(e.target.value)} />
         <Textarea label="Address (optional)" value={value.address ?? ""} onChange={(e) => set("address")(e.target.value)} rows={2} />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select
             label="Government ID proof (optional)"
             options={ID_PROOF_OPTIONS}
@@ -44,7 +44,7 @@ export default function GuestDetailsForm({ value, onChange }) {
           <Building2 className="h-3.5 w-3.5" />
           Company info (optional, for GST claim)
         </p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="Company name" value={value.companyName ?? ""} onChange={(e) => set("companyName")(e.target.value)} />
           <Input label="Company GSTIN" value={value.gstin ?? ""} onChange={(e) => set("gstin")(e.target.value)} />
         </div>

@@ -4,7 +4,7 @@ import { cva } from "class-variance-authority";
 // adding a new tone or size is a one-line addition here, never a
 // hunt-and-replace across the app.
 export const button = cva(
-  "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
   {
     variants: {
       variant: {

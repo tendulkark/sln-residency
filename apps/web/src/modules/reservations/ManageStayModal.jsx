@@ -395,11 +395,15 @@ export default function ManageStayModal({ bookingId, onClose }) {
         )}
 
         {isCheckedOut && changedSinceCheckout && invoiceData?.invoice?.isFinalized && !invoiceData.invoice.isCancelled && permissions.has("invoices.cancel") && (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 print:hidden">
-            <span>Corrected after checkout — Invoice {invoiceData.invoice.invoiceNumber} still shows the old figures.</span>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 print:hidden">
+            {/* min-w-0 is load-bearing: a flex item's default min-width is
+                its content's full un-wrapped size, so without it this text
+                pushes the row wider than the modal instead of wrapping. */}
+            <span className="min-w-0 flex-1">Corrected after checkout — Invoice {invoiceData.invoice.invoiceNumber} still shows the old figures.</span>
             <Button
               size="sm"
               variant="outline"
+              className="shrink-0"
               onClick={() => setInvoiceModal({ autoGenerate: false, closeStayOnDone: false, autoReissueReason: "Stay details corrected after checkout" })}
             >
               <RefreshCw className="h-3.5 w-3.5" />
