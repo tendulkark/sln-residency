@@ -1,4 +1,4 @@
-import { Users } from "lucide-react";
+import { AlertTriangle, Users } from "lucide-react";
 import { formatCurrency, formatTime } from "@/lib/format.js";
 import { SYNTHETIC_BUCKET_COLOR } from "@/modules/dashboard/constants.js";
 
@@ -47,6 +47,12 @@ export default function RoomBoardCard({ room, onClick }) {
       )}
 
       <div className="mt-3 flex flex-wrap gap-1.5">
+        {room.bucket === "overdue" && (
+          <span className="flex items-center gap-1 rounded-full bg-red-700 px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+            <AlertTriangle className="h-3 w-3" />
+            Overdue
+          </span>
+        )}
         {room.inHouseCount > 0 && (
           <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" style={{ backgroundColor: `${color}22`, color }}>
             In-house {room.inHouseCount}

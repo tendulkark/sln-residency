@@ -24,10 +24,12 @@ export const dashboardRoomBoardKey = (dateISO, time, floorFilter, search) => [
   search,
 ];
 
-// "reserved" and "closed" are computed room-board buckets, not rows in the
-// tenant's Status table, so they need a color of their own — every other
-// bucket reuses the room's real Status color, which stays fully
+// "reserved", "closed" and "overdue" are computed room-board buckets, not
+// rows in the tenant's Status table, so they need a color of their own —
+// every other bucket reuses the room's real Status color, which stays fully
 // tenant-editable. Shared by RoomBoardCard (per-room tile) and
 // DashboardPage (the bucket-count summary strip) so both color a bucket
-// identically.
-export const SYNTHETIC_BUCKET_COLOR = { reserved: "#9333ea", closed: "#6b7280" };
+// identically. "overdue" gets a darker red than the seeded "occupied"
+// color so a late checkout reads as more urgent than a plain in-progress
+// stay, not just a same-color duplicate.
+export const SYNTHETIC_BUCKET_COLOR = { reserved: "#9333ea", closed: "#6b7280", overdue: "#b91c1c" };
