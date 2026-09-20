@@ -33,14 +33,23 @@ export default function Dialog({ title, actions, onClose, children, wide = false
           >
             <DialogPanel data-print-area className={`w-full overflow-hidden ${wide ? "max-w-2xl" : "max-w-md"} rounded-xl bg-card shadow-lg`}>
               <div className="divine-rule print:hidden" />
-              <div className="flex items-center justify-between border-b border-line px-5 py-4 print:hidden">
-                <DialogTitle className="font-display text-xl font-bold text-gray-900">{title}</DialogTitle>
-                <div className="flex items-center gap-2">
-                  {actions}
-                  <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Close">
+              {/* Title + close stay on their own row, always reachable, no
+                  matter how many `actions` a caller passes — a screen with
+                  several admin-only buttons (e.g. InvoiceModal's Edit Guest
+                  Details / Cancel & Reissue / Print) used to share one row
+                  with the title and close button, which on a narrow screen
+                  had nowhere to go but squeeze each button's label into
+                  wrapped, multi-line towers, shoving Print and the close X
+                  off the edge of the panel entirely. Actions now get their
+                  own wrapping row underneath instead. */}
+              <div className="border-b border-line px-5 py-4 print:hidden">
+                <div className="flex items-center justify-between gap-2">
+                  <DialogTitle className="font-display text-xl font-bold text-gray-900">{title}</DialogTitle>
+                  <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600" aria-label="Close">
                     <X className="h-4.5 w-4.5" />
                   </button>
                 </div>
+                {actions && <div className="mt-3 flex flex-wrap items-center gap-2">{actions}</div>}
               </div>
               <div className="max-h-[75vh] overflow-y-auto px-5 py-4 print:max-h-none print:overflow-visible">{children}</div>
             </DialogPanel>
