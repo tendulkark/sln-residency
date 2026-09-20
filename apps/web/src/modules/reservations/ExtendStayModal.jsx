@@ -61,14 +61,14 @@ export default function ExtendStayModal({ booking, onClose, onExtended }) {
   return (
     <Modal title={`Extend stay · Room ${booking.room?.roomNumber ?? ""}`} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <p className="text-xs text-gray-500">Current check-out: {formatDateTime(booking.checkOut)}</p>
+        <p className="text-xs text-ink-muted">Current check-out: {formatDateTime(booking.checkOut)}</p>
 
         <div className="grid grid-cols-2 gap-4">
           <Input label="New check-out date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           <Input label="New check-out time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
         </div>
 
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-muted">
           {extraNights > 0
             ? `Billed in rolling 24-hour blocks from check-in — this adds ${extraNights} night(s) at the room's current rate.`
             : "Still within the current 24-hour block — no extra night billed. Add an optional charge below for a late checkout."}
@@ -84,12 +84,12 @@ export default function ExtendStayModal({ booking, onClose, onExtended }) {
         />
 
         <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-          <span className="font-medium text-gray-700">New room total</span>
-          <span className="font-semibold text-gray-900">{formatCurrency(newRoomTotal)}</span>
+          <span className="font-medium text-ink-soft">New room total</span>
+          <span className="font-semibold text-ink">{formatCurrency(newRoomTotal)}</span>
         </div>
 
-        {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-        {!isValid && <p className="text-xs text-red-600">New check-out must be after the current check-out.</p>}
+        {error && <div className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
+        {!isValid && <p className="text-xs text-danger">New check-out must be after the current check-out.</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>

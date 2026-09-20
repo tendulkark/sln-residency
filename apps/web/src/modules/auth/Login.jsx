@@ -41,14 +41,14 @@ export default function Login() {
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-brand-tint text-brand ring-2 ring-gold-tint">
               <Hotel className="h-6 w-6" />
             </div>
-            <h1 className="font-display text-2xl font-bold text-gray-900">Staff Sign In</h1>
-            <p className="text-sm text-gray-500">Sign in to your hotel's staff console</p>
+            <h1 className="font-display text-2xl font-bold text-ink">Staff Sign In</h1>
+            <p className="text-sm text-ink-muted">Sign in to your hotel's staff console</p>
           </div>
 
-          {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+          {error && <div role="alert" className="rounded-md border border-danger/30 bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
-          <Input id="email" label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input id="password" label="Password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input id="email" label="Email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input id="password" label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
 
           <Button type="submit" disabled={submitting} className="w-full">
             {submitting ? "Signing in…" : "Sign in"}

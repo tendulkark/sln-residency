@@ -1,5 +1,5 @@
 export default function Skeleton({ className = "" }) {
-  return <div className={`rounded-md bg-gray-200 ${className}`} style={{ animation: "skeleton-pulse 1.4s ease-in-out infinite" }} />;
+  return <div className={`rounded-md bg-muted-strong ${className}`} style={{ animation: "skeleton-pulse 1.4s ease-in-out infinite" }} />;
 }
 
 export function CardSkeleton({ count = 4, className = "" }) {

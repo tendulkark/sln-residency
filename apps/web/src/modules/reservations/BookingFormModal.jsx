@@ -211,13 +211,13 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
   return (
     <Modal title="New booking" onClose={onClose} wide>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error && <div className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
         <div className="grid grid-cols-2 gap-4">
           <Input label="Check-in" type="datetime-local" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required />
           <Input label="Check-out" type="datetime-local" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} required />
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-muted">
           Billed in rolling 24-hour blocks from check-in — {nights} night{nights === 1 ? "" : "s"} for this window. Only rooms free for this exact
           period are listed below.
         </p>
@@ -236,7 +236,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
 
         {isGroupBooking ? (
           <div className="space-y-1">
-            <span className="block text-sm font-medium text-gray-700">Rooms</span>
+            <span className="block text-sm font-medium text-ink-soft">Rooms</span>
             <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-line-strong bg-muted p-2">
               {rooms?.map((room) => (
                 <label key={room.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted">
@@ -244,10 +244,10 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
                   {room.roomNumber} · {room.roomType.name} · {formatCurrency(room.pricing.total)}/night
                 </label>
               ))}
-              {roomsQueryEnabled && rooms?.length === 0 && <p className="px-2 py-1 text-xs text-gray-500">No rooms free for this window.</p>}
+              {roomsQueryEnabled && rooms?.length === 0 && <p className="px-2 py-1 text-xs text-ink-muted">No rooms free for this window.</p>}
             </div>
             {groupRoomIds.length > 0 && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-ink-muted">
                 {groupRoomIds.length} room(s) selected · {formatCurrency(groupRoomsTotal)}/night total
               </p>
             )}
@@ -400,7 +400,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
               tinted wrapper — that's what made this section read as one
               undifferentiated block. */}
           <div className="space-y-3 rounded-md border border-line bg-card p-3 shadow-sm">
-            <p className="text-sm font-semibold text-gray-900">Amount collected now</p>
+            <p className="text-sm font-semibold text-ink">Amount collected now</p>
             {paymentRows.map((row, i) => (
               <div key={i} className={`space-y-2 ${paymentRows.length > 1 ? "rounded-md border border-line-soft p-2" : ""}`}>
                 <div className="flex items-end gap-2">
@@ -454,7 +454,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
           </div>
 
           <div className="space-y-3 rounded-md border border-line bg-card p-3 shadow-sm">
-            <p className="text-sm font-semibold text-gray-900">Other charges (extra bed, fines, etc.)</p>
+            <p className="text-sm font-semibold text-ink">Other charges (extra bed, fines, etc.)</p>
             {chargeRows.map((row, i) => (
               <div key={i} className="space-y-2 rounded-md border border-line-soft p-2">
                 <div className="flex items-end gap-2">
@@ -507,13 +507,14 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
             />
           </div>
 
-          <div className="grid grid-cols-6 gap-2 rounded-md border-2 border-brand bg-card p-3 text-center shadow-sm">
+          {/* 3-up on a phone (six abreast collides at 375px), six abreast from sm. */}
+          <div className="grid grid-cols-3 gap-x-2 gap-y-3 rounded-md border-2 border-brand bg-card p-3 text-center shadow-sm sm:grid-cols-6">
             <SummaryStat label="Nights" value={nights} />
             <SummaryStat label="Rate" value={formatCurrency(nightlyRate)} />
             <SummaryStat label="Charges" value={formatCurrency(chargesTotal)} />
             <SummaryStat label="Discount" value={`-${formatCurrency(discountAmount)}`} />
             <SummaryStat label="Total" value={formatCurrency(grandTotal)} />
-            <SummaryStat label="Balance" value={formatCurrency(balance)} valueClassName={balance > 0 ? "text-red-600" : "text-emerald-600"} />
+            <SummaryStat label="Balance" value={formatCurrency(balance)} valueClassName={balance > 0 ? "text-danger" : "text-success"} />
           </div>
         </div>
 
@@ -530,11 +531,11 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
   );
 }
 
-function SummaryStat({ label, value, valueClassName = "text-gray-900" }) {
+function SummaryStat({ label, value, valueClassName = "text-ink" }) {
   return (
     <div>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-sm font-semibold ${valueClassName}`}>{value}</p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">{label}</p>
+      <p className={`text-sm font-semibold tabular-nums ${valueClassName}`}>{value}</p>
     </div>
   );
 }

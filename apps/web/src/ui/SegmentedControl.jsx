@@ -9,7 +9,7 @@ export default function SegmentedControl({ options, value, onChange }) {
           type="button"
           onClick={() => onChange(option.value)}
           className={`rounded px-3 py-1.5 text-sm font-medium capitalize transition ${
-            value === option.value ? "bg-brand text-white" : "text-gray-600 hover:bg-muted-strong"
+            value === option.value ? "bg-brand text-white" : "text-ink-soft hover:bg-muted-strong"
           }`}
         >
           {option.label ?? option.value}

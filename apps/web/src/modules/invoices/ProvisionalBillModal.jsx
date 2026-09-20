@@ -41,7 +41,7 @@ export default function ProvisionalBillModal({ bookingId, stay, onClose }) {
         )
       }
     >
-      {isLoading && <p className="text-sm text-gray-500">Preparing bill…</p>}
+      {isLoading && <p className="text-sm text-ink-muted">Preparing bill…</p>}
       {tenant && (
         <InvoiceDocument
           provisional

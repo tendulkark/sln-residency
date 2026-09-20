@@ -45,7 +45,7 @@ export default function EditBookingModal({ booking, onClose, onSaved }) {
   return (
     <Modal title={`Edit booking · ${booking.guest.name}`} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error && <div className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
         <div className="grid grid-cols-2 gap-4">
           <Input label="Check-in" type="datetime-local" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required />

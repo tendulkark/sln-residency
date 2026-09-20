@@ -18,7 +18,7 @@ export default function Dialog({ title, actions, onClose, children, wide = false
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/40" />
+          <div className="fixed inset-0 bg-scrim/50" />
         </TransitionChild>
 
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -44,8 +44,8 @@ export default function Dialog({ title, actions, onClose, children, wide = false
                   own wrapping row underneath instead. */}
               <div className="border-b border-line px-5 py-4 print:hidden">
                 <div className="flex items-center justify-between gap-2">
-                  <DialogTitle className="font-display text-xl font-bold text-gray-900">{title}</DialogTitle>
-                  <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600" aria-label="Close">
+                  <DialogTitle className="font-display text-xl font-bold text-ink">{title}</DialogTitle>
+                  <button onClick={onClose} className="shrink-0 text-ink-faint hover:text-ink-soft" aria-label="Close">
                     <X className="h-4.5 w-4.5" />
                   </button>
                 </div>

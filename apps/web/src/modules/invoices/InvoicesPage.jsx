@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Search, Receipt, Eye } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { formatCurrency, formatDateTime } from "@/lib/format.js";
-import { Button, Input, Select, Badge, PageHeader, EmptyState } from "@/ui/index.js";
+import { Button, Input, Select, Badge, PageHeader, EmptyState, DataTable, Th, Td, Tr } from "@/ui/index.js";
 import InvoiceModal from "@/modules/invoices/InvoiceModal.jsx";
 import { INVOICES_LIST_QUERY_KEY } from "@/modules/invoices/constants.js";
 
@@ -51,11 +51,16 @@ export default function InvoicesPage() {
   const totalPages = data ? Math.max(1, Math.ceil(data.total / pageSize)) : 1;
 
   return (
-    <div>
+    <div className="flex h-full min-h-0 flex-col">
       <PageHeader icon={Receipt} title="Invoices" subtitle="Every tax invoice issued — search, reprint, or cancel & reissue a wrong one" />
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <div className="w-64">
+      {/* A 2-column grid on phones (search full-width, then From | To, then
+          Status) instead of four stacked rows — every row the filters give
+          up here is a row of invoices the height-filling table below gets
+          back, which matters on a 375px screen. From sm up it's the same
+          single wrapping row as before. */}
+      <div className="mb-4 grid shrink-0 grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
+        <div className="col-span-2 sm:w-64">
           <Input
             label="Search"
             icon={Search}
@@ -64,18 +69,18 @@ export default function InvoicesPage() {
             onChange={(e) => resetToFirstPage(setSearch)(e.target.value)}
           />
         </div>
-        <div className="w-48">
+        <div className="col-span-2 order-last sm:order-none sm:w-48">
           <Select label="Status" options={STATUS_OPTIONS} value={status} onChange={resetToFirstPage(setStatus)} />
         </div>
-        <div className="w-40">
+        <div className="min-w-0 sm:w-40">
           <Input label="From" type="date" value={from} onChange={(e) => resetToFirstPage(setFrom)(e.target.value)} />
         </div>
-        <div className="w-40">
+        <div className="min-w-0 sm:w-40">
           <Input label="To" type="date" value={to} onChange={(e) => resetToFirstPage(setTo)(e.target.value)} />
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
       {data && data.rows.length === 0 && (
         <EmptyState icon={Receipt} title="No invoices found" subtitle="Try widening the date range or clearing filters." />
@@ -83,12 +88,11 @@ export default function InvoicesPage() {
 
       {data && data.rows.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-line-strong bg-card shadow-sm">
-            <table className="w-full border-collapse text-left text-sm">
+          <DataTable fill>
               <thead>
-                <tr className="border-b border-line bg-muted text-xs uppercase tracking-wide text-gray-500">
+                <tr>
                   <Th />
-                  <Th>Invoice No</Th>
+                  <Th pinned>Invoice No</Th>
                   <Th>Date</Th>
                   <Th>Guest</Th>
                   <Th>Room</Th>
@@ -99,20 +103,20 @@ export default function InvoicesPage() {
               </thead>
               <tbody>
                 {data.rows.map((r) => (
-                  <tr key={r.id} className="border-b border-line-soft odd:bg-muted/40 hover:bg-brand-tint">
+                  <Tr key={r.id}>
                     <Td>
                       <Button size="sm" variant="outline" onClick={() => setOpenInvoiceId(r.id)}>
                         <Eye className="h-3 w-3" />
                         View
                       </Button>
                     </Td>
-                    <Td className={`whitespace-nowrap font-medium ${r.isCancelled ? "text-gray-400 line-through" : "text-gray-900"}`}>
+                    <Td pinned className={`whitespace-nowrap font-medium ${r.isCancelled ? "text-ink-faint line-through" : "text-ink"}`}>
                       {r.invoiceNumber}
                     </Td>
                     <Td className="whitespace-nowrap">{formatDateTime(r.generatedAt)}</Td>
                     <Td className="whitespace-nowrap">{r.guestName}</Td>
                     <Td>{r.room}</Td>
-                    <Td align="right" className={r.isCancelled ? "text-gray-400 line-through" : "font-semibold text-gray-900"}>
+                    <Td align="right" className={r.isCancelled ? "text-ink-faint line-through" : "font-semibold text-ink"}>
                       {formatCurrency(r.total)}
                     </Td>
                     <Td>
@@ -124,7 +128,7 @@ export default function InvoicesPage() {
                         <Badge tone="warning">Reserved</Badge>
                       )}
                     </Td>
-                    <Td className="max-w-xs text-xs text-gray-500">
+                    <Td className="max-w-xs text-xs text-ink-muted">
                       {r.isCancelled && (
                         <>
                           {r.cancellationReason}
@@ -133,13 +137,12 @@ export default function InvoicesPage() {
                       )}
                       {!r.isCancelled && r.supersedesInvoiceNumber && <>Replaces {r.supersedesInvoiceNumber}</>}
                     </Td>
-                  </tr>
+                  </Tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+          </DataTable>
 
-          <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+          <div className="mt-3 flex shrink-0 items-center justify-between text-sm text-ink-muted">
             <p>
               {data.total} invoice{data.total === 1 ? "" : "s"}
             </p>
@@ -161,12 +164,4 @@ export default function InvoicesPage() {
       {openInvoiceId && <InvoiceModal invoiceId={openInvoiceId} onClose={() => setOpenInvoiceId(null)} />}
     </div>
   );
-}
-
-function Th({ children, align = "left" }) {
-  return <th className={`px-3 py-2 font-semibold ${align === "right" ? "text-right" : "text-left"}`}>{children}</th>;
-}
-
-function Td({ children, align = "left", className = "" }) {
-  return <td className={`px-3 py-2 ${align === "right" ? "text-right" : "text-left"} ${className}`}>{children}</td>;
 }

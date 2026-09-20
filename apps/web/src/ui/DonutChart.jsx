@@ -36,14 +36,14 @@ export default function DonutChart({ data, size = 140, thickness = 22 }) {
         ))}
       </svg>
       <div className="min-w-0 flex-1 space-y-1.5">
-        {data.length === 0 && <p className="text-sm text-gray-400">No data for this range.</p>}
+        {data.length === 0 && <p className="text-sm text-ink-muted">No data for this range.</p>}
         {data.map((d) => (
           <div key={d.label} className="flex items-center justify-between gap-3 text-sm">
-            <span className="flex min-w-0 items-center gap-1.5 truncate text-gray-700">
+            <span className="flex min-w-0 items-center gap-1.5 truncate text-ink-soft">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
               <span className="truncate">{d.label}</span>
             </span>
-            <span className="shrink-0 text-gray-500">
+            <span className="shrink-0 text-ink-muted">
               {d.value} · {total ? Math.round((d.value / total) * 100) : 0}%
             </span>
           </div>

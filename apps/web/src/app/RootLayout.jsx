@@ -27,7 +27,15 @@ export default function RootLayout() {
   }, [tenant]);
 
   if (!bootstrapped) {
-    return <div className="flex h-screen items-center justify-center text-gray-500">Loading…</div>;
+    // Same cream + lattice + brand-rule treatment as the sign-in screen, so
+    // a cold start / reload doesn't flash an unstyled grey "Loading…" before
+    // the themed shell appears.
+    return (
+      <div className="divine-pattern flex h-screen flex-col items-center justify-center gap-3 text-ink-muted">
+        <div className="divine-rule w-14 rounded-full" />
+        <p className="text-sm">Loading…</p>
+      </div>
+    );
   }
 
   return <Outlet />;

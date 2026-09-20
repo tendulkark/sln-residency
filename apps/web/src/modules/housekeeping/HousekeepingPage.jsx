@@ -33,7 +33,7 @@ export default function HousekeepingPage() {
     <div>
       <PageHeader title="Housekeeping Tasks" subtitle="Rooms that need cleaning or maintenance before they can be sold again." />
 
-      {error && <p className="text-sm text-red-600">{error.message}</p>}
+      {error && <p className="text-sm text-danger">{error.message}</p>}
 
       {isLoading && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -49,8 +49,8 @@ export default function HousekeepingPage() {
             <Card key={room.id}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-base font-semibold text-gray-900">Room {room.roomNumber}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-base font-semibold text-ink">Room {room.roomNumber}</p>
+                  <p className="text-xs text-ink-muted">
                     {room.roomType.name}
                     {room.floor ? ` · Floor ${room.floor}` : ""}
                   </p>

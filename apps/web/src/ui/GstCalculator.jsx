@@ -54,12 +54,12 @@ export default function GstCalculator({ amount, ratePercent, mode, onAmountChang
       </div>
 
       <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-        <span className="text-gray-600">Amount of GST</span>
-        <span className="font-semibold text-gray-900">₹{result.taxAmount.toFixed(2)}</span>
+        <span className="text-ink-soft">Amount of GST</span>
+        <span className="font-semibold text-ink">₹{result.taxAmount.toFixed(2)}</span>
       </div>
       <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-        <span className="text-gray-600">{result.resultLabel}</span>
-        <span className="font-semibold text-gray-900">₹{result.resultAmount.toFixed(2)}</span>
+        <span className="text-ink-soft">{result.resultLabel}</span>
+        <span className="font-semibold text-ink">₹{result.resultAmount.toFixed(2)}</span>
       </div>
     </div>
   );
@@ -71,11 +71,11 @@ function GstModeOption({ label, checked, onSelect }) {
       type="button"
       onClick={onSelect}
       className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm ${
-        checked ? "border-brand bg-brand-tint text-brand" : "border-line-strong text-gray-600 hover:bg-muted"
+        checked ? "border-brand bg-brand-tint text-brand" : "border-line-strong text-ink-soft hover:bg-muted"
       }`}
     >
       <span
-        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${checked ? "border-brand" : "border-gray-300"}`}
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${checked ? "border-brand" : "border-line-strong"}`}
       >
         {checked && <span className="h-2 w-2 rounded-full bg-brand" />}
       </span>

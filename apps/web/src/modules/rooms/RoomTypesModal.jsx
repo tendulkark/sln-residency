@@ -79,20 +79,20 @@ export default function RoomTypesModal({ onClose }) {
 
   return (
     <Modal title="Manage room types" onClose={onClose} wide>
-      {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <div className="mb-3 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
       <div className="space-y-2">
         {roomTypes?.map((rt) => (
           <div key={rt.id} className="flex items-center justify-between rounded-md border border-line px-3 py-2">
             <div>
-              <p className="text-sm font-medium text-gray-900">{rt.name}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm font-medium text-ink">{rt.name}</p>
+              <p className="text-xs text-ink-muted">
                 Base {formatCurrency(rt.pricing.basePrice)} · CGST {formatCurrency(rt.pricing.cgst)} · SGST {formatCurrency(rt.pricing.sgst)} · GST{" "}
                 {rt.pricing.ratePercent}% · capacity {rt.capacity} · {rt._count?.rooms ?? 0} room(s)
               </p>
-              <p className="text-sm font-semibold text-emerald-700">{formatCurrency(rt.pricing.total)}/night</p>
+              <p className="text-sm font-semibold text-success">{formatCurrency(rt.pricing.total)}/night</p>
             </div>
             <div className="flex gap-1">
               <Button variant="ghost" size="sm" onClick={() => startEdit(rt)}>
@@ -107,7 +107,7 @@ export default function RoomTypesModal({ onClose }) {
       </div>
 
       <div className="mt-5 border-t border-line pt-4">
-        <p className="mb-2 text-sm font-semibold text-gray-900">{editingId ? "Edit room type" : "Add room type"}</p>
+        <p className="mb-2 text-sm font-semibold text-ink">{editingId ? "Edit room type" : "Add room type"}</p>
         <div className="grid grid-cols-2 gap-3">
           <Input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <Input type="number" placeholder="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
@@ -130,7 +130,7 @@ export default function RoomTypesModal({ onClose }) {
             onRateChange={(v) => setGst({ ...gst, ratePercent: v })}
             onModeChange={(v) => setGst({ ...gst, mode: v })}
           />
-          <p className="mt-2 text-xs text-gray-500">Base price saved (excl. tax): {formatCurrency(basePrice)}</p>
+          <p className="mt-2 text-xs text-ink-muted">Base price saved (excl. tax): {formatCurrency(basePrice)}</p>
         </div>
 
         <div className="mt-3 flex justify-end gap-2">

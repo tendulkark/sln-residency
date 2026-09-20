@@ -223,7 +223,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
   if (isLoading || !stay) {
     return (
       <Modal title="Manage Stay" onClose={onClose}>
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-ink-muted">Loading…</p>
       </Modal>
     );
   }
@@ -260,20 +260,20 @@ export default function ManageStayModal({ bookingId, onClose }) {
     <>
       <Modal title={`Manage Stay - Room ${roomLabel}`} onClose={onClose} wide>
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <p className="text-sm text-gray-500">
-            Guest: <span className="font-medium text-gray-900">{primary.guest.name}</span>{" "}
+          <p className="text-sm text-ink-muted">
+            Guest: <span className="font-medium text-ink">{primary.guest.name}</span>{" "}
             {primary.guest.phone && `• Ph: ${primary.guest.phone}`}
           </p>
           <Badge color={primary.status.color}>{primary.status.label}</Badge>
         </div>
 
-        {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error && <div className="mb-3 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
         <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">Billing & Charges</p>
 
         <div className="rounded-md border border-line-strong bg-muted p-3">
           <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
               <Receipt className="h-4 w-4 text-brand" />
               Other Charges (Food, Damages, etc.)
             </p>
@@ -286,17 +286,17 @@ export default function ManageStayModal({ bookingId, onClose }) {
           </div>
 
           {stay.charges.filter((c) => c.type === "charge").length === 0 && addFormType !== "charge" && (
-            <p className="mt-2 text-xs text-gray-500">No charges yet — tap Add Charge to record food, damages, laundry, etc. Each entry is saved instantly.</p>
+            <p className="mt-2 text-xs text-ink-muted">No charges yet — tap Add Charge to record food, damages, laundry, etc. Each entry is saved instantly.</p>
           )}
           {stay.charges
             .filter((c) => c.type === "charge")
             .map((c) => (
               <div key={c.id} className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-gray-700">{c.description}</span>
+                <span className="text-ink-soft">{c.description}</span>
                 <span className="flex items-center gap-2">
                   {formatCurrency(c.amount)}
                   {financialActionsAllowed && permissions.has("bookings.edit") && (
-                    <button onClick={() => deleteCharge.mutate(c.id)} className="text-gray-300 hover:text-red-600 print:hidden" aria-label="Remove charge">
+                    <button onClick={() => deleteCharge.mutate(c.id)} className="text-ink-faint hover:text-danger print:hidden" aria-label="Remove charge">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -310,7 +310,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
 
         <div className="mt-3 rounded-md border border-line-strong bg-gold-tint p-3">
           <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
               <Tag className="h-4 w-4 text-gold-dark" />
               Discount / Concession (optional)
             </p>
@@ -325,11 +325,11 @@ export default function ManageStayModal({ bookingId, onClose }) {
             .filter((c) => c.type === "discount")
             .map((c) => (
               <div key={c.id} className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-gray-700">{c.description}</span>
+                <span className="text-ink-soft">{c.description}</span>
                 <span className="flex items-center gap-2">
                   -{formatCurrency(c.amount)}
                   {financialActionsAllowed && permissions.has("bookings.edit") && (
-                    <button onClick={() => deleteCharge.mutate(c.id)} className="text-gray-300 hover:text-red-600 print:hidden" aria-label="Remove discount">
+                    <button onClick={() => deleteCharge.mutate(c.id)} className="text-ink-faint hover:text-danger print:hidden" aria-label="Remove discount">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -376,7 +376,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
             label="Final balance due"
             value={formatCurrency(stay.summary.balanceDue)}
             bold
-            valueClassName={stay.summary.balanceDue > 0 ? "text-red-600" : "text-emerald-600"}
+            valueClassName={stay.summary.balanceDue > 0 ? "text-danger" : "text-success"}
           />
         </div>
 
@@ -385,17 +385,17 @@ export default function ManageStayModal({ bookingId, onClose }) {
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">Payment History</p>
             {stay.payments.map((p) => (
               <div key={p.id} className="mt-1 flex items-center justify-between text-sm first:mt-0">
-                <span className="text-gray-700">
+                <span className="text-ink-soft">
                   {p.method.name} · {formatDateTime(p.recordedAt)}
                 </span>
-                <span className="font-medium text-gray-900">{formatCurrency(p.amount)}</span>
+                <span className="font-medium text-ink">{formatCurrency(p.amount)}</span>
               </div>
             ))}
           </div>
         )}
 
         {isCheckedOut && changedSinceCheckout && invoiceData?.invoice?.isFinalized && !invoiceData.invoice.isCancelled && permissions.has("invoices.cancel") && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 print:hidden">
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-warning/40 bg-warning-tint px-3 py-2 text-sm text-warning print:hidden">
             {/* min-w-0 is load-bearing: a flex item's default min-width is
                 its content's full un-wrapped size, so without it this text
                 pushes the row wider than the modal instead of wrapping. */}
@@ -460,7 +460,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
                 <Split className="h-3.5 w-3.5" />
                 Split payment
               </button>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-ink-muted">
                 Entered: {formatCurrency(settleTotal)} / Due: {formatCurrency(stay.summary.balanceDue)}
               </p>
             </div>
@@ -543,8 +543,8 @@ export default function ManageStayModal({ bookingId, onClose }) {
 function Row({ label, value, bold, muted, valueClassName = "" }) {
   return (
     <div className="flex items-center justify-between">
-      <span className={`${muted ? "text-xs text-gray-400" : "text-gray-600"} ${bold ? "font-semibold text-gray-900" : ""}`}>{label}</span>
-      <span className={`${bold ? "font-semibold" : ""} ${muted ? "text-xs text-gray-400" : "text-gray-900"} ${valueClassName}`}>{value}</span>
+      <span className={`${muted ? "text-xs text-ink-muted" : "text-ink-soft"} ${bold ? "font-semibold text-ink" : ""}`}>{label}</span>
+      <span className={`${bold ? "font-semibold" : ""} ${muted ? "text-xs text-ink-muted" : "text-ink"} ${valueClassName}`}>{value}</span>
     </div>
   );
 }

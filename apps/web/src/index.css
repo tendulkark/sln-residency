@@ -22,6 +22,30 @@
  * more saturated cream (closer to aged temple stone) and card is pure
  * white, so every panel visibly sits "on top of" the page without
  * touching a single component — see also --shadow-card below.
+ *
+ * --color-ink* is the text scale. Every piece of text in the app used to
+ * reach for Tailwind's text-gray-900/700/500/400 — a *cool* neutral that
+ * reads faintly blue against this warm cream/maroon/gold palette and never
+ * re-themed with the brand. The four ink steps below are warm neutrals
+ * (stone-based) each mixed with a touch of the brand color, so body text
+ * sits naturally on the surface and shifts hue with the tenant's brand
+ * like everything else. Steps, with their contrast against the cream
+ * page surface (the hardest background text ever sits on here):
+ *   ink        headings, primary values          ~15:1
+ *   ink-soft   body copy, labels, table cells    ~9:1
+ *   ink-muted  secondary/help text, captions     ~5:1  (AA for small text)
+ *   ink-faint  placeholders, idle icons, out-of- ~2.7:1 (decorative only —
+ *              month calendar days              never for content)
+ *
+ * --color-success/warning/danger are the app's only three semantic
+ * states. They replace the red/rose/emerald/green/amber Tailwind shades
+ * that different screens had picked independently for the same meaning,
+ * so "an error", "a healthy balance" and "needs a look" now each have
+ * exactly one color everywhere. Each has a -tint (pale fill for banners
+ * and pills) and danger/success a -dark for hover on a solid button.
+ * Status.color rows from the database are deliberately NOT routed
+ * through these — those stay tenant-editable (AI_RULES.md #1); the
+ * tokens here are for UI states that aren't tenant data.
  */
 @theme {
   --color-brand: #7a1f3d;
@@ -40,6 +64,37 @@
   --color-line-strong: color-mix(in srgb, var(--color-brand) 26%, #c7b489);
   --color-muted: color-mix(in srgb, var(--color-brand) 5%, #f4ecd9);
   --color-muted-strong: color-mix(in srgb, var(--color-brand) 11%, #ecdfbe);
+  /*
+   * Solid zebra-stripe fill for data tables — the same shade `bg-muted/40`
+   * used to produce, but opaque, so a column pinned with position:sticky
+   * (ui/DataTable.jsx) can paint it and fully cover the cells scrolling
+   * underneath without a visible seam against the rest of the row.
+   */
+  --color-zebra: color-mix(in srgb, var(--color-muted) 40%, var(--color-card));
+
+  --color-ink: color-mix(in srgb, var(--color-brand) 12%, #1f1a18);
+  --color-ink-soft: color-mix(in srgb, var(--color-brand) 10%, #3f3733);
+  --color-ink-muted: color-mix(in srgb, var(--color-brand) 8%, #6a615b);
+  --color-ink-faint: color-mix(in srgb, var(--color-brand) 6%, #9a908a);
+
+  --color-success: #1a7f4b;
+  --color-success-dark: color-mix(in srgb, var(--color-success) 82%, black);
+  --color-success-tint: color-mix(in srgb, var(--color-success) 11%, white);
+
+  --color-warning: #9a5b00;
+  --color-warning-tint: #fdf2da;
+
+  --color-danger: #b42335;
+  --color-danger-dark: color-mix(in srgb, var(--color-danger) 82%, black);
+  --color-danger-tint: color-mix(in srgb, var(--color-danger) 9%, white);
+
+  /*
+   * Modal/drawer backdrop — a warm, brand-shaded dark rather than flat
+   * black, so the cream page behind a dialog dims like a room with the
+   * lights turned down instead of going grey. Always used with an alpha
+   * (bg-scrim/50).
+   */
+  --color-scrim: color-mix(in srgb, var(--color-brand) 35%, #1a0d10);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Cormorant Garamond", "Georgia", serif;
@@ -53,16 +108,37 @@
    */
   --shadow-sm: 0 1px 3px 0 color-mix(in srgb, var(--color-brand) 14%, transparent), 0 1px 2px -1px color-mix(in srgb, var(--color-brand) 10%, transparent);
   --shadow-md: 0 4px 10px -2px color-mix(in srgb, var(--color-brand) 18%, transparent), 0 2px 6px -2px color-mix(in srgb, var(--color-brand) 12%, transparent);
+  --shadow-lg: 0 12px 28px -8px color-mix(in srgb, var(--color-brand) 30%, transparent), 0 4px 12px -4px color-mix(in srgb, var(--color-brand) 16%, transparent);
+}
+
+html {
+  /*
+   * Tells the browser the app is a light UI so native controls that the
+   * <input type="date"/"time"> primitives can't fully restyle (the
+   * calendar/clock popovers, the picker icon) render on a light chrome
+   * that matches the page, never in the OS's dark theme.
+   */
+  color-scheme: light;
+  /* Warm, unobtrusive scrollbars on the surfaces that scroll (main pane,
+     dialog bodies, dropdown lists) — the default grey track is the one
+     cool-toned element left on an otherwise warm page. */
+  scrollbar-color: var(--color-line-strong) transparent;
+  scrollbar-width: thin;
 }
 
 body {
   background-color: var(--color-surface);
+  color: var(--color-ink);
   font-family: var(--font-sans);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  @apply text-gray-900;
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--color-brand) 22%, white);
+  color: var(--color-ink);
 }
 
 /*

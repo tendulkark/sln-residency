@@ -18,13 +18,13 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
   const settlementLabel = summary.balanceDue <= 0 && lastPayment ? lastPayment.method.name : "Pending";
 
   return (
-    <div className="bg-white text-gray-900" style={{ fontSize: "13px" }}>
+    <div className="bg-white text-ink" style={{ fontSize: "13px" }}>
       <div className="h-1.5 w-full bg-brand" />
 
       <div className="flex items-start justify-between gap-4 p-6 pb-4">
         <div className="min-w-0">
           <h1 className="text-xl font-extrabold uppercase leading-tight text-brand">{tenant.name}</h1>
-          <div className="mt-2 space-y-0.5 text-gray-700">
+          <div className="mt-2 space-y-0.5 text-ink-soft">
             {tenant.address && <p>Address: {tenant.address}</p>}
             {tenant.phone && <p>Phone: {tenant.phone}</p>}
             {tenant.email && <p>Email: {tenant.email}</p>}
@@ -37,15 +37,15 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
         )}
 
         <div className="shrink-0 text-right">
-          <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">{provisional ? "PROVISIONAL BILL" : "TAX INVOICE"}</h2>
+          <h2 className="text-2xl font-extrabold tracking-tight text-ink">{provisional ? "PROVISIONAL BILL" : "TAX INVOICE"}</h2>
           {invoice.invoiceNumber && (
-            <p className="mt-2 text-gray-700">
-              Invoice No: <span className="font-semibold text-gray-900">{invoice.invoiceNumber}</span>
-              {provisional && <span className="ml-1 text-xs text-gray-400">(reserved — finalized at checkout)</span>}
+            <p className="mt-2 text-ink-soft">
+              Invoice No: <span className="font-semibold text-ink">{invoice.invoiceNumber}</span>
+              {provisional && <span className="ml-1 text-xs text-ink-muted">(reserved — finalized at checkout)</span>}
             </p>
           )}
-          <p className={invoice.invoiceNumber ? "text-gray-700" : "mt-2 text-gray-700"}>
-            Date: <span className="font-semibold text-gray-900">{formatDate(invoice.generatedAt)}</span>
+          <p className={invoice.invoiceNumber ? "text-ink-soft" : "mt-2 text-ink-soft"}>
+            Date: <span className="font-semibold text-ink">{formatDate(invoice.generatedAt)}</span>
           </p>
         </div>
       </div>
@@ -53,42 +53,42 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
       <div className="grid grid-cols-2 gap-4 px-6">
         <div className="rounded-md bg-brand-tint p-3">
           <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-brand">Billed To</p>
-          <p className="text-sm font-bold uppercase text-gray-900">{primary.guest.name}</p>
-          {primary.guest.phone && <p className="text-gray-700">Phone: {primary.guest.phone}</p>}
-          {primary.guest.phone2 && <p className="text-gray-700">Alt. Phone: {primary.guest.phone2}</p>}
-          {primary.guest.email && <p className="text-gray-700">Email: {primary.guest.email}</p>}
-          {primary.guest.address && <p className="whitespace-pre-line text-gray-700">Address: {primary.guest.address}</p>}
+          <p className="text-sm font-bold uppercase text-ink">{primary.guest.name}</p>
+          {primary.guest.phone && <p className="text-ink-soft">Phone: {primary.guest.phone}</p>}
+          {primary.guest.phone2 && <p className="text-ink-soft">Alt. Phone: {primary.guest.phone2}</p>}
+          {primary.guest.email && <p className="text-ink-soft">Email: {primary.guest.email}</p>}
+          {primary.guest.address && <p className="whitespace-pre-line text-ink-soft">Address: {primary.guest.address}</p>}
           {primary.guest.idProofType && (
-            <p className="text-gray-700">
+            <p className="text-ink-soft">
               {ID_PROOF_TYPES.find((t) => t.value === primary.guest.idProofType)?.label ?? primary.guest.idProofType}
               {primary.guest.idProofNumber ? `: ${primary.guest.idProofNumber}` : ""}
             </p>
           )}
           {primary.guest.companyName && (
             <div className="mt-2 border-t border-brand/20 pt-2">
-              <p className="text-gray-700">
-                <span className="font-semibold text-gray-900">Company:</span> {primary.guest.companyName}
+              <p className="text-ink-soft">
+                <span className="font-semibold text-ink">Company:</span> {primary.guest.companyName}
               </p>
-              {primary.guest.gstin && <p className="text-gray-700">Company GSTIN: {primary.guest.gstin}</p>}
+              {primary.guest.gstin && <p className="text-ink-soft">Company GSTIN: {primary.guest.gstin}</p>}
             </div>
           )}
         </div>
         <div className="rounded-md bg-brand-tint p-3">
           <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-brand">Stay Details</p>
-          <p className="text-gray-700">
-            <span className="font-semibold text-gray-900">Room:</span> {roomLabel}
+          <p className="text-ink-soft">
+            <span className="font-semibold text-ink">Room:</span> {roomLabel}
           </p>
-          <p className="text-gray-700">
-            <span className="font-semibold text-gray-900">Check-In:</span> {formatDateTime(primary.checkIn)}
+          <p className="text-ink-soft">
+            <span className="font-semibold text-ink">Check-In:</span> {formatDateTime(primary.checkIn)}
           </p>
-          <p className="text-gray-700">
-            <span className="font-semibold text-gray-900">Check-Out:</span> {formatDateTime(primary.checkOut)}
+          <p className="text-ink-soft">
+            <span className="font-semibold text-ink">Check-Out:</span> {formatDateTime(primary.checkOut)}
           </p>
-          <p className="text-gray-700">
-            <span className="font-semibold text-gray-900">Total Nights:</span> {summary.nights}
+          <p className="text-ink-soft">
+            <span className="font-semibold text-ink">Total Nights:</span> {summary.nights}
           </p>
-          <p className="text-gray-700">
-            <span className="font-semibold text-gray-900">Guests:</span> {totalGuests} Adult(s)
+          <p className="text-ink-soft">
+            <span className="font-semibold text-ink">Guests:</span> {totalGuests} Adult(s)
           </p>
         </div>
       </div>
@@ -104,7 +104,7 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
         </thead>
         <tbody>
           {bookings.map((b) => (
-            <tr key={b.id} className="border-b border-gray-100">
+            <tr key={b.id} className="border-b border-line-soft">
               <td className="px-3 py-2">
                 Room Charges — {b.room.roomType.name} (Room {b.room.roomNumber})
               </td>
@@ -114,7 +114,7 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
             </tr>
           ))}
           {chargeRows.map((c) => (
-            <tr key={c.id} className="border-b border-gray-100">
+            <tr key={c.id} className="border-b border-line-soft">
               <td className="px-3 py-2">{c.description}</td>
               <td className="px-3 py-2 text-right">-</td>
               <td className="px-3 py-2 text-right">-</td>
@@ -122,7 +122,7 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
             </tr>
           ))}
           {discountRows.map((c) => (
-            <tr key={c.id} className="border-b border-gray-100">
+            <tr key={c.id} className="border-b border-line-soft">
               <td className="px-3 py-2">{c.description || "Discount / Concession"}</td>
               <td className="px-3 py-2 text-right">-</td>
               <td className="px-3 py-2 text-right">-</td>
@@ -135,16 +135,16 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
       <div className="grid grid-cols-2 gap-6 px-6 py-5">
         <div>
           <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-brand">Payment Terms & Notes</p>
-          <p className="text-gray-800">
+          <p className="text-ink">
             Final settlement via: <span className="font-semibold">{settlementLabel}</span>
           </p>
           {payments.map((p) => (
-            <p key={p.id} className="text-gray-800">
+            <p key={p.id} className="text-ink">
               Advance via: <span className="font-semibold">{p.method.name}</span> {formatCurrencyPrecise(p.amount)}
             </p>
           ))}
-          <p className="mt-3 italic text-gray-500">Thank you for staying with us.</p>
-          <p className="italic text-gray-500">We hope to see you again soon.</p>
+          <p className="mt-3 italic text-ink-muted">Thank you for staying with us.</p>
+          <p className="italic text-ink-muted">We hope to see you again soon.</p>
         </div>
 
         <div className="rounded-md border border-brand p-3">
@@ -160,7 +160,7 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
               muted
             />
           )}
-          <div className="my-1.5 border-t border-gray-200" />
+          <div className="my-1.5 border-t border-line-soft" />
           <TotalRow label="Grand Total" value={summary.grandTotal} bold />
           <TotalRow label="Less Advance Paid" value={-summary.advancePaid} muted />
           <div className="mt-2 flex items-center justify-between rounded-md bg-brand-tint px-2 py-2">
@@ -170,7 +170,7 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-gray-200 px-6 py-3 text-xs text-gray-500">
+      <div className="flex items-center justify-between border-t border-line-soft px-6 py-3 text-xs text-ink-muted">
         <p>{provisional ? "Provisional Bill — Not a Tax Invoice" : "System Generated Invoice"}</p>
         <p>Authorized Signatory</p>
       </div>
@@ -181,8 +181,8 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
 function TotalRow({ label, value, bold, muted }) {
   return (
     <div className="flex items-center justify-between py-0.5">
-      <span className={muted ? "text-xs text-gray-500" : "text-sm text-gray-800"}>{label}</span>
-      <span className={`${bold ? "font-bold text-gray-900" : muted ? "text-xs text-gray-600" : "text-sm text-gray-900"}`}>
+      <span className={muted ? "text-xs text-ink-muted" : "text-sm text-ink"}>{label}</span>
+      <span className={`${bold ? "font-bold text-ink" : muted ? "text-xs text-ink-soft" : "text-sm text-ink"}`}>
         {value < 0 ? "- " : ""}
         {formatCurrencyPrecise(Math.abs(value))}
       </span>

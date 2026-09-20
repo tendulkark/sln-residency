@@ -69,7 +69,7 @@ export default function SettingsPage() {
   }
 
   if (isLoading || !form) {
-    return <p className="text-sm text-gray-500">Loading…</p>;
+    return <p className="text-sm text-ink-muted">Loading…</p>;
   }
 
   function field(key) {
@@ -86,13 +86,13 @@ export default function SettingsPage() {
 
       <div className="space-y-5 rounded-lg border border-line bg-card p-5">
         <div>
-          <p className="mb-2 text-sm font-medium text-gray-700">Logo</p>
+          <p className="mb-2 text-sm font-medium text-ink-soft">Logo</p>
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border border-line bg-muted">
               {form.logoUrl ? (
                 <img src={form.logoUrl} alt="Hotel logo" className="h-full w-full object-contain" />
               ) : (
-                <ImagePlus className="h-5 w-5 text-gray-300" />
+                <ImagePlus className="h-5 w-5 text-ink-faint" />
               )}
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
@@ -107,7 +107,7 @@ export default function SettingsPage() {
               </Button>
             )}
           </div>
-          {logoError && <p className="mt-1 text-xs text-red-600">{logoError}</p>}
+          {logoError && <p className="mt-1 text-xs text-danger">{logoError}</p>}
         </div>
 
         <Input label="Hotel name" {...field("name")} />
@@ -121,7 +121,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="GSTIN" placeholder="e.g. 33CRTPK9370H1Z7" {...field("gstin")} />
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Brand color</label>
+            <label className="text-sm font-medium text-ink-soft">Brand color</label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -134,13 +134,13 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {save.error && <p className="text-sm text-red-600">{save.error.message}</p>}
+        {save.error && <p className="text-sm text-danger">{save.error.message}</p>}
 
         <div className="flex items-center gap-3 border-t border-line-soft pt-4">
           <Button onClick={() => save.mutate(form)} disabled={save.isPending}>
             {save.isPending ? "Saving…" : "Save changes"}
           </Button>
-          {saved && <p className="text-sm text-emerald-600">Saved.</p>}
+          {saved && <p className="text-sm text-success">Saved.</p>}
         </div>
       </div>
     </div>

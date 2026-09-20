@@ -42,7 +42,7 @@ export default function RoomBookingsModal({ room, onClose }) {
         onClose={onClose}
         wide
       >
-        {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+        {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
         {activeBookings?.length === 0 && (
           <EmptyState icon={CalendarDays} title="No active bookings for this room" subtitle="Past stays are reprintable from Reports." />
@@ -60,14 +60,14 @@ export default function RoomBookingsModal({ room, onClose }) {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-ink">
                     {booking.guest.name}
-                    <span className="flex items-center gap-0.5 text-xs font-normal text-gray-500">
+                    <span className="flex items-center gap-0.5 text-xs font-normal text-ink-muted">
                       <Users className="h-3 w-3" />
                       {booking.adults + booking.children}
                     </span>
                   </p>
-                  <p className="mt-1 text-sm text-gray-600">
+                  <p className="mt-1 text-sm text-ink-soft">
                     {formatDateTime(booking.checkIn)} → {formatDateTime(booking.checkOut)} · {formatCurrency(booking.totalAmount)}
                   </p>
                   {booking.groupCode && (
@@ -75,9 +75,9 @@ export default function RoomBookingsModal({ room, onClose }) {
                       <Badge tone="neutral">Group booking · {booking.groupCode}</Badge>
                     </p>
                   )}
-                  {booking.notes && <p className="mt-1 text-xs text-gray-500">Notes: {booking.notes}</p>}
+                  {booking.notes && <p className="mt-1 text-xs text-ink-muted">Notes: {booking.notes}</p>}
                   {booking.status.code !== "checked_in" && !booking.status.isTerminal && (
-                    <p className="mt-1 text-xs text-gray-400">Not checked in yet — tap to check in.</p>
+                    <p className="mt-1 text-xs text-ink-muted">Not checked in yet — tap to check in.</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -87,7 +87,7 @@ export default function RoomBookingsModal({ room, onClose }) {
                         e.stopPropagation();
                         setEditBooking(booking);
                       }}
-                      className="rounded-md p-1.5 text-gray-400 hover:bg-muted-strong hover:text-gray-700"
+                      className="rounded-md p-1.5 text-ink-faint hover:bg-muted-strong hover:text-ink"
                       aria-label="Edit booking"
                     >
                       <Pencil className="h-4 w-4" />

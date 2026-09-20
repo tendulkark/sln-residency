@@ -64,16 +64,16 @@ export default function RoomClosuresModal({ onClose }) {
 
   return (
     <Modal title="Closed periods" onClose={onClose} wide>
-      {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <div className="mb-3 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
       {closures?.length === 0 && <EmptyState icon={CalendarOff} title="No rooms are currently blocked out." />}
       <div className="space-y-2">
         {closures?.map((c) => (
           <div key={c.id} className="flex items-center justify-between rounded-md border border-line px-3 py-2">
             <div>
-              <p className="text-sm font-medium text-gray-900">Room {c.room.roomNumber}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm font-medium text-ink">Room {c.room.roomNumber}</p>
+              <p className="text-xs text-ink-muted">
                 {formatDate(c.startDate)} → {formatDate(c.endDate)} {c.reason ? `· ${c.reason}` : ""}
               </p>
             </div>
@@ -88,7 +88,7 @@ export default function RoomClosuresModal({ onClose }) {
 
       {canManage && (
         <form onSubmit={handleSubmit} className="mt-5 border-t border-line pt-4">
-          <p className="mb-2 text-sm font-semibold text-gray-900">Block a room</p>
+          <p className="mb-2 text-sm font-semibold text-ink">Block a room</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <Select options={roomOptions} value={roomId} onChange={setRoomId} placeholder="Select a room" />
