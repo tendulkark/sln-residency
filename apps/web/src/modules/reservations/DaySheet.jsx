@@ -30,16 +30,16 @@ function DaySection({ title, icon: Icon, bookings, summaries, onSelectBooking, e
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className={`mb-2 flex w-full items-center gap-1.5 text-xs font-bold uppercase tracking-wider ${muted ? "text-gray-400" : "text-brand/75"}`}
+        className={`mb-2 flex w-full items-center gap-1.5 text-xs font-bold uppercase tracking-wider ${muted ? "text-ink-faint" : "text-brand/75"}`}
       >
         {Icon && <Icon className="h-3.5 w-3.5" />}
         {title}
-        <span className="font-medium normal-case text-gray-400">({bookings.length})</span>
-        <ChevronDown className={`ml-auto h-3.5 w-3.5 text-gray-400 transition-transform ${open ? "" : "-rotate-90"}`} />
+        <span className="font-medium normal-case text-ink-muted">({bookings.length})</span>
+        <ChevronDown className={`ml-auto h-3.5 w-3.5 text-ink-faint transition-transform ${open ? "" : "-rotate-90"}`} />
       </button>
       {open &&
         (bookings.length === 0 ? (
-          <p className="text-xs text-gray-400">{emptyText}</p>
+          <p className="text-xs text-ink-muted">{emptyText}</p>
         ) : (
           <div className="space-y-2">
             {bookings.map((b) => (
@@ -87,13 +87,13 @@ export default function DaySheet({ date, bookings, totalRooms, bookingStatuses, 
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-card p-3 shadow-sm">
         {totalRooms > 0 && <StatPill label="Occupied" value={`${occupied}/${totalRooms}`} tone={occupancyTone(occupied, totalRooms)} />}
-        <StatPill label="Arrivals" value={arrivals.length} tone="bg-amber-100 text-amber-700" />
-        <StatPill label="In-house" value={inHouse.length} tone="bg-emerald-100 text-emerald-700" />
-        <StatPill label="Departures" value={departures.length} tone="bg-gray-200 text-gray-700" />
+        <StatPill label="Arrivals" value={arrivals.length} tone="bg-warning-tint text-warning" />
+        <StatPill label="In-house" value={inHouse.length} tone="bg-success-tint text-success" />
+        <StatPill label="Departures" value={departures.length} tone="bg-muted-strong text-ink-soft" />
         {bookingStatuses?.length > 0 && (
           <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
             {bookingStatuses.map((s) => (
-              <span key={s.id} className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
+              <span key={s.id} className="flex items-center gap-1.5 text-[11px] font-medium text-ink-muted">
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
                 {s.label}
               </span>

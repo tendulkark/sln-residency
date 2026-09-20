@@ -4,6 +4,7 @@ import argon2 from "argon2";
 import {
   PERMISSIONS,
   DEFAULT_ADMIN_PERMISSION_CODES,
+  DEFAULT_MANAGER_PERMISSION_CODES,
   DEFAULT_EMPLOYEE_PERMISSION_CODES,
 } from "@sln/shared-schemas";
 
@@ -93,6 +94,8 @@ async function main() {
   const subdomain = process.env.SEED_TENANT_SUBDOMAIN ?? "sln";
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@sln-residency.test";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
+  const managerEmail = process.env.SEED_MANAGER_EMAIL ?? "manager@sln-residency.test";
+  const managerPassword = process.env.SEED_MANAGER_PASSWORD ?? "ChangeMe123!";
 
   const tenant = await prisma.tenant.upsert({
     where: { subdomain },
@@ -124,8 +127,9 @@ async function main() {
   }
 
   const adminRole = await ensureRole("Admin", true, DEFAULT_ADMIN_PERMISSION_CODES);
+  const managerRole = await ensureRole("Manager", false, DEFAULT_MANAGER_PERMISSION_CODES);
   await ensureRole("Employee", false, DEFAULT_EMPLOYEE_PERMISSION_CODES);
-  console.log("Roles ready: Admin, Employee");
+  console.log("Roles ready: Admin, Manager, Employee");
 
   const admin = await prisma.user.upsert({
     where: { tenantId_email: { tenantId: tenant.id, email: adminEmail } },
@@ -139,6 +143,22 @@ async function main() {
     },
   });
   console.log(`Admin user ready: ${adminEmail} / ${adminPassword} (change this after first login)`);
+
+  // A second login on the Manager role, so the role-based restrictions
+  // (e.g. no post-checkout corrections) can be exercised without editing
+  // the Admin account.
+  await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: tenant.id, email: managerEmail } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      roleId: managerRole.id,
+      name: "Manager",
+      email: managerEmail,
+      passwordHash: await argon2.hash(managerPassword),
+    },
+  });
+  console.log(`Manager user ready: ${managerEmail} / ${managerPassword} (change this after first login)`);
 
   async function ensureStatuses(domain, statuses) {
     const byCode = new Map();
@@ -246,9 +266,14 @@ async function main() {
   for (const [roomNumber, phone, statusCode, offset, nights] of SAMPLE_BOOKINGS) {
     const room = roomByNumber.get(roomNumber);
     const guest = guestByPhone.get(phone);
+    // On a re-run, a room's type may have been reassigned to one created
+    // via the UI since — it isn't in this seed's map, so skip the sample
+    // booking rather than crash the whole seed at the very last step.
+    const roomType = roomTypeById.get(room.roomTypeId);
+    if (!roomType) continue;
     const checkIn = daysFromNow(offset);
     const checkOut = daysFromNow(offset + nights);
-    const ratePerNight = Number(roomTypeById.get(room.roomTypeId).basePrice) * 1.05;
+    const ratePerNight = Number(roomType.basePrice) * 1.05;
 
     const overlap = await prisma.booking.findFirst({
       where: { tenantId: tenant.id, roomId: room.id, checkIn: { lt: checkOut }, checkOut: { gt: checkIn } },

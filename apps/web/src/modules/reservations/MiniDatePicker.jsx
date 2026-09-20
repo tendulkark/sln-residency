@@ -24,10 +24,10 @@ export default function MiniDatePicker({ label, anchorDate, onSelect, highlightW
         <>
           <PopoverButton
             onClick={() => setViewMonth(startOfMonth(anchorDate))}
-            className="flex w-[190px] items-center justify-center gap-1.5 rounded-md border border-line-strong bg-card px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-muted"
+            className="flex w-[190px] items-center justify-center gap-1.5 rounded-md border border-line-strong bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-muted"
           >
             <span className="min-w-0 truncate">{label}</span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
           </PopoverButton>
           <PopoverPanel anchor="bottom start" className="z-30 mt-2 w-72 rounded-xl border border-line bg-card p-3 shadow-lg">
             <div className="mb-2 flex items-center justify-between">
@@ -40,12 +40,12 @@ export default function MiniDatePicker({ label, anchorDate, onSelect, highlightW
                     return n;
                   })
                 }
-                className="rounded p-1 text-gray-400 hover:bg-muted hover:text-gray-700"
+                className="rounded p-1 text-ink-faint hover:bg-muted hover:text-ink"
                 aria-label="Previous month"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-sm font-semibold text-gray-900">
+              <span className="text-sm font-semibold text-ink">
                 {viewMonth.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
               </span>
               <button
@@ -57,7 +57,7 @@ export default function MiniDatePicker({ label, anchorDate, onSelect, highlightW
                     return n;
                   })
                 }
-                className="rounded p-1 text-gray-400 hover:bg-muted hover:text-gray-700"
+                className="rounded p-1 text-ink-faint hover:bg-muted hover:text-ink"
                 aria-label="Next month"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -65,7 +65,7 @@ export default function MiniDatePicker({ label, anchorDate, onSelect, highlightW
             </div>
             <div className="grid grid-cols-7 gap-y-0.5 text-center">
               {DAY_INITIALS.map((d, i) => (
-                <span key={i} className="text-[10px] font-semibold text-gray-400">
+                <span key={i} className="text-[10px] font-semibold text-ink-muted">
                   {d}
                 </span>
               ))}
@@ -83,7 +83,7 @@ export default function MiniDatePicker({ label, anchorDate, onSelect, highlightW
                       close();
                     }}
                     className={`rounded-md py-1.5 text-xs transition hover:bg-muted ${inSelectedWeek ? "bg-brand-tint" : ""} ${
-                      isToday ? "font-bold text-brand" : inMonth ? "text-gray-700" : "text-gray-300"
+                      isToday ? "font-bold text-brand" : inMonth ? "text-ink-soft" : "text-ink-faint"
                     }`}
                   >
                     {day.getDate()}
@@ -97,7 +97,7 @@ export default function MiniDatePicker({ label, anchorDate, onSelect, highlightW
                 onSelect(new Date());
                 close();
               }}
-              className="mt-2 w-full rounded-md border border-line-strong px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-muted"
+              className="mt-2 w-full rounded-md border border-line-strong px-2 py-1.5 text-xs font-medium text-ink-soft hover:bg-muted"
             >
               Jump to today
             </button>

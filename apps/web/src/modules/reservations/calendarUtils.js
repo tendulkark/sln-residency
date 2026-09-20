@@ -5,11 +5,11 @@ import { addDays } from "@/lib/dateRange.js";
 // across any of the three views spots busy days. Thresholds are a display
 // convenience, not tenant-configurable data.
 export function occupancyTone(occupied, total) {
-  if (total <= 0) return "bg-muted-strong text-gray-500";
+  if (total <= 0) return "bg-muted-strong text-ink-muted";
   const pct = occupied / total;
-  if (pct >= 0.9) return "bg-red-100 text-red-700";
-  if (pct >= 0.6) return "bg-amber-100 text-amber-700";
-  return "bg-emerald-100 text-emerald-700";
+  if (pct >= 0.9) return "bg-danger-tint text-danger";
+  if (pct >= 0.6) return "bg-warning-tint text-warning";
+  return "bg-success-tint text-success";
 }
 
 // Every booking whose [checkIn, checkOut) span touches this calendar day.

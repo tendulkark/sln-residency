@@ -8,7 +8,7 @@ import { Fragment } from "react";
 export default function Menu({ items }) {
   return (
     <HeadlessMenu as="div" className="relative inline-block text-left">
-      <MenuButton className="rounded-md p-1 text-gray-400 hover:bg-muted-strong hover:text-gray-600" aria-label="Actions">
+      <MenuButton className="rounded-md p-1 text-ink-faint hover:bg-muted-strong hover:text-ink-soft" aria-label="Actions">
         <MoreVertical className="h-4 w-4" />
       </MenuButton>
       <Transition
@@ -29,7 +29,7 @@ export default function Menu({ items }) {
                   disabled={item.disabled}
                   className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-40 ${
                     focus ? "bg-muted" : ""
-                  } ${item.tone === "danger" ? "text-red-600" : "text-gray-700"}`}
+                  } ${item.tone === "danger" ? "text-danger" : "text-ink-soft"}`}
                 >
                   {item.icon && <item.icon className="h-3.5 w-3.5" />}
                   {item.label}

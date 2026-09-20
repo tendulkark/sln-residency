@@ -141,7 +141,7 @@ export default function DashboardPage() {
           sublabel={
             <div className="mt-1 h-1.5 w-full rounded-full bg-muted-strong">
               <div
-                className="h-1.5 rounded-full bg-blue-500"
+                className="h-1.5 rounded-full bg-brand"
                 style={{ width: `${board?.length ? (bucketCounts.available / board.length) * 100 : 0}%` }}
               />
             </div>
@@ -161,13 +161,13 @@ export default function DashboardPage() {
           value={
             <span className="flex gap-4 text-base">
               <span>
-                {summary?.needsAttention.overdue ?? 0} <span className="text-xs font-normal text-gray-500">Overdue</span>
+                {summary?.needsAttention.overdue ?? 0} <span className="text-xs font-normal text-ink-muted">Overdue</span>
               </span>
               <span>
-                {summary?.needsAttention.checkOuts ?? 0} <span className="text-xs font-normal text-gray-500">Check-outs</span>
+                {summary?.needsAttention.checkOuts ?? 0} <span className="text-xs font-normal text-ink-muted">Check-outs</span>
               </span>
               <span>
-                {summary?.needsAttention.dirty ?? 0} <span className="text-xs font-normal text-gray-500">Dirty</span>
+                {summary?.needsAttention.dirty ?? 0} <span className="text-xs font-normal text-ink-muted">Dirty</span>
               </span>
             </span>
           }
@@ -197,7 +197,7 @@ export default function DashboardPage() {
               setSelectedDate(new Date(e.target.value));
               setViewMode("custom");
             }}
-            className="rounded-md border border-line-strong px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            className="rounded-md border border-line-strong bg-card px-3 py-1.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
           <input
             type="time"
@@ -206,7 +206,7 @@ export default function DashboardPage() {
               setSelectedTime(e.target.value);
               setViewMode("custom");
             }}
-            className="rounded-md border border-line-strong px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            className="rounded-md border border-line-strong bg-card px-3 py-1.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -222,10 +222,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="mb-4 rounded-xl border border-line bg-card p-4 shadow-sm">
-        <p className="mb-3 text-sm font-semibold text-gray-900">
-          Room status <span className="font-normal text-gray-500">as of {asOfDate.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</span>
+        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand/75">
+          Room status <span className="font-medium normal-case tracking-normal text-ink-muted">as of {asOfDate.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</span>
         </p>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 2xl:grid-cols-8">
           {BUCKETS.map((b) => {
             const color = bucketColors[b.code];
             const active = bucketFilter === b.code;
@@ -233,17 +233,26 @@ export default function DashboardPage() {
               <button
                 key={b.code}
                 onClick={() => setBucketFilter(active ? null : b.code)}
-                className="rounded-lg border-2 p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
+                aria-pressed={active}
+                title={b.label}
+                className="min-w-0 rounded-lg border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
                 style={{
-                  backgroundColor: `${color}1f`,
-                  borderColor: active ? color : `${color}55`,
-                  boxShadow: active ? `0 0 0 1px ${color}` : undefined,
+                  // Mixed over white rather than alpha over the cream page, for
+                  // the same hue-fidelity reason as RoomBoardCard.
+                  backgroundColor: `color-mix(in srgb, ${color} 11%, white)`,
+                  borderColor: active ? color : `color-mix(in srgb, ${color} 40%, white)`,
+                  boxShadow: active ? `0 0 0 2px ${color}` : undefined,
                 }}
               >
-                <p className="text-xs font-semibold uppercase" style={{ color }}>
-                  {b.label}
-                </p>
-                <p className="text-lg font-bold text-gray-900">{bucketCounts[b.code] ?? 0}</p>
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                  {/* truncate: "Maintenance" is wider than a 3-across tile
+                      on a 375px phone — clip it rather than let it spill. */}
+                  <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide" style={{ color }}>
+                    {b.label}
+                  </span>
+                </span>
+                <p className="mt-0.5 text-lg font-bold tabular-nums text-ink">{bucketCounts[b.code] ?? 0}</p>
               </button>
             );
           })}

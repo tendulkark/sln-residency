@@ -190,11 +190,11 @@ export default function InvoiceModal({ bookingId, invoiceId, autoGenerate = fals
         )
       }
     >
-      {loading && <p className="text-sm text-gray-500">Preparing invoice…</p>}
-      {loadError && <p className="text-sm text-red-600">{loadError.message}</p>}
+      {loading && <p className="text-sm text-ink-muted">Preparing invoice…</p>}
+      {loadError && <p className="text-sm text-danger">{loadError.message}</p>}
 
       {invoice?.isCancelled && (
-        <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">
+        <div className="mb-3 rounded-md border border-danger/30 bg-danger-tint px-3 py-2 text-sm text-danger print:hidden">
           <p className="font-semibold">Cancelled {formatDateTime(invoice.cancelledAt)}</p>
           <p>Reason: {invoice.cancellationReason}</p>
           {invoice.supersededBy && <p>Reissued as {invoice.supersededBy.invoiceNumber}.</p>}
@@ -202,21 +202,21 @@ export default function InvoiceModal({ bookingId, invoiceId, autoGenerate = fals
       )}
 
       {invoice && !invoice.isFinalized && !invoice.isCancelled && (
-        <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 print:hidden">
+        <div className="mb-3 rounded-md border border-warning/30 bg-warning-tint px-3 py-2 text-sm text-warning print:hidden">
           Number reserved at booking — this becomes a real, final Tax Invoice at checkout.
         </div>
       )}
 
       {correcting && guestForm && (
         <div className="mb-3 rounded-md border border-line-strong bg-muted p-3 print:hidden">
-          <p className="mb-2 text-sm font-semibold text-gray-900">Edit guest details</p>
-          <p className="mb-3 text-xs text-gray-500">
+          <p className="mb-2 text-sm font-semibold text-ink">Edit guest details</p>
+          <p className="mb-3 text-xs text-ink-muted">
             {invoice?.isFinalized
               ? "This invoice is already finalized, so saving here will walk you into Cancel & Reissue — the corrected details go on a new invoice, this one stays exactly as printed."
               : "This invoice isn't finalized yet, so the correction just applies directly — no reissue needed."}
           </p>
           <GuestDetailsForm value={guestForm} onChange={setGuestForm} />
-          {correctGuest.error && <p className="mt-2 text-sm text-red-600">{correctGuest.error.message}</p>}
+          {correctGuest.error && <p className="mt-2 text-sm text-danger">{correctGuest.error.message}</p>}
           <div className="mt-3 flex justify-end gap-2">
             <Button size="sm" variant="ghost" onClick={() => setCorrecting(false)} disabled={correctGuest.isPending}>
               Cancel
@@ -230,13 +230,13 @@ export default function InvoiceModal({ bookingId, invoiceId, autoGenerate = fals
 
       {cancelling && (
         <div className="mb-3 rounded-md border border-line-strong bg-muted p-3 print:hidden">
-          <p className="mb-2 text-sm font-semibold text-gray-900">Cancel this invoice and issue a replacement?</p>
-          <p className="mb-2 text-xs text-gray-500">
+          <p className="mb-2 text-sm font-semibold text-ink">Cancel this invoice and issue a replacement?</p>
+          <p className="mb-2 text-xs text-ink-muted">
             The invoice number stays reserved and this record is kept — it's marked cancelled, never deleted. A new invoice with the
             next number is generated immediately with the stay's current figures.
           </p>
           <Textarea placeholder="Reason (required, e.g. wrong GSTIN, charge added after printing)" value={reason} onChange={(e) => setReason(e.target.value)} />
-          {cancelAndReissue.error && <p className="mt-2 text-sm text-red-600">{cancelAndReissue.error.message}</p>}
+          {cancelAndReissue.error && <p className="mt-2 text-sm text-danger">{cancelAndReissue.error.message}</p>}
           <div className="mt-2 flex justify-end gap-2">
             <Button size="sm" variant="ghost" onClick={() => setCancelling(false)} disabled={cancelAndReissue.isPending}>
               Back

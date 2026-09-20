@@ -39,7 +39,7 @@ export default function RoomFormModal({ room, onClose }) {
   return (
     <Modal title={room ? `Edit room ${room.roomNumber}` : "Add room"} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error && <div className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
         <Input label="Room number" value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} required />
         <Input label="Floor" value={floor} onChange={(e) => setFloor(e.target.value)} />

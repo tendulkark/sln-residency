@@ -16,26 +16,26 @@ export default function MonthYearPicker({ anchorDate, onSelect }) {
         <>
           <PopoverButton
             onClick={() => setPickerYear(anchorDate.getFullYear())}
-            className="flex w-[190px] items-center justify-center gap-1.5 rounded-md border border-line-strong bg-card px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-muted"
+            className="flex w-[190px] items-center justify-center gap-1.5 rounded-md border border-line-strong bg-card px-3 py-1.5 text-sm font-semibold text-ink hover:bg-muted"
           >
             <span className="min-w-0 truncate">{anchorDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
           </PopoverButton>
           <PopoverPanel anchor="bottom start" className="z-30 mt-2 w-64 rounded-xl border border-line bg-card p-3 shadow-lg">
             <div className="mb-2 flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setPickerYear((y) => y - 1)}
-                className="rounded p-1 text-gray-400 hover:bg-muted hover:text-gray-700"
+                className="rounded p-1 text-ink-faint hover:bg-muted hover:text-ink"
                 aria-label="Previous year"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-sm font-semibold text-gray-900">{pickerYear}</span>
+              <span className="text-sm font-semibold text-ink">{pickerYear}</span>
               <button
                 type="button"
                 onClick={() => setPickerYear((y) => y + 1)}
-                className="rounded p-1 text-gray-400 hover:bg-muted hover:text-gray-700"
+                className="rounded p-1 text-ink-faint hover:bg-muted hover:text-ink"
                 aria-label="Next year"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -53,7 +53,7 @@ export default function MonthYearPicker({ anchorDate, onSelect }) {
                       close();
                     }}
                     className={`rounded-md px-2 py-1.5 text-sm font-medium transition ${
-                      isActive ? "bg-brand text-white" : "text-gray-700 hover:bg-muted"
+                      isActive ? "bg-brand text-white" : "text-ink-soft hover:bg-muted"
                     }`}
                   >
                     {label}
@@ -67,7 +67,7 @@ export default function MonthYearPicker({ anchorDate, onSelect }) {
                 onSelect(new Date());
                 close();
               }}
-              className="mt-2 w-full rounded-md border border-line-strong px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-muted"
+              className="mt-2 w-full rounded-md border border-line-strong px-2 py-1.5 text-xs font-medium text-ink-soft hover:bg-muted"
             >
               Jump to today
             </button>

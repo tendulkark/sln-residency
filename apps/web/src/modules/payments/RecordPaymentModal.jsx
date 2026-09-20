@@ -55,7 +55,7 @@ export default function RecordPaymentModal({ booking, onClose }) {
   return (
     <Modal title={`Record payment · ${booking.guest?.name ?? ""}`} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error && <div className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
         <Input label="Amount (₹)" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
         <Select label="Method" options={methodOptions} value={methodId} onChange={setMethodId} placeholder="Select a method" />

@@ -5,31 +5,10 @@ import { LogOut, Hotel, ChevronLeft, ChevronRight, Menu as MenuIcon } from "luci
 import { useAuthStore } from "@/modules/auth/authStore.js";
 import { apiFetch } from "@/lib/api.js";
 import { Button } from "@/ui/index.js";
-import { DASHBOARD_NAV_ITEM } from "@/modules/dashboard/constants.js";
-import { ROOMS_NAV_ITEM } from "@/modules/rooms/constants.js";
-import { HOUSEKEEPING_NAV_ITEM } from "@/modules/housekeeping/constants.js";
-import { RESERVATIONS_NAV_ITEM } from "@/modules/reservations/constants.js";
-import { REPORTS_NAV_ITEM } from "@/modules/reports/constants.js";
-import { INVOICES_NAV_ITEM } from "@/modules/invoices/constants.js";
-import { SETTINGS_NAV_ITEM } from "@/modules/settings/constants.js";
+import { NAV_ITEMS } from "@/app/navigation.js";
 import { LOGIN_ROUTE_PATH } from "@/modules/auth/constants.js";
 
 const SIDEBAR_COLLAPSED_KEY = "sln:sidebarCollapsed";
-
-// Each entry is owned by its module's own constants.js (to/label/permission/
-// icon) — this just assembles them in sidebar order. An item is hidden if
-// the signed-in user lacks its permission; that's a UX nicety only, the API
-// re-checks every request regardless (AI_RULES.md #3).
-const NAV_ITEMS = [
-  DASHBOARD_NAV_ITEM,
-  ROOMS_NAV_ITEM,
-  HOUSEKEEPING_NAV_ITEM,
-  RESERVATIONS_NAV_ITEM,
-  INVOICES_NAV_ITEM,
-  REPORTS_NAV_ITEM,
-  SETTINGS_NAV_ITEM,
-  // Staff management lands in a later phase.
-];
 
 // The sidebar's header/nav/footer markup — shared by the persistent desktop
 // rail (which can also collapse to icons-only) and the mobile drawer (which
@@ -49,8 +28,8 @@ function SidebarContent({ collapsed, tenant, user, permissions, onNavigate, onLo
         )}
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate font-display text-lg font-bold text-gray-900">{tenant?.name ?? "Staff Console"}</p>
-            <p className="text-xs text-gray-500">Staff console</p>
+            <p className="truncate font-display text-lg font-bold text-ink">{tenant?.name ?? "Staff Console"}</p>
+            <p className="text-xs text-ink-muted">Staff console</p>
           </div>
         )}
       </div>
@@ -63,9 +42,9 @@ function SidebarContent({ collapsed, tenant, user, permissions, onNavigate, onLo
             title={collapsed ? item.label : undefined}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-md border-l-2 py-2 text-sm font-medium transition ${
+              `flex items-center gap-2.5 rounded-md border-l-2 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring ${
                 collapsed ? "justify-center px-2" : "px-3"
-              } ${isActive ? "border-gold bg-brand-tint text-brand" : "border-transparent text-gray-700 hover:bg-muted-strong"}`
+              } ${isActive ? "border-gold bg-brand-tint font-semibold text-brand" : "border-transparent text-ink-soft hover:bg-muted-strong hover:text-ink"}`
             }
           >
             <item.icon className="h-4 w-4 shrink-0" />
@@ -74,12 +53,20 @@ function SidebarContent({ collapsed, tenant, user, permissions, onNavigate, onLo
         ))}
       </nav>
 
-      <div className={`shrink-0 border-t border-line p-4 ${collapsed ? "px-2" : ""}`}>
+      <div className={`shrink-0 border-t border-line bg-muted/60 p-4 ${collapsed ? "px-2" : ""}`}>
         {!collapsed && (
-          <>
-            <p className="truncate text-sm font-medium text-gray-900">{user?.name}</p>
-            <p className="truncate text-xs text-gray-500">{user?.roleName}</p>
-          </>
+          <div className="flex items-center gap-2.5">
+            <span
+              aria-hidden
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white ring-2 ring-gold-tint"
+            >
+              {(user?.name ?? "?").trim().charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-ink">{user?.name}</p>
+              <p className="truncate text-xs text-ink-muted">{user?.roleName}</p>
+            </div>
+          </div>
         )}
         <Button
           variant="outline"
@@ -131,7 +118,7 @@ export default function AdminShell() {
         <button
           onClick={() => setMobileNavOpen(true)}
           aria-label="Open navigation"
-          className="rounded-md p-1.5 text-gray-600 hover:bg-muted-strong"
+          className="rounded-md p-1.5 text-ink-soft hover:bg-muted-strong"
         >
           <MenuIcon className="h-5 w-5" />
         </button>
@@ -142,7 +129,7 @@ export default function AdminShell() {
             <Hotel className="h-3.5 w-3.5" />
           </div>
         )}
-        <p className="truncate font-display text-lg font-bold text-gray-900">{tenant?.name ?? "Staff Console"}</p>
+        <p className="truncate font-display text-lg font-bold text-ink">{tenant?.name ?? "Staff Console"}</p>
       </div>
 
       <Transition show={mobileNavOpen} as={Fragment}>
@@ -156,7 +143,7 @@ export default function AdminShell() {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black/40" />
+            <div className="fixed inset-0 bg-scrim/50" />
           </TransitionChild>
 
           <TransitionChild
@@ -195,7 +182,7 @@ export default function AdminShell() {
           onClick={toggleCollapsed}
           aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
           title={collapsed ? "Expand navigation" : "Collapse navigation"}
-          className="absolute -right-3 top-16 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-line-strong bg-card text-gray-500 shadow-sm transition hover:bg-muted hover:text-brand"
+          className="absolute -right-3 top-16 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-line-strong bg-card text-ink-muted shadow-sm transition hover:bg-muted hover:text-brand"
         >
           {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
         </button>

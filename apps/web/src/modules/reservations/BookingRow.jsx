@@ -17,7 +17,7 @@ export default function BookingRow({ booking: b, summary, onClick, tag }) {
       className={`block w-full rounded-lg border border-line bg-card p-3 text-left shadow-sm ${onClick ? "transition hover:border-brand" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
           {b.guest.name} · Room {b.room.roomNumber}
         </p>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -25,30 +25,30 @@ export default function BookingRow({ booking: b, summary, onClick, tag }) {
           <Badge color={b.status.color}>{b.status.label}</Badge>
         </div>
       </div>
-      <p className="mt-0.5 text-xs text-gray-500">
+      <p className="mt-0.5 text-xs text-ink-muted">
         {formatDateTime(b.checkIn)} → {formatDateTime(b.checkOut)}
       </p>
       {b.guest.phone && (
-        <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+        <p className="mt-1 flex items-center gap-1 text-xs text-ink-muted">
           <Phone className="h-3 w-3 shrink-0" />
           {b.guest.phone}
         </p>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted px-2 py-1.5 text-xs">
-        <span className="text-gray-500">
-          Total <span className="font-semibold text-gray-900">{formatCurrency(summary ? summary.grandTotal : b.totalAmount)}</span>
+        <span className="text-ink-muted">
+          Total <span className="font-semibold text-ink">{formatCurrency(summary ? summary.grandTotal : b.totalAmount)}</span>
         </span>
-        <span className="text-gray-500">
-          Paid <span className="font-semibold text-gray-900">{summary ? formatCurrency(summary.advancePaid) : "…"}</span>
+        <span className="text-ink-muted">
+          Paid <span className="font-semibold text-ink">{summary ? formatCurrency(summary.advancePaid) : "…"}</span>
         </span>
         {summary && (
-          <span className={`font-semibold ${summary.balanceDue > 0 ? "text-red-600" : "text-emerald-600"}`}>
+          <span className={`font-semibold ${summary.balanceDue > 0 ? "text-danger" : "text-success"}`}>
             {summary.balanceDue > 0 ? `Balance due ${formatCurrency(summary.balanceDue)}` : "Fully paid"}
           </span>
         )}
       </div>
       {b.notes && (
-        <p className="mt-2 flex items-start gap-1.5 rounded-md bg-gold-tint px-2 py-1.5 text-xs text-gray-700">
+        <p className="mt-2 flex items-start gap-1.5 rounded-md bg-gold-tint px-2 py-1.5 text-xs text-ink-soft">
           <StickyNote className="mt-0.5 h-3 w-3 shrink-0 text-gold-dark" />
           {b.notes}
         </p>

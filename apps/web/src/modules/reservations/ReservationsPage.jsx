@@ -144,7 +144,7 @@ export default function ReservationsPage() {
           {bookingStatuses?.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-3 py-2">
               {bookingStatuses.map((s) => (
-                <span key={s.id} className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
+                <span key={s.id} className="flex items-center gap-1.5 text-[11px] font-medium text-ink-muted">
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
                   {s.label}
                 </span>
@@ -157,7 +157,7 @@ export default function ReservationsPage() {
             <div className="min-w-[840px]">
               <div className="grid grid-cols-7 border-b border-line bg-muted">
                 {DAY_LABELS.map((d) => (
-                  <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500">
+                  <div key={d} className="px-2 py-2 text-center text-xs font-semibold text-ink-muted">
                     {d}
                   </div>
                 ))}
@@ -185,7 +185,7 @@ export default function ReservationsPage() {
                         <div className="flex items-center justify-between">
                           <span
                             className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
-                              isToday ? "bg-brand font-semibold text-white" : inMonth ? "text-gray-500" : "text-gray-300"
+                              isToday ? "bg-brand font-semibold text-white" : inMonth ? "text-ink-muted" : "text-ink-faint"
                             }`}
                           >
                             {day.getDate()}
@@ -224,7 +224,7 @@ export default function ReservationsPage() {
           {bookingStatuses?.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-3 py-2">
               {bookingStatuses.map((s) => (
-                <span key={s.id} className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
+                <span key={s.id} className="flex items-center gap-1.5 text-[11px] font-medium text-ink-muted">
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
                   {s.label}
                 </span>
@@ -260,10 +260,10 @@ export default function ReservationsPage() {
                   >
                     <div className="flex shrink-0 items-center justify-between border-b border-line-soft p-2 pb-1.5">
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{DAY_LABELS[day.getDay()]}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">{DAY_LABELS[day.getDay()]}</p>
                         <span
                           className={`flex h-6 w-6 items-center justify-center rounded-full text-sm ${
-                            isToday ? "bg-brand font-semibold text-white" : "text-gray-700"
+                            isToday ? "bg-brand font-semibold text-white" : "text-ink-soft"
                           }`}
                         >
                           {day.getDate()}
@@ -286,7 +286,7 @@ export default function ReservationsPage() {
                           {b.guest.name} · {b.room.roomNumber}
                         </span>
                       ))}
-                      {dayBookings.length === 0 && <p className="text-[11px] text-gray-300">No bookings</p>}
+                      {dayBookings.length === 0 && <p className="text-[11px] text-ink-faint">No bookings</p>}
                     </div>
                   </div>
                 );

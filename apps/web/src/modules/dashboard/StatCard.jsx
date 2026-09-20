@@ -2,7 +2,7 @@ import Card from "@/ui/Card.jsx";
 
 const TONE_CLASSES = {
   neutral: { card: "", iconWrap: "bg-brand-tint text-brand" },
-  warn: { card: "bg-rose-50 border-rose-100", iconWrap: "bg-rose-100 text-rose-600" },
+  warn: { card: "bg-danger-tint border-danger/25", iconWrap: "bg-danger-tint text-danger" },
 };
 
 export default function StatCard({ label, value, sublabel, badge, icon: Icon, tone = "neutral" }) {
@@ -19,10 +19,10 @@ export default function StatCard({ label, value, sublabel, badge, icon: Icon, to
         )}
       </div>
       <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-3xl font-bold tabular-nums tracking-tight text-gray-900">{value}</span>
-        {badge && <span className="text-xs font-semibold text-emerald-600">{badge}</span>}
+        <span className="text-3xl font-bold tabular-nums tracking-tight text-ink">{value}</span>
+        {badge && <span className="text-xs font-semibold text-success">{badge}</span>}
       </div>
-      {sublabel && <div className="mt-1 text-xs text-gray-500">{sublabel}</div>}
+      {sublabel && <div className="mt-1 text-xs text-ink-muted">{sublabel}</div>}
     </Card>
   );
 }

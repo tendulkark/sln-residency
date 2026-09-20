@@ -4,7 +4,7 @@ export default function MiniBarChart({ data, format = (v) => v, height = 128 }) 
   const max = Math.max(1, ...data.map((d) => d.value));
 
   if (data.length === 0) {
-    return <p className="text-sm text-gray-400">No data for this range.</p>;
+    return <p className="text-sm text-ink-muted">No data for this range.</p>;
   }
 
   return (

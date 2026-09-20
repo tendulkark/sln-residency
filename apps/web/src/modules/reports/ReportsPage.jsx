@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Download, Printer, RefreshCw, Search, Receip
 import { apiFetch, downloadFile } from "@/lib/api.js";
 import { toISODate, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays } from "@/lib/dateRange.js";
 import { formatCurrency, formatCurrencyPrecise, formatDate, formatDateTime } from "@/lib/format.js";
-import { Button, Input, Select, Switch, PageHeader, DonutChart, MiniBarChart, Badge, EmptyState } from "@/ui/index.js";
+import { Button, Input, Select, Switch, PageHeader, DonutChart, MiniBarChart, Badge, EmptyState, DataTable, Th, Td, Tr } from "@/ui/index.js";
 import StatCard from "@/modules/dashboard/StatCard.jsx";
 import InvoiceModal from "@/modules/invoices/InvoiceModal.jsx";
 import { statusesKey } from "@/modules/common/constants.js";
@@ -75,7 +75,7 @@ export default function ReportsPage() {
             key={t.value}
             onClick={() => setTab(t.value)}
             className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-              tab === t.value ? "border-brand bg-brand text-white" : "border-line-strong bg-card text-gray-700 hover:bg-muted"
+              tab === t.value ? "border-brand bg-brand text-white" : "border-line-strong bg-card text-ink-soft hover:bg-muted"
             }`}
           >
             {t.label}
@@ -167,7 +167,7 @@ function BookingsReportTab({ from, to }) {
 
       <div className="mb-4 flex items-center gap-3 rounded-lg border border-line-strong bg-muted p-3 print:hidden">
         <Switch checked={checkoutBasis} onChange={setCheckoutBasis} />
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-muted">
           {checkoutBasis
             ? "Showing Checked-out bookings by checkout date — the same rows the Revenue tab counts."
             : "Showing bookings by check-in date, all statuses. Toggle on to see exactly the rows Revenue counted instead (Checked-out, filtered by checkout date)."}
@@ -185,7 +185,7 @@ function BookingsReportTab({ from, to }) {
         </div>
       </div>
 
-      <p className="mb-4 text-xs text-gray-400 print:hidden">
+      <p className="mb-4 text-xs text-ink-muted print:hidden">
         Room rates include GST, so a discount comes off the inclusive price first: Taxable Value + CGST + SGST = Grand Total, and Grand
         Total + Other Charges = Total. Other Charges (food, damages) carry no GST.
         <br />
@@ -209,7 +209,7 @@ function BookingsReportTab({ from, to }) {
           <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
-          <p className="whitespace-nowrap text-sm text-gray-500">
+          <p className="whitespace-nowrap text-sm text-ink-muted">
             Page {page} of {totalPages} · {data?.total ?? 0} total
           </p>
           <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
@@ -218,18 +218,19 @@ function BookingsReportTab({ from, to }) {
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
       {data && data.rows.length === 0 && <EmptyState icon={ReceiptText} title="No bookings in this range" subtitle="Try widening the date range or clearing filters." />}
 
+      {/* Guest is the pinned column rather than SL/Invoice No: it's the one
+          a person actually identifies a row by while the other 26 scroll. */}
       {data && data.rows.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-line-strong bg-card shadow-sm">
-          <table className="w-full min-w-[1900px] border-collapse text-left text-sm">
+        <DataTable minWidth="1900px">
             <thead>
-              <tr className="border-b border-line bg-muted text-xs uppercase tracking-wide text-gray-500">
+              <tr>
                 <Th>SL</Th>
                 <Th />
                 <Th>Invoice No</Th>
-                <Th>Guest</Th>
+                <Th pinned>Guest</Th>
                 <Th>Room</Th>
                 <Th>Type</Th>
                 <Th>Booked By</Th>
@@ -257,7 +258,7 @@ function BookingsReportTab({ from, to }) {
             </thead>
             <tbody>
               {data.rows.map((r, i) => (
-                <tr key={r.id} className="border-b border-line-soft align-top odd:bg-muted/40 hover:bg-brand-tint">
+                <Tr key={r.id} className="align-top">
                   <Td>{(data.page - 1) * data.pageSize + i + 1}</Td>
                   <Td>
                     {r.invoiceNumber && (
@@ -267,8 +268,10 @@ function BookingsReportTab({ from, to }) {
                       </Button>
                     )}
                   </Td>
-                  <Td className="whitespace-nowrap font-medium text-gray-900">{r.invoiceNumber ?? "-"}</Td>
-                  <Td className="whitespace-nowrap">{r.guest.name}</Td>
+                  <Td className="whitespace-nowrap font-medium text-ink">{r.invoiceNumber ?? "-"}</Td>
+                  <Td pinned className="whitespace-nowrap font-medium text-ink">
+                    {r.guest.name}
+                  </Td>
                   <Td>{r.room}</Td>
                   <Td className="whitespace-nowrap">{r.roomType}</Td>
                   <Td className="whitespace-nowrap">{r.bookedBy ?? "-"}</Td>
@@ -288,19 +291,18 @@ function BookingsReportTab({ from, to }) {
                   <Td align="right">{r.otherCharges != null ? formatCurrencyPrecise(r.otherCharges) : "-"}</Td>
                   <Td align="right">{r.retained != null ? formatCurrencyPrecise(r.retained) : "-"}</Td>
                   <Td align="right">{r.advance != null ? formatCurrencyPrecise(r.advance) : "-"}</Td>
-                  <Td align="right" className="font-semibold text-gray-900">
+                  <Td align="right" className="font-semibold text-ink">
                     {r.total != null ? formatCurrencyPrecise(r.total) : "-"}
                   </Td>
                   <Td>
                     <Badge color={r.status.color}>{r.status.label}</Badge>
                   </Td>
                   <Td className="whitespace-nowrap">{r.cancelledBy ?? "-"}</Td>
-                  <Td className="max-w-[220px] whitespace-pre-line text-xs text-gray-500">{r.notes ?? "-"}</Td>
-                </tr>
+                  <Td className="max-w-[220px] whitespace-pre-line text-xs text-ink-muted">{r.notes ?? "-"}</Td>
+                </Tr>
               ))}
             </tbody>
-          </table>
-        </div>
+        </DataTable>
       )}
 
       {invoiceBookingId && <InvoiceModal bookingId={invoiceBookingId} autoGenerate={false} onClose={() => setInvoiceBookingId(null)} />}
@@ -320,7 +322,7 @@ function RevenueReportTab({ from, to }) {
         <RangeRefreshButton onClick={refetch} isFetching={isFetching} />
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
       {data && (
         <>
@@ -355,7 +357,7 @@ function OccupancyReportTab({ from, to }) {
         <RangeRefreshButton onClick={refetch} isFetching={isFetching} />
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
       {data && (
         <>
@@ -394,7 +396,7 @@ function GstReportTab({ from, to }) {
         <RangeRefreshButton onClick={refetch} isFetching={isFetching} />
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
 
       {data && (
         <>
@@ -410,10 +412,10 @@ function GstReportTab({ from, to }) {
               <div className="space-y-2">
                 {data.byRate.map((r) => (
                   <div key={r.ratePercent} className="flex items-center justify-between rounded-md bg-card px-3 py-2 text-sm shadow-sm">
-                    <span className="text-gray-700">
+                    <span className="text-ink-soft">
                       GST {r.ratePercent}% · {r.count} invoice(s)
                     </span>
-                    <span className="text-gray-900">
+                    <span className="text-ink">
                       Taxable {formatCurrencyPrecise(r.taxable)} · CGST {formatCurrencyPrecise(r.cgst)} · SGST {formatCurrencyPrecise(r.sgst)}
                     </span>
                   </div>
@@ -437,7 +439,7 @@ function GstReportTab({ from, to }) {
                 <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
-                <p className="whitespace-nowrap text-sm text-gray-500">
+                <p className="whitespace-nowrap text-sm text-ink-muted">
                   Page {page} of {totalPages} · {data.total} total
                 </p>
                 <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
@@ -445,11 +447,10 @@ function GstReportTab({ from, to }) {
                 </Button>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-line-strong bg-card shadow-sm">
-                <table className="w-full border-collapse text-left text-sm">
+              <DataTable>
                   <thead>
-                    <tr className="border-b border-line bg-muted text-xs uppercase tracking-wide text-gray-500">
-                      <Th>Invoice No</Th>
+                    <tr>
+                      <Th pinned>Invoice No</Th>
                       <Th>Date</Th>
                       <Th>Guest</Th>
                       <Th>Room</Th>
@@ -461,34 +462,27 @@ function GstReportTab({ from, to }) {
                   </thead>
                   <tbody>
                     {data.rows.map((r) => (
-                      <tr key={r.invoiceNumber} className="border-b border-line-soft odd:bg-muted/40 hover:bg-brand-tint">
-                        <Td className="font-medium text-gray-900">{r.invoiceNumber}</Td>
+                      <Tr key={r.invoiceNumber}>
+                        <Td pinned className="whitespace-nowrap font-medium text-ink">
+                          {r.invoiceNumber}
+                        </Td>
                         <Td className="whitespace-nowrap">{formatDate(r.date)}</Td>
                         <Td className="whitespace-nowrap">{r.guestName}</Td>
                         <Td>{r.room}</Td>
                         <Td align="right">{formatCurrencyPrecise(r.taxable)}</Td>
                         <Td align="right">{formatCurrencyPrecise(r.cgst)}</Td>
                         <Td align="right">{formatCurrencyPrecise(r.sgst)}</Td>
-                        <Td align="right" className="font-semibold text-gray-900">
+                        <Td align="right" className="font-semibold text-ink">
                           {formatCurrencyPrecise(r.total)}
                         </Td>
-                      </tr>
+                      </Tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
+              </DataTable>
             </>
           )}
         </>
       )}
     </div>
   );
-}
-
-function Th({ children, align = "left" }) {
-  return <th className={`px-3 py-2 font-semibold ${align === "right" ? "text-right" : "text-left"}`}>{children}</th>;
-}
-
-function Td({ children, align = "left", className = "" }) {
-  return <td className={`px-3 py-2 ${align === "right" ? "text-right" : "text-left"} ${className}`}>{children}</td>;
 }

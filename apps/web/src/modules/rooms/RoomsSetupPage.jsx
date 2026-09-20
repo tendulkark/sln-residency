@@ -46,21 +46,21 @@ export default function RoomsSetupPage() {
         }
       />
 
-      {error && <p className="text-sm text-red-600">{error.message}</p>}
+      {error && <p className="text-sm text-danger">{error.message}</p>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {isLoading && <CardSkeleton count={10} />}
         {rooms?.map((room) => (
           <div key={room.id} className="overflow-hidden rounded-lg border border-line bg-card shadow-sm">
-            <div className="flex h-24 items-center justify-center gap-1.5 bg-muted text-xs text-gray-400">
+            <div className="flex h-24 items-center justify-center gap-1.5 bg-muted text-xs text-ink-muted">
               <ImageOff className="h-4 w-4" />
               No photo
             </div>
             <div className="p-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-base font-semibold text-gray-900">Room {room.roomNumber}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-base font-semibold text-ink">Room {room.roomNumber}</p>
+                  <p className="text-xs text-ink-muted">
                     {room.roomType.name}
                     {room.floor ? ` · Floor ${room.floor}` : ""}
                   </p>
@@ -75,13 +75,13 @@ export default function RoomsSetupPage() {
                 )}
               </div>
 
-              <p className="mt-2 text-xs text-gray-500">{(room.roomType.amenities ?? []).join(", ") || "No amenities listed"}</p>
+              <p className="mt-2 text-xs text-ink-muted">{(room.roomType.amenities ?? []).join(", ") || "No amenities listed"}</p>
 
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-2 text-xs text-ink-muted">
                 Base {formatCurrency(room.pricing.basePrice)} · CGST {formatCurrency(room.pricing.cgst)} · SGST {formatCurrency(room.pricing.sgst)} · GST{" "}
                 {room.pricing.ratePercent}%
               </p>
-              <p className="mt-1 text-lg font-semibold text-emerald-700">{formatCurrency(room.pricing.total)}/night</p>
+              <p className="mt-1 text-lg font-semibold text-success">{formatCurrency(room.pricing.total)}/night</p>
 
               <div className="mt-3">
                 <StatusBadge label={room.status.label} color={room.status.color} />

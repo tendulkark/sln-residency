@@ -16,3 +16,4 @@ export { default as PageHeader } from "@/ui/PageHeader.jsx";
 export { default as DonutChart } from "@/ui/DonutChart.jsx";
 export { default as MiniBarChart } from "@/ui/MiniBarChart.jsx";
 export { default as GstCalculator, computeGst, GST_MODE } from "@/ui/GstCalculator.jsx";
+export { default as DataTable, Th, Td, Tr } from "@/ui/DataTable.jsx";
