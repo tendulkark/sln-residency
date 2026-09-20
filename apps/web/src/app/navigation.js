@@ -8,7 +8,7 @@ import { SETTINGS_NAV_ITEM } from "@/modules/settings/constants.js";
 
 // Each entry is owned by its module's own constants.js (to/label/permission/
 // icon) — this just assembles them in sidebar order. Shared by AdminShell
-// (which renders the sidebar) and router.jsx (which gates each page on the
+// (which renders the sidebar) and app/router.jsx (which gates each page on the
 // same permission, so a URL typed by hand can't open a page the sidebar
 // hides). Both are UX niceties only — the API re-checks every request
 // regardless (AI_RULES.md #3).

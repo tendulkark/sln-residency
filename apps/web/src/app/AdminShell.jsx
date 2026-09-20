@@ -2,7 +2,7 @@ import { Fragment, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react";
 import { LogOut, Hotel, ChevronLeft, ChevronRight, Menu as MenuIcon } from "lucide-react";
-import { useAuthStore } from "@/modules/auth/authStore.js";
+import { useAuthStore } from "@/app/authStore.js";
 import { apiFetch } from "@/lib/api.js";
 import { Button } from "@/ui/index.js";
 import { NAV_ITEMS } from "@/app/navigation.js";

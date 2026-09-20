@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
-import { useAuthStore } from "@/modules/auth/authStore.js";
+import { useAuthStore } from "@/app/authStore.js";
 import { refreshSession } from "@/lib/api.js";
 
 // Runs once on app load: tries to silently restore a session from the

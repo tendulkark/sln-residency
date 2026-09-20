@@ -19,6 +19,61 @@ payment methods) is hardcoded — it's all editable data. See
   `packages/shared-schemas` (Zod schemas + the permission catalog, shared by
   both apps).
 
+## Project structure
+
+```
+apps/web/src
+├── main.jsx              # bootstraps React, React Query, the router, the PWA SW
+├── index.css             # Tailwind + the ink/state design tokens
+├── app/                  # composition root — the only layer that knows every module
+│   ├── router.jsx        #   route table (pages wired to nav items + permissions)
+│   ├── navigation.js     #   NAV_ITEMS, assembled from each module's *_NAV_ITEM
+│   ├── AdminShell.jsx    #   sidebar + header chrome around every page
+│   ├── RootLayout.jsx    #   silent session restore on cold load
+│   ├── authStore.js      #   Zustand session store (token, user, tenant, permissions)
+│   └── guards/           #   ProtectedRoute (signed in?) / RequirePermission (allowed?)
+├── modules/<domain>/     # one folder per business area, all shaped the same way
+│   ├── pages/            #   the routed screen(s) — the module's entry point
+│   ├── components/       #   modals/cards/forms owned by this module
+│   └── constants.js      #   route path, nav item (icon + permission), React Query keys
+├── ui/                   # domain-agnostic design-system primitives (Button, Modal, DataTable…)
+│   └── index.js          #   the barrel — outside ui/, import ONLY from "@/ui/index.js"
+└── lib/                  # framework-free helpers: api.js (fetch + refresh), format.js,
+                          #   dateRange.js, theme.js
+
+apps/api/src
+├── server.js / app.js    # boot + plugin/route registration
+├── config/env.js         # validated process.env
+├── plugins/              # Fastify decorators: prisma client, JWT authenticate
+├── routes/*.routes.js    # one plugin per resource; every handler checks permissions
+└── lib/                  # tax, billing, availability, reports, audit, tokens, permissions
+
+packages/shared-schemas/src   # Zod schemas + the permission catalog, one file per entity
+```
+
+Module map (`apps/web/src/modules/`):
+
+| Module         | Page              | Components                                                                                                            |
+| -------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `auth`         | `LoginPage`       | —                                                                                                                     |
+| `dashboard`    | `DashboardPage`   | `StatCard`, `RoomBoardCard`                                                                                           |
+| `rooms`        | `RoomsSetupPage`  | `RoomFormModal`, `RoomTypesModal`                                                                                     |
+| `housekeeping` | `HousekeepingPage`| `RoomClosuresModal`                                                                                                   |
+| `reservations` | `ReservationsPage`| `BookingFormModal`, `ManageStayModal`, `EditBookingModal`, `ExtendStayModal`, `RoomBookingsModal`, `DayBookingsModal`, `DaySheet`, `BookingRow`, `MiniDatePicker`, `MonthYearPicker` (+ `calendarUtils.js`) |
+| `invoices`     | `InvoicesPage`    | `InvoiceModal`, `InvoiceDocument`, `ProvisionalBillModal`, `GuestDetailsForm`                                        |
+| `reports`      | `ReportsPage`     | —                                                                                                                     |
+| `settings`     | `SettingsPage`    | —                                                                                                                     |
+| `common`       | —                 | `StatusBadge`, `GstCalculator` — components/keys shared by several modules but still domain-aware (so not in `ui/`) |
+
+Conventions:
+
+- Imports are always absolute: `@/…` in the web app, `#src/…` in the API and
+  shared package. No `./` or `../` chains.
+- Dependency direction is one-way: `app → modules → { ui, lib }`. Modules may
+  import each other's `constants.js` (to invalidate a query) and components
+  (e.g. Reservations opens `InvoiceModal`), but never anything in `app/`.
+- `ui/` never imports from `modules/` or knows about hotels, GST, or bookings.
+
 ## Phase 1 (foundation)
 
 - Prisma schema for the full dynamic model: tenants, users, roles,
