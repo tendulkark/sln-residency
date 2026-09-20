@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Receipt, Split, Tag, Trash2, CalendarPlus, LogIn, XCircle, Printer } from "lucide-react";
+import { Plus, Receipt, Split, Tag, Trash2, CalendarPlus, LogIn, XCircle, Printer, Pencil, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { formatCurrency, formatDateTime, toDateTimeInputValue } from "@/lib/format.js";
 import { useAuthStore } from "@/modules/auth/authStore.js";
 import { Badge, Button, GstCalculator, Input, Select, computeGst, GST_MODE } from "@/ui/index.js";
 import Modal from "@/ui/Dialog.jsx";
 import ExtendStayModal from "@/modules/reservations/ExtendStayModal.jsx";
+import EditBookingModal from "@/modules/reservations/EditBookingModal.jsx";
 import InvoiceModal from "@/modules/invoices/InvoiceModal.jsx";
 import ProvisionalBillModal from "@/modules/invoices/ProvisionalBillModal.jsx";
 import { bookingStayKey, BOOKINGS_QUERY_KEY } from "@/modules/reservations/constants.js";
@@ -14,6 +15,7 @@ import { PAYMENT_METHODS_QUERY_KEY } from "@/modules/payments/constants.js";
 import { statusesKey } from "@/modules/common/constants.js";
 import { DASHBOARD_ROOM_BOARD_QUERY_KEY, DASHBOARD_SUMMARY_QUERY_KEY } from "@/modules/dashboard/constants.js";
 import { ROOMS_QUERY_KEY } from "@/modules/rooms/constants.js";
+import { bookingInvoiceKey } from "@/modules/invoices/constants.js";
 
 function AddChargeForm({ type, onAdd, onCancel, pending }) {
   const [description, setDescription] = useState("");
@@ -74,15 +76,34 @@ export default function ManageStayModal({ bookingId, onClose }) {
   const { data: stay, isLoading } = useQuery({ queryKey: bookingStayKey(bookingId), queryFn: () => apiFetch(`/bookings/${bookingId}/stay`) });
   const { data: methods } = useQuery({ queryKey: [PAYMENT_METHODS_QUERY_KEY], queryFn: () => apiFetch("/payment-methods") });
   const { data: paymentStatuses } = useQuery({ queryKey: statusesKey("payment"), queryFn: () => apiFetch("/statuses?domain=payment") });
+  // Only to know whether a *finalized* invoice already exists, so a
+  // correction made after checkout can offer "Reissue Invoice" instead of
+  // leaving the printed document silently stale — shares its query key with
+  // InvoiceModal's own fetch, so the two stay in sync automatically.
+  const { data: invoiceData } = useQuery({ queryKey: bookingInvoiceKey(bookingId), queryFn: () => apiFetch(`/bookings/${bookingId}/invoice`), retry: false });
   const methodOptions = useMemo(() => (methods ?? []).map((m) => ({ value: m.id, label: m.name })), [methods]);
   const paidStatus = paymentStatuses?.find((s) => s.code === "paid");
+  // Computed early (not just further down alongside `primary`) because the
+  // mutations below need it in their onSuccess handlers, and the backend's
+  // own lock (bookings.routes.js/payments.routes.js) uses this exact
+  // definition — a checked-out stay's charges/payments/details are locked
+  // to ordinary edits, `bookings.correct` (admin-only by default) is the
+  // deliberate override (see billing.js `isBookingLocked`).
+  const isCheckedOut = stay?.bookings?.[0]?.status?.code === "checked_out";
+  const canCorrect = permissions.has("bookings.correct");
+  const financialActionsAllowed = !isCheckedOut || canCorrect;
 
   const [addFormType, setAddFormType] = useState(null); // "charge" | "discount" | null
   const [settleRows, setSettleRows] = useState([{ methodId: "", amount: "", paidAt: toDateTimeInputValue(new Date()) }]);
   const [extendOpen, setExtendOpen] = useState(false);
-  const [invoiceModal, setInvoiceModal] = useState(null); // { autoGenerate } | null
+  const [editStayOpen, setEditStayOpen] = useState(false);
+  const [invoiceModal, setInvoiceModal] = useState(null); // { autoGenerate, closeStayOnDone, autoReissueReason? } | null
   const [provisionalBillOpen, setProvisionalBillOpen] = useState(false);
   const [error, setError] = useState(null);
+  // Set once an admin corrects something on an already-checked-out stay
+  // (bookings.correct) — local to this sitting, not persisted, since it
+  // only exists to prompt "the invoice you just made stale is right here."
+  const [changedSinceCheckout, setChangedSinceCheckout] = useState(false);
 
   useEffect(() => {
     if (stay?.summary.balanceDue > 0 && settleRows.length === 1 && !settleRows[0].amount) {
@@ -104,13 +125,17 @@ export default function ManageStayModal({ bookingId, onClose }) {
     onSuccess: () => {
       invalidateAll();
       setAddFormType(null);
+      if (isCheckedOut) setChangedSinceCheckout(true);
     },
     onError: (err) => setError(err.message),
   });
 
   const deleteCharge = useMutation({
     mutationFn: (chargeId) => apiFetch(`/booking-charges/${chargeId}`, { method: "DELETE" }),
-    onSuccess: invalidateAll,
+    onSuccess: () => {
+      invalidateAll();
+      if (isCheckedOut) setChangedSinceCheckout(true);
+    },
     onError: (err) => setError(err.message),
   });
 
@@ -174,6 +199,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
     onSuccess: () => {
       invalidateAll();
       setSettleRows([{ methodId: "", amount: "", paidAt: toDateTimeInputValue(new Date()) }]);
+      if (isCheckedOut) setChangedSinceCheckout(true);
     },
     onError: (err) => setError(err.message),
   });
@@ -211,6 +237,8 @@ export default function ManageStayModal({ bookingId, onClose }) {
       <InvoiceModal
         bookingId={bookingId}
         autoGenerate={invoiceModal.autoGenerate}
+        autoReissueReason={invoiceModal.autoReissueReason}
+        onReissued={() => setChangedSinceCheckout(false)}
         onClose={() => {
           setInvoiceModal(null);
           if (invoiceModal.closeStayOnDone) onClose();
@@ -225,7 +253,6 @@ export default function ManageStayModal({ bookingId, onClose }) {
 
   const primary = stay.bookings[0];
   const isCheckedIn = primary.status.code === "checked_in";
-  const isCheckedOut = primary.status.code === "checked_out";
   const roomLabel = stay.bookings.map((b) => b.room.roomNumber).join(", ");
   const settleTotal = settleRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
@@ -250,7 +277,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
               <Receipt className="h-4 w-4 text-brand" />
               Other Charges (Food, Damages, etc.)
             </p>
-            {permissions.has("bookings.edit") && addFormType !== "charge" && (
+            {financialActionsAllowed && permissions.has("bookings.edit") && addFormType !== "charge" && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setAddFormType("charge")}>
                 <Plus className="h-3.5 w-3.5" />
                 Add Charge
@@ -268,7 +295,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
                 <span className="text-gray-700">{c.description}</span>
                 <span className="flex items-center gap-2">
                   {formatCurrency(c.amount)}
-                  {permissions.has("bookings.edit") && (
+                  {financialActionsAllowed && permissions.has("bookings.edit") && (
                     <button onClick={() => deleteCharge.mutate(c.id)} className="text-gray-300 hover:text-red-600 print:hidden" aria-label="Remove charge">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -287,7 +314,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
               <Tag className="h-4 w-4 text-gold-dark" />
               Discount / Concession (optional)
             </p>
-            {permissions.has("bookings.edit") && addFormType !== "discount" && (
+            {financialActionsAllowed && permissions.has("bookings.edit") && addFormType !== "discount" && (
               <Button size="sm" variant="outline" className="print:hidden" onClick={() => setAddFormType("discount")}>
                 <Plus className="h-3.5 w-3.5" />
                 Add Discount
@@ -301,7 +328,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
                 <span className="text-gray-700">{c.description}</span>
                 <span className="flex items-center gap-2">
                   -{formatCurrency(c.amount)}
-                  {permissions.has("bookings.edit") && (
+                  {financialActionsAllowed && permissions.has("bookings.edit") && (
                     <button onClick={() => deleteCharge.mutate(c.id)} className="text-gray-300 hover:text-red-600 print:hidden" aria-label="Remove discount">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -367,7 +394,21 @@ export default function ManageStayModal({ bookingId, onClose }) {
           </div>
         )}
 
-        {!isCheckedOut && stay.summary.balanceDue > 0 && permissions.has("payments.record") && (
+        {isCheckedOut && changedSinceCheckout && invoiceData?.invoice?.isFinalized && !invoiceData.invoice.isCancelled && permissions.has("invoices.cancel") && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 print:hidden">
+            <span>Corrected after checkout — Invoice {invoiceData.invoice.invoiceNumber} still shows the old figures.</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setInvoiceModal({ autoGenerate: false, closeStayOnDone: false, autoReissueReason: "Stay details corrected after checkout" })}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Reissue Invoice
+            </Button>
+          </div>
+        )}
+
+        {financialActionsAllowed && stay.summary.balanceDue > 0 && permissions.has("payments.record") && (
           <div className="mt-3 rounded-md border-2 border-brand bg-brand-tint p-3 shadow-sm print:hidden">
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-brand/75">Settle Balance</p>
             {settleRows.map((row, i) => (
@@ -429,6 +470,12 @@ export default function ManageStayModal({ bookingId, onClose }) {
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted p-3 print:hidden">
           <div className="flex gap-1">
+            {financialActionsAllowed && permissions.has("bookings.edit") && (
+              <Button variant="ghost" size="sm" onClick={() => setEditStayOpen(true)}>
+                <Pencil className="h-4 w-4" />
+                Edit Stay Details
+              </Button>
+            )}
             {!primary.status.isTerminal && (
               <Button variant="ghost" size="sm" onClick={() => setExtendOpen(true)}>
                 <CalendarPlus className="h-4 w-4" />
@@ -475,6 +522,16 @@ export default function ManageStayModal({ bookingId, onClose }) {
       </Modal>
 
       {extendOpen && <ExtendStayModal booking={primary} onClose={() => setExtendOpen(false)} />}
+      {editStayOpen && (
+        <EditBookingModal
+          booking={primary}
+          onClose={() => setEditStayOpen(false)}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: bookingStayKey(bookingId) });
+            if (isCheckedOut) setChangedSinceCheckout(true);
+          }}
+        />
+      )}
     </>
   );
 }

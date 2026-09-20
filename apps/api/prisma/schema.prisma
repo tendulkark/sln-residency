@@ -363,6 +363,18 @@ model Invoice {
   total              Decimal   @db.Decimal(10, 2)
   generatedById      String
   generatedAt        DateTime  @default(now())
+  // Guest/company details (name, contact, ID proof, companyName, gstin) as
+  // they stood the moment this invoice was finalized — set once, in
+  // finalize (POST /bookings/:id/invoice) and reissue (POST /invoices/:id/
+  // cancel), never touched again. Mirrors the tax-figure snapshot below:
+  // the printed "Billed To" block on a finalized invoice must never change
+  // just because someone edits the Guest row later (e.g. an admin adding a
+  // missed GSTIN via guests.routes.js `PATCH /guests/:id`) — correcting a
+  // finalized invoice's guest details means cancel+reissue, same as a wrong
+  // tax figure. Null on a reserved (not yet finalized) invoice and on any
+  // invoice finalized before this column existed — both cases fall back to
+  // reading the live Guest row (invoices.routes.js `invoiceView`).
+  guestSnapshot      Json?
   // A real, permanent invoice number is reserved the moment a booking is
   // created (bookings.routes.js) — not at checkout — so it's visible on
   // every print from booking onward, per product decision 2026-09-18.

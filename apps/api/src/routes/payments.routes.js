@@ -1,6 +1,7 @@
 import { recordPaymentSchema } from "@sln/shared-schemas";
 import { requirePermission } from "#src/lib/permissions.js";
 import { recordAudit } from "#src/lib/audit.js";
+import { isBookingLocked } from "#src/lib/billing.js";
 
 function dayRange(dateStr) {
   const start = dateStr ? new Date(dateStr) : new Date();
@@ -52,8 +53,11 @@ export default async function paymentsRoutes(fastify) {
       const { bookingId, methodId, statusId, amount, referenceNote, paidAt } = parsed.data;
       const tenantId = request.user.tenantId;
 
-      const booking = await fastify.prisma.booking.findFirst({ where: { id: bookingId, tenantId } });
+      const booking = await fastify.prisma.booking.findFirst({ where: { id: bookingId, tenantId }, include: { status: true } });
       if (!booking) return reply.code(400).send({ error: "Unknown booking" });
+      if (isBookingLocked(booking.status) && !request.user.permissions.has("bookings.correct")) {
+        return reply.code(403).send({ error: "This booking is checked out — recording a payment now requires the bookings.correct permission" });
+      }
 
       const method = await fastify.prisma.paymentMethod.findFirst({ where: { id: methodId, tenantId, isActive: true } });
       if (!method) return reply.code(400).send({ error: "Unknown payment method" });

@@ -3,7 +3,7 @@ import { requirePermission } from "#src/lib/permissions.js";
 import { recordAudit } from "#src/lib/audit.js";
 import { findBookingConflict, findClosureConflict } from "#src/lib/availability.js";
 import { priceRoom } from "#src/lib/tax.js";
-import { BOOKING_INCLUDE, nightsBetween, computeStayBreakdown, createReservedInvoice } from "#src/lib/billing.js";
+import { BOOKING_INCLUDE, nightsBetween, computeStayBreakdown, createReservedInvoice, isBookingLocked } from "#src/lib/billing.js";
 
 function generateGroupCode() {
   return `GRP-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
@@ -336,8 +336,11 @@ export default async function bookingsRoutes(fastify) {
       }
       const tenantId = request.user.tenantId;
 
-      const existing = await fastify.prisma.booking.findFirst({ where: { id: request.params.id, tenantId } });
+      const existing = await fastify.prisma.booking.findFirst({ where: { id: request.params.id, tenantId }, include: { status: true } });
       if (!existing) return reply.code(404).send({ error: "Booking not found" });
+      if (isBookingLocked(existing.status) && !request.user.permissions.has("bookings.correct")) {
+        return reply.code(403).send({ error: "This booking is checked out — editing it now requires the bookings.correct permission" });
+      }
 
       const roomId = parsed.data.roomId ?? existing.roomId;
       const checkIn = parsed.data.checkIn ?? existing.checkIn;
@@ -511,8 +514,11 @@ export default async function bookingsRoutes(fastify) {
       }
       const tenantId = request.user.tenantId;
 
-      const booking = await fastify.prisma.booking.findFirst({ where: { id: request.params.id, tenantId } });
+      const booking = await fastify.prisma.booking.findFirst({ where: { id: request.params.id, tenantId }, include: { status: true } });
       if (!booking) return reply.code(404).send({ error: "Booking not found" });
+      if (isBookingLocked(booking.status) && !request.user.permissions.has("bookings.correct")) {
+        return reply.code(403).send({ error: "This booking is checked out — adding a charge now requires the bookings.correct permission" });
+      }
 
       const charge = await fastify.prisma.bookingCharge.create({
         data: { tenantId, bookingId: booking.id, createdById: request.user.id, ...parsed.data },
@@ -535,8 +541,14 @@ export default async function bookingsRoutes(fastify) {
     "/booking-charges/:id",
     { preHandler: [fastify.authenticate, requirePermission("bookings.edit")] },
     async (request, reply) => {
-      const existing = await fastify.prisma.bookingCharge.findFirst({ where: { id: request.params.id, tenantId: request.user.tenantId } });
+      const existing = await fastify.prisma.bookingCharge.findFirst({
+        where: { id: request.params.id, tenantId: request.user.tenantId },
+        include: { booking: { include: { status: true } } },
+      });
       if (!existing) return reply.code(404).send({ error: "Charge not found" });
+      if (isBookingLocked(existing.booking.status) && !request.user.permissions.has("bookings.correct")) {
+        return reply.code(403).send({ error: "This booking is checked out — removing a charge now requires the bookings.correct permission" });
+      }
 
       await fastify.prisma.bookingCharge.delete({ where: { id: existing.id } });
 

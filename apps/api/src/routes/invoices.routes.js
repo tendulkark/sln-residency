@@ -1,6 +1,6 @@
 import { requirePermission } from "#src/lib/permissions.js";
 import { recordAudit } from "#src/lib/audit.js";
-import { computeStayBreakdown, nextInvoiceNumber } from "#src/lib/billing.js";
+import { computeStayBreakdown, nextInvoiceNumber, guestSnapshotFrom } from "#src/lib/billing.js";
 import { startOfDay, endOfDayExclusive } from "#src/lib/reports.js";
 
 const TENANT_LETTERHEAD_SELECT = {
@@ -26,7 +26,10 @@ function invoiceListRow(inv) {
     id: inv.id,
     invoiceNumber: inv.invoiceNumber,
     bookingId: inv.bookingId,
-    guestName: inv.booking.guest.name,
+    // A finalized invoice's own snapshot outranks the guest's current (maybe
+    // since-corrected) name, so a reissued-for-GSTIN row still lists under
+    // whatever name that specific document was actually printed with.
+    guestName: inv.isFinalized && inv.guestSnapshot ? inv.guestSnapshot.name : inv.booking.guest.name,
     room: inv.booking.room.roomNumber,
     generatedAt: inv.generatedAt,
     generatedByName: inv.generatedBy.name,
@@ -41,11 +44,22 @@ function invoiceListRow(inv) {
   };
 }
 
+// InvoiceDocument only ever reads guest fields off `bookings[0].guest`
+// (room-charge rows aside, every other booking in a group is billed under
+// the same primary guest) — so freezing a finalized invoice's "Billed To"
+// block is just swapping the snapshot in for that one entry's guest, live
+// data staying untouched everywhere else the same `stay` object is used.
+function bookingsForInvoiceView(invoice, stay) {
+  if (!invoice.isFinalized || !invoice.guestSnapshot) return stay.bookings;
+  const [primary, ...rest] = stay.bookings;
+  return [{ ...primary, guest: { ...primary.guest, ...invoice.guestSnapshot } }, ...rest];
+}
+
 function invoiceView(invoice, tenant, stay) {
   return {
     invoice,
     tenant,
-    bookings: stay.bookings,
+    bookings: bookingsForInvoiceView(invoice, stay),
     charges: stay.charges,
     payments: stay.payments,
     summary: stay.summary,
@@ -170,6 +184,7 @@ export default async function invoicesRoutes(fastify) {
         taxRateSnapshot: stay.summary.taxRatePercent,
         taxAmount: stay.summary.cgst + stay.summary.sgst,
         total: stay.summary.grandTotal,
+        guestSnapshot: guestSnapshotFrom(stay.primary.guest),
       };
 
       if (invoice && !invoice.isFinalized) {
@@ -276,6 +291,11 @@ export default async function invoicesRoutes(fastify) {
                 taxRateSnapshot: stay.summary.taxRatePercent,
                 taxAmount: stay.summary.cgst + stay.summary.sgst,
                 total: stay.summary.grandTotal,
+                // Re-reads whatever the Guest row says right now — if this
+                // reissue was triggered by an admin correcting the guest's
+                // details (guests.routes.js `PATCH /guests/:id`) moments
+                // earlier, that correction is what gets frozen in here.
+                guestSnapshot: guestSnapshotFrom(stay.primary.guest),
                 generatedById: request.user.id,
                 isFinalized: true,
                 supersedesInvoiceId: oldInvoice.id,

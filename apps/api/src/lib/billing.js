@@ -40,6 +40,37 @@ export async function createReservedInvoice(prisma, { tenantId, bookingId, gener
   });
 }
 
+// The guest/company fields worth freezing onto a finalized Invoice
+// (Invoice.guestSnapshot) — the same shape `InvoiceDocument`'s "Billed To"
+// block reads off `bookings[0].guest`, so a snapshot can be swapped in for
+// the live row without the frontend needing to know the difference.
+export function guestSnapshotFrom(guest) {
+  return {
+    name: guest.name,
+    phone: guest.phone,
+    phone2: guest.phone2,
+    email: guest.email,
+    address: guest.address,
+    idProofType: guest.idProofType,
+    idProofNumber: guest.idProofNumber,
+    companyName: guest.companyName,
+    gstin: guest.gstin,
+  };
+}
+
+// A checked-out booking's stay details, charges, and payments are locked
+// against ordinary edits — the same reasoning as a finalized invoice
+// (AI_RULES.md #4): the printed Tax Invoice was computed from this data,
+// so silently changing it after the fact would leave the invoice wrong
+// with no trace. `bookings.correct` (admin-only by default, not a
+// hardcoded role check) is the deliberate override for genuine
+// corrections — routes that accept it still expect the caller to reissue
+// the invoice afterward (invoices.routes.js `POST /invoices/:id/cancel`)
+// if one was already finalized.
+export function isBookingLocked(status) {
+  return status.code === "checked_out";
+}
+
 export const BOOKING_INCLUDE = {
   room: { select: { id: true, roomNumber: true, floor: true, roomType: { select: { name: true } } } },
   guest: {
