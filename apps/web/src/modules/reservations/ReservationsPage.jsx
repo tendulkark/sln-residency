@@ -1,21 +1,20 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus, Search, CalendarX2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { rangeFor, addDays, startOfMonth, toISODate } from "@/lib/dateRange.js";
-import { formatCurrency, formatDateTime } from "@/lib/format.js";
 import BookingFormModal from "@/modules/reservations/BookingFormModal.jsx";
 import DayBookingsModal from "@/modules/reservations/DayBookingsModal.jsx";
+import DaySheet from "@/modules/reservations/DaySheet.jsx";
 import ManageStayModal from "@/modules/reservations/ManageStayModal.jsx";
 import MiniDatePicker from "@/modules/reservations/MiniDatePicker.jsx";
 import MonthYearPicker from "@/modules/reservations/MonthYearPicker.jsx";
-import RecordPaymentModal from "@/modules/payments/RecordPaymentModal.jsx";
 import { useAuthStore } from "@/modules/auth/authStore.js";
-import { Badge, Button, CardSkeleton, EmptyState, Input, SegmentedControl, PageHeader } from "@/ui/index.js";
-import { bookingsKey, BOOKINGS_QUERY_KEY } from "@/modules/reservations/constants.js";
+import { Button, CardSkeleton, Input, SegmentedControl, PageHeader } from "@/ui/index.js";
+import { bookingsKey } from "@/modules/reservations/constants.js";
 import { statusesKey } from "@/modules/common/constants.js";
-import { DASHBOARD_ROOM_BOARD_QUERY_KEY, DASHBOARD_SUMMARY_QUERY_KEY } from "@/modules/dashboard/constants.js";
 import { ROOMS_QUERY_KEY } from "@/modules/rooms/constants.js";
+import { bookingsForDay, occupancyTone, occupiedRoomIds } from "@/modules/reservations/calendarUtils.js";
 
 const VIEW_MODES = [
   { value: "day", label: "Day" },
@@ -23,22 +22,6 @@ const VIEW_MODES = [
   { value: "month", label: "Month" },
 ];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-// A day's occupied-room count relative to the hotel's total room count,
-// colored so a front-desk glance across the month spots busy days —
-// thresholds are a display convenience, not tenant-configurable data.
-function occupancyTone(occupied, total) {
-  if (total <= 0) return "bg-muted-strong text-gray-500";
-  const pct = occupied / total;
-  if (pct >= 0.9) return "bg-red-100 text-red-700";
-  if (pct >= 0.6) return "bg-amber-100 text-amber-700";
-  return "bg-emerald-100 text-emerald-700";
-}
-
-// Every booking whose [checkIn, checkOut) span touches this calendar day.
-function bookingsForDay(bookings, day) {
-  const dayEnd = addDays(day, 1);
-  return bookings.filter((b) => new Date(b.checkIn) < dayEnd && new Date(b.checkOut) > day);
-}
 
 // "15 – 21 Sep 2026", expanding to show the month/year on both ends
 // whenever the week crosses either boundary.
@@ -52,12 +35,10 @@ function weekRangeLabel(weekStart) {
 
 export default function ReservationsPage() {
   const permissions = useAuthStore((s) => s.permissions);
-  const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState("month");
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [search, setSearch] = useState("");
   const [bookingModal, setBookingModal] = useState(false);
-  const [paymentModal, setPaymentModal] = useState(null);
   const [manageBookingId, setManageBookingId] = useState(null);
   const [dayDetail, setDayDetail] = useState(null); // Date | null — the month grid's "+N more" / day-cell click
 
@@ -73,7 +54,6 @@ export default function ReservationsPage() {
   });
 
   const { data: bookingStatuses } = useQuery({ queryKey: statusesKey("booking"), queryFn: () => apiFetch("/statuses?domain=booking") });
-  const statusByCode = useMemo(() => Object.fromEntries((bookingStatuses ?? []).map((s) => [s.code, s])), [bookingStatuses]);
 
   // Total room count is the denominator for each day's occupancy pill in
   // the month grid — only fetched when the viewer can actually see rooms,
@@ -84,17 +64,6 @@ export default function ReservationsPage() {
     enabled: permissions.has("rooms.view"),
   });
   const totalRooms = allRooms?.length ?? 0;
-
-  const transitionStatus = useMutation({
-    mutationFn: ({ bookingId, statusId, extra }) =>
-      apiFetch(`/bookings/${bookingId}/status`, { method: "PATCH", body: JSON.stringify({ statusId, ...extra }) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [BOOKINGS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [DASHBOARD_ROOM_BOARD_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [DASHBOARD_SUMMARY_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ROOMS_QUERY_KEY] });
-    },
-  });
 
   function shift(deltaWeeks) {
     if (viewMode === "day") setAnchorDate(addDays(anchorDate, deltaWeeks));
@@ -147,9 +116,11 @@ export default function ReservationsPage() {
             {viewMode === "month" && <MonthYearPicker anchorDate={anchorDate} onSelect={setAnchorDate} />}
             {viewMode === "week" && <MiniDatePicker label={weekRangeLabel(start)} anchorDate={anchorDate} onSelect={setAnchorDate} highlightWeek />}
             {viewMode === "day" && (
-              <span className="flex w-[190px] items-center justify-center truncate px-1 text-sm font-semibold text-gray-900">
-                {anchorDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
-              </span>
+              <MiniDatePicker
+                label={anchorDate.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                anchorDate={anchorDate}
+                onSelect={setAnchorDate}
+              />
             )}
             <Button variant="outline" size="sm" onClick={() => shift(1)} aria-label="Next">
               <ChevronRight className="h-4 w-4" />
@@ -198,12 +169,7 @@ export default function ReservationsPage() {
                     const inMonth = day.getMonth() === currentMonth;
                     const isToday = toISODate(day) === toISODate(new Date());
                     const dayBookings = bookingsForDay(bookings ?? [], day).sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn));
-                    // Cancelled/no-show bookings never actually occupied the
-                    // room, so they're excluded from the occupancy count
-                    // (but still listed in the day's booking detail).
-                    const occupiedRooms = new Set(
-                      dayBookings.filter((b) => b.status.code !== "cancelled" && b.status.code !== "no_show").map((b) => b.room.id)
-                    );
+                    const occupiedRooms = occupiedRoomIds(dayBookings);
                     const visible = dayBookings.slice(0, 3);
                     const hiddenCount = dayBookings.length - visible.length;
 
@@ -274,9 +240,7 @@ export default function ReservationsPage() {
               {weekDays.map((day) => {
                 const isToday = toISODate(day) === toISODate(new Date());
                 const dayBookings = bookingsForDay(bookings ?? [], day).sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn));
-                const occupiedRooms = new Set(
-                  dayBookings.filter((b) => b.status.code !== "cancelled" && b.status.code !== "no_show").map((b) => b.room.id)
-                );
+                const occupiedRooms = occupiedRoomIds(dayBookings);
 
                 return (
                   <div
@@ -333,56 +297,16 @@ export default function ReservationsPage() {
       )}
 
       {viewMode === "day" && !isLoading && (
-        <div className="space-y-2">
-          {(bookings ?? []).length === 0 && <EmptyState icon={CalendarX2} title="No bookings in this range." />}
-          {bookings?.map((booking) => (
-            <div key={booking.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card p-4 shadow-sm">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {booking.guest.name} · Room {booking.room.roomNumber}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {formatDateTime(booking.checkIn)} → {formatDateTime(booking.checkOut)} · {formatCurrency(booking.totalAmount)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge color={booking.status.color}>{booking.status.label}</Badge>
-                {permissions.has("bookings.edit") && booking.status.code === "confirmed" && statusByCode.checked_in && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => transitionStatus.mutate({ bookingId: booking.id, statusId: statusByCode.checked_in.id, extra: { actualCheckIn: new Date().toISOString() } })}
-                  >
-                    Check in
-                  </Button>
-                )}
-                {permissions.has("bookings.edit") && booking.status.code === "checked_in" && statusByCode.checked_out && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => transitionStatus.mutate({ bookingId: booking.id, statusId: statusByCode.checked_out.id, extra: { actualCheckOut: new Date().toISOString() } })}
-                  >
-                    Check out
-                  </Button>
-                )}
-                {permissions.has("bookings.cancel") && !booking.status.isTerminal && statusByCode.cancelled && (
-                  <Button variant="danger" size="sm" onClick={() => transitionStatus.mutate({ bookingId: booking.id, statusId: statusByCode.cancelled.id })}>
-                    Cancel
-                  </Button>
-                )}
-                {permissions.has("payments.record") && (
-                  <Button size="sm" onClick={() => setPaymentModal(booking)}>
-                    Record payment
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <DaySheet
+          date={anchorDate}
+          bookings={bookings ?? []}
+          totalRooms={totalRooms}
+          bookingStatuses={bookingStatuses}
+          onSelectBooking={(booking) => setManageBookingId(booking.id)}
+        />
       )}
 
       {bookingModal && <BookingFormModal defaultDate={anchorDate} onClose={() => setBookingModal(false)} />}
-      {paymentModal && permissions.has("payments.record") && <RecordPaymentModal booking={paymentModal} onClose={() => setPaymentModal(null)} />}
       {dayDetail && (
         <DayBookingsModal
           date={dayDetail}
