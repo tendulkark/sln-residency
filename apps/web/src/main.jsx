@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
 import { registerSW } from "virtual:pwa-register";
-import { router } from "@/router.jsx";
+import { router } from "@/app/router.jsx";
 import "@/index.css";
 
 // no-op outside a production build (devOptions.enabled is false in

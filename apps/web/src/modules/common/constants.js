@@ -5,3 +5,8 @@
 // column ("booking" | "room" | "payment").
 export const STATUSES_QUERY_KEY = "statuses";
 export const statusesKey = (domain) => [STATUSES_QUERY_KEY, domain];
+
+// Payment method *names* are DB-driven too (PaymentMethod table); this is
+// only the cache key their lookup is stored under, used wherever a payment
+// is recorded (BookingFormModal, ManageStayModal).
+export const PAYMENT_METHODS_QUERY_KEY = "payment-methods";

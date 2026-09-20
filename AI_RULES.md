@@ -53,7 +53,12 @@ explicitly asked later.
    `.env` files that are gitignored, referenced via `process.env`.
 8. Prefer editing/extending existing modules over creating parallel/duplicate
    ones. Before adding a new file, check whether an existing
-   service/route/component already owns that responsibility.
+   service/route/component already owns that responsibility. Follow the
+   layout in README.md "Project structure": a web module is
+   `modules/<domain>/{pages,components,constants.js}`, app-wide plumbing
+   (router, guards, auth store) lives in `app/`, design-system primitives in
+   `ui/` (imported only via `@/ui/index.js`), and imports are always
+   absolute (`@/…` on the web, `#src/…` in the API).
 9. Every booking/payment/status-changing action must write an `AuditLog` row
    (who did what, when, on which tenant).
 10. Use the shared Zod schemas in `/packages/shared-schemas` for validation
