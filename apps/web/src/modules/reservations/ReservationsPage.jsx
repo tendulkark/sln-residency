@@ -7,6 +7,7 @@ import { formatCurrency, formatDateTime } from "@/lib/format.js";
 import BookingFormModal from "@/modules/reservations/BookingFormModal.jsx";
 import DayBookingsModal from "@/modules/reservations/DayBookingsModal.jsx";
 import ManageStayModal from "@/modules/reservations/ManageStayModal.jsx";
+import MiniDatePicker from "@/modules/reservations/MiniDatePicker.jsx";
 import MonthYearPicker from "@/modules/reservations/MonthYearPicker.jsx";
 import RecordPaymentModal from "@/modules/payments/RecordPaymentModal.jsx";
 import { useAuthStore } from "@/modules/auth/authStore.js";
@@ -37,6 +38,16 @@ function occupancyTone(occupied, total) {
 function bookingsForDay(bookings, day) {
   const dayEnd = addDays(day, 1);
   return bookings.filter((b) => new Date(b.checkIn) < dayEnd && new Date(b.checkOut) > day);
+}
+
+// "15 – 21 Sep 2026", expanding to show the month/year on both ends
+// whenever the week crosses either boundary.
+function weekRangeLabel(weekStart) {
+  const weekEnd = addDays(weekStart, 6);
+  const sameMonth = weekStart.getMonth() === weekEnd.getMonth() && weekStart.getFullYear() === weekEnd.getFullYear();
+  const startLabel = weekStart.toLocaleDateString("en-IN", sameMonth ? { day: "numeric" } : { day: "numeric", month: "short" });
+  const endLabel = weekEnd.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return `${startLabel} – ${endLabel}`;
 }
 
 export default function ReservationsPage() {
@@ -102,6 +113,11 @@ export default function ReservationsPage() {
     return result;
   }, [start, end, viewMode]);
 
+  const weekDays = useMemo(() => {
+    if (viewMode !== "week") return [];
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  }, [start, viewMode]);
+
   const currentMonth = startOfMonth(anchorDate).getMonth();
 
   return (
@@ -128,10 +144,10 @@ export default function ReservationsPage() {
             <Button variant="outline" size="sm" onClick={() => shift(-1)} aria-label="Previous">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            {viewMode === "month" ? (
-              <MonthYearPicker anchorDate={anchorDate} onSelect={setAnchorDate} />
-            ) : (
-              <span className="px-1 text-sm font-semibold text-gray-900">
+            {viewMode === "month" && <MonthYearPicker anchorDate={anchorDate} onSelect={setAnchorDate} />}
+            {viewMode === "week" && <MiniDatePicker label={weekRangeLabel(start)} anchorDate={anchorDate} onSelect={setAnchorDate} highlightWeek />}
+            {viewMode === "day" && (
+              <span className="flex w-[190px] items-center justify-center truncate px-1 text-sm font-semibold text-gray-900">
                 {anchorDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
               </span>
             )}
@@ -237,7 +253,86 @@ export default function ReservationsPage() {
         </div>
       )}
 
-      {viewMode !== "month" && !isLoading && (
+      {viewMode === "week" && !isLoading && (
+        <div className="rounded-xl border border-line bg-card shadow-sm">
+          {bookingStatuses?.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-3 py-2">
+              {bookingStatuses.map((s) => (
+                <span key={s.id} className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+                  {s.label}
+                </span>
+              ))}
+            </div>
+          )}
+          {/* One row of seven columns, held to a fixed height so a busy day
+              never grows the page itself — each column's own booking list
+              scrolls internally instead (the day header stays put, visible
+              the whole time you're scrolling it). */}
+          <div className="overflow-x-auto">
+            <div className="grid min-w-[840px] grid-cols-7">
+              {weekDays.map((day) => {
+                const isToday = toISODate(day) === toISODate(new Date());
+                const dayBookings = bookingsForDay(bookings ?? [], day).sort((a, b) => new Date(a.checkIn) - new Date(b.checkIn));
+                const occupiedRooms = new Set(
+                  dayBookings.filter((b) => b.status.code !== "cancelled" && b.status.code !== "no_show").map((b) => b.room.id)
+                );
+
+                return (
+                  <div
+                    key={day.toISOString()}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => dayBookings.length > 0 && setDayDetail(day)}
+                    onKeyDown={(e) => {
+                      if ((e.key === "Enter" || e.key === " ") && dayBookings.length > 0) {
+                        e.preventDefault();
+                        setDayDetail(day);
+                      }
+                    }}
+                    className={`flex h-[min(60vh,560px)] flex-col border-r border-line-soft text-left last:border-r-0 ${
+                      dayBookings.length > 0 ? "cursor-pointer hover:bg-muted" : "cursor-default"
+                    }`}
+                  >
+                    <div className="flex shrink-0 items-center justify-between border-b border-line-soft p-2 pb-1.5">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{DAY_LABELS[day.getDay()]}</p>
+                        <span
+                          className={`flex h-6 w-6 items-center justify-center rounded-full text-sm ${
+                            isToday ? "bg-brand font-semibold text-white" : "text-gray-700"
+                          }`}
+                        >
+                          {day.getDate()}
+                        </span>
+                      </div>
+                      {totalRooms > 0 && (
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${occupancyTone(occupiedRooms.size, totalRooms)}`}>
+                          {occupiedRooms.size}/{totalRooms}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1 overflow-y-auto p-2 pt-1.5">
+                      {dayBookings.map((b) => (
+                        <span
+                          key={b.id}
+                          className="block truncate rounded px-1.5 py-1 text-[11px] font-semibold text-white"
+                          style={{ backgroundColor: b.status.color }}
+                          title={`${b.guest.name} · Room ${b.room.roomNumber} · ${b.status.label}`}
+                        >
+                          {b.guest.name} · {b.room.roomNumber}
+                        </span>
+                      ))}
+                      {dayBookings.length === 0 && <p className="text-[11px] text-gray-300">No bookings</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewMode === "day" && !isLoading && (
         <div className="space-y-2">
           {(bookings ?? []).length === 0 && <EmptyState icon={CalendarX2} title="No bookings in this range." />}
           {bookings?.map((booking) => (

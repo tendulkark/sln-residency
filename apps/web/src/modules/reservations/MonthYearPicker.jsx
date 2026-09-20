@@ -16,10 +16,10 @@ export default function MonthYearPicker({ anchorDate, onSelect }) {
         <>
           <PopoverButton
             onClick={() => setPickerYear(anchorDate.getFullYear())}
-            className="flex items-center gap-1.5 rounded-md border border-line-strong bg-card px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-muted"
+            className="flex w-[190px] items-center justify-center gap-1.5 rounded-md border border-line-strong bg-card px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-muted"
           >
-            {anchorDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
-            <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+            <span className="min-w-0 truncate">{anchorDate.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-400" />
           </PopoverButton>
           <PopoverPanel anchor="bottom start" className="z-30 mt-2 w-64 rounded-xl border border-line bg-card p-3 shadow-lg">
             <div className="mb-2 flex items-center justify-between">
