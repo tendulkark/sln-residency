@@ -7,7 +7,7 @@ import Modal from "@/ui/Dialog.jsx";
 import { BOOKINGS_QUERY_KEY } from "@/modules/reservations/constants.js";
 import { DASHBOARD_ROOM_BOARD_QUERY_KEY, DASHBOARD_SUMMARY_QUERY_KEY } from "@/modules/dashboard/constants.js";
 
-export default function EditBookingModal({ booking, onClose }) {
+export default function EditBookingModal({ booking, onClose, onSaved }) {
   const queryClient = useQueryClient();
   const [checkIn, setCheckIn] = useState(toDateTimeInputValue(booking.checkIn));
   const [checkOut, setCheckOut] = useState(toDateTimeInputValue(booking.checkOut));
@@ -23,6 +23,7 @@ export default function EditBookingModal({ booking, onClose }) {
       queryClient.invalidateQueries({ queryKey: [BOOKINGS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_ROOM_BOARD_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_SUMMARY_QUERY_KEY] });
+      onSaved?.();
       onClose();
     },
     onError: (err) => setError(err.message),

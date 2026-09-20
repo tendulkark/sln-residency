@@ -24,3 +24,7 @@ export const guestSchema = z.object({
   companyName: z.string().min(1).optional().nullable(),
   gstin: z.string().min(1).optional().nullable(),
 });
+
+// Same fields, all optional at the key level — a PATCH only sends the
+// fields the admin actually changed, not a full guest record.
+export const guestUpdateSchema = guestSchema.partial();
