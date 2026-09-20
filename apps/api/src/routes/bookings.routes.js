@@ -70,6 +70,41 @@ export default async function bookingsRoutes(fastify) {
     }
   );
 
+  // Batch grand-total/paid/balance figures for a set of bookings — powers
+  // the Reservations month view's day-detail popover, which lists every
+  // booking touching a day and needs each one's balance without opening
+  // Manage Stay individually. Reuses computeStayBreakdown (the same
+  // billing.js function Manage Stay and invoice generation use) so the
+  // figures can never drift from what those screens show; a group
+  // booking's sibling rooms share one stay, so they're computed once and
+  // fanned back out to every id in the request that belongs to that group.
+  fastify.get(
+    "/bookings/stay-summaries",
+    { preHandler: [fastify.authenticate, requirePermission("bookings.view")] },
+    async (request) => {
+      const ids = String(request.query.ids ?? "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+      const tenantId = request.user.tenantId;
+      const idSet = new Set(ids);
+      const results = {};
+
+      for (const id of ids) {
+        if (results[id]) continue;
+        // eslint-disable-next-line no-await-in-loop
+        const stay = await computeStayBreakdown(fastify.prisma, tenantId, id);
+        if (!stay) continue;
+        const summary = { grandTotal: stay.summary.grandTotal, advancePaid: stay.summary.advancePaid, balanceDue: stay.summary.balanceDue };
+        for (const b of stay.bookings) {
+          if (idSet.has(b.id)) results[b.id] = summary;
+        }
+      }
+
+      return results;
+    }
+  );
+
   fastify.post(
     "/bookings",
     { preHandler: [fastify.authenticate, requirePermission("bookings.create")] },
