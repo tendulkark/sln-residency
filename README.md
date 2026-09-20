@@ -50,10 +50,16 @@ payment methods) is hardcoded — it's all editable data. See
 
 ## Phase 3 & 6 (this build)
 
-- **Tax invoices** — "Checkout & Print Bill" generates a sequentially
-  numbered, tax-snapshotted GST invoice (letterheaded from Settings), printed
-  from a dedicated invoice view and reprintable any time from Manage Stay or
-  the Reports module.
+- **Tax invoices** — every booking reserves a real, permanent, sequential
+  invoice number the instant it's created, shown on the Provisional Bill
+  from day one; "Checkout & Print Bill" finalizes that same number's
+  tax-snapshotted GST figures (letterheaded from Settings) rather than
+  issuing a new one. Printed from a dedicated invoice view, reprintable
+  from Manage Stay or Reports, and browsable/searchable from the
+  **Invoices** module — which also supports cancel & reissue for a wrong
+  finalized invoice (never a bare edit/delete; the old one is kept,
+  cancelled, and reasoned, and a replacement is issued under the next
+  number).
 - **Settings** — hotel profile (name, address, phone, GSTIN, logo, brand
   color) used on every printed invoice and in the sidebar.
 - **Reports** — a Rooms Reports module with four tabs: Bookings (status/
