@@ -28,21 +28,14 @@ export function localDateLabel(date) {
   return `${year}-${month}-${day}`;
 }
 
-function round2(n) {
+export function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-// The full "Rooms Reports > Bookings" row set: every booking matching the
-// filters, enriched with charges/payments/invoice/audit-trail data so the
-// table and its CSV export (reports.routes.js) build from one place and can
-// never drift from each other.
-//
-// Tax figures (taxableValue/cgst/sgst) only ever come from a generated
-// Invoice row and only ever appear for a Checked-out booking — GST is
-// finalized at checkout (AI_RULES.md #4), so a Confirmed/Checked-in/
-// Cancelled row has no real tax figure yet and reports null instead of
-// guessing one.
-export async function buildBookingReportRows(prisma, tenantId, { from, to, statusCode, search, checkoutBasis }) {
+// Shared by every "Rooms Reports > Bookings" query (the summary pass, the
+// paginated detail pass, and the CSV export) so a filter can never drift
+// between them.
+function bookingReportWhere(tenantId, { from, to, statusCode, search, checkoutBasis }) {
   const fromDate = from ? startOfDay(from) : null;
   const toDate = to ? endOfDayExclusive(to) : null;
 
@@ -50,28 +43,91 @@ export async function buildBookingReportRows(prisma, tenantId, { from, to, statu
     ? { status: { code: "checked_out" }, actualCheckOut: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lt: toDate } : {}) } }
     : { checkIn: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lt: toDate } : {}) } };
 
+  return {
+    tenantId,
+    ...dateFilter,
+    ...(statusCode ? { status: { code: statusCode } } : {}),
+    ...(search
+      ? {
+          OR: [
+            { guest: { name: { contains: search, mode: "insensitive" } } },
+            { guest: { phone: { contains: search, mode: "insensitive" } } },
+            { room: { roomNumber: { contains: search, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+}
+
+// The "Bookings by Status" / "Bookings by Room Type" stat cards need an
+// accurate count across the *entire* filtered range, not just whatever page
+// is currently on screen — but they only need a handful of small fields to
+// get it, so this is deliberately a much lighter query than
+// buildBookingReportRows: no guest/charges/payments/invoice/audit-trail
+// joins, which is where that function's real cost lives on a busy tenant.
+export async function summarizeBookingsInRange(prisma, tenantId, filters) {
   const bookings = await prisma.booking.findMany({
-    where: {
-      tenantId,
-      ...dateFilter,
-      ...(statusCode ? { status: { code: statusCode } } : {}),
-      ...(search
-        ? {
-            OR: [
-              { guest: { name: { contains: search, mode: "insensitive" } } },
-              { guest: { phone: { contains: search, mode: "insensitive" } } },
-              { room: { roomNumber: { contains: search, mode: "insensitive" } } },
-            ],
-          }
-        : {}),
+    where: bookingReportWhere(tenantId, filters),
+    select: {
+      id: true,
+      groupCode: true,
+      status: { select: { code: true, label: true, color: true } },
+      room: { select: { roomType: { select: { name: true } } } },
     },
+  });
+
+  const groupKeys = new Set(bookings.map((b) => b.groupCode ?? b.id));
+  const byStatus = new Map();
+  const byRoomType = new Map();
+
+  for (const b of bookings) {
+    const statusKey = b.status.code;
+    if (!byStatus.has(statusKey)) byStatus.set(statusKey, { code: b.status.code, label: b.status.label, color: b.status.color, count: 0 });
+    byStatus.get(statusKey).count += 1;
+
+    const roomTypeName = b.room.roomType.name;
+    if (!byRoomType.has(roomTypeName)) byRoomType.set(roomTypeName, { name: roomTypeName, count: 0 });
+    byRoomType.get(roomTypeName).count += 1;
+  }
+
+  const total = bookings.length;
+  const withPercent = (map) => [...map.values()].map((v) => ({ ...v, percent: total ? Math.round((v.count / total) * 100) : 0 }));
+
+  return {
+    counts: { bookings: groupKeys.size, totalRooms: total, cancelled: bookings.filter((b) => b.status.code === "cancelled").length },
+    byStatus: withPercent(byStatus),
+    byRoomType: withPercent(byRoomType),
+  };
+}
+
+// The "Rooms Reports > Bookings" row set, enriched with charges/payments/
+// invoice/audit-trail data so the table and its CSV export build from one
+// place and can never drift from each other. Pass `{ skip, take }` to fetch
+// just one page of bookings — the enrichment queries below key off
+// `bookingIds`, so a paginated call only ever joins charges/payments/
+// invoices/audit logs for the rows actually being displayed, not the whole
+// filtered range (the CSV export calls this with no pagination, since a
+// full-range export is the point).
+//
+// Tax figures (taxableValue/cgst/sgst) only ever come from a generated
+// Invoice row and only ever appear for a Checked-out booking — GST is
+// finalized at checkout (AI_RULES.md #4), so a Confirmed/Checked-in/
+// Cancelled row has no real tax figure yet and reports null instead of
+// guessing one.
+export async function buildBookingReportRows(prisma, tenantId, filters, { skip, take } = {}) {
+  const bookings = await prisma.booking.findMany({
+    where: bookingReportWhere(tenantId, filters),
     include: {
       room: { select: { roomNumber: true, roomType: { select: { name: true } } } },
       guest: true,
       status: true,
       createdBy: { select: { name: true } },
     },
-    orderBy: { checkIn: "asc" },
+    // A secondary id tiebreak keeps pagination stable when several bookings
+    // share the same checkIn instant (e.g. a group booking created at once).
+    orderBy: [{ checkIn: "asc" }, { id: "asc" }],
+    ...(skip != null ? { skip } : {}),
+    ...(take != null ? { take } : {}),
   });
 
   const bookingIds = bookings.map((b) => b.id);
@@ -183,32 +239,6 @@ export async function buildBookingReportRows(prisma, tenantId, { from, to, statu
       notes: [b.notes, settlementNote].filter(Boolean).join("\n") || null,
     };
   });
-}
-
-export function summarizeBookingRows(rows) {
-  const groupKeys = new Set(rows.map((r) => r.groupCode ?? r.id));
-  const byStatus = new Map();
-  const byRoomType = new Map();
-
-  for (const r of rows) {
-    const statusKey = r.status.code;
-    if (!byStatus.has(statusKey)) byStatus.set(statusKey, { code: r.status.code, label: r.status.label, color: r.status.color, count: 0 });
-    byStatus.get(statusKey).count += 1;
-
-    if (!byRoomType.has(r.roomType)) byRoomType.set(r.roomType, { name: r.roomType, count: 0 });
-    byRoomType.get(r.roomType).count += 1;
-  }
-
-  const withPercent = (map) => {
-    const total = rows.length;
-    return [...map.values()].map((v) => ({ ...v, percent: total ? Math.round((v.count / total) * 100) : 0 }));
-  };
-
-  return {
-    counts: { bookings: groupKeys.size, totalRooms: rows.length, cancelled: rows.filter((r) => r.status.code === "cancelled").length },
-    byStatus: withPercent(byStatus),
-    byRoomType: withPercent(byRoomType),
-  };
 }
 
 const CSV_COLUMNS = [

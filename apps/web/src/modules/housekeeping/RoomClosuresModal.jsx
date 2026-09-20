@@ -14,7 +14,14 @@ export default function RoomClosuresModal({ onClose }) {
   const queryClient = useQueryClient();
   const canManage = useAuthStore((s) => s.permissions.has("roomclosures.manage"));
   const { data: rooms } = useQuery({ queryKey: [ROOMS_QUERY_KEY], queryFn: () => apiFetch("/rooms") });
-  const { data: closures, isLoading } = useQuery({ queryKey: [ROOM_CLOSURES_QUERY_KEY], queryFn: () => apiFetch("/room-closures") });
+  // Closures accumulate for as long as the tenant exists, but this modal is
+  // for managing current/upcoming blocks, not browsing history — an
+  // already-ended closure has nothing left to "Remove", so bounding the
+  // query to endDate >= today keeps it from growing unbounded.
+  const { data: closures, isLoading } = useQuery({
+    queryKey: [ROOM_CLOSURES_QUERY_KEY],
+    queryFn: () => apiFetch(`/room-closures?from=${toDateInputValue(new Date())}`),
+  });
   const roomOptions = useMemo(() => (rooms ?? []).map((r) => ({ value: r.id, label: `${r.roomNumber} · ${r.roomType.name}` })), [rooms]);
 
   const [roomId, setRoomId] = useState("");

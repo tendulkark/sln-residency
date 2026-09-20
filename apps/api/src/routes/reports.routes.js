@@ -1,5 +1,21 @@
 import { requirePermission } from "#src/lib/permissions.js";
-import { startOfDay, endOfDayExclusive, addDays, localDateLabel, buildBookingReportRows, summarizeBookingRows, rowsToCsv } from "#src/lib/reports.js";
+import {
+  startOfDay,
+  endOfDayExclusive,
+  addDays,
+  localDateLabel,
+  round2,
+  buildBookingReportRows,
+  summarizeBookingsInRange,
+  rowsToCsv,
+} from "#src/lib/reports.js";
+
+function parsePage(query) {
+  return {
+    page: Math.max(1, Number(query.page) || 1),
+    pageSize: Math.min(200, Math.max(1, Number(query.pageSize) || 50)),
+  };
+}
 
 function parseBookingsQuery(query) {
   return {
@@ -18,16 +34,20 @@ export default async function reportsRoutes(fastify) {
     async (request) => {
       const tenantId = request.user.tenantId;
       const filters = parseBookingsQuery(request.query);
-      const page = Math.max(1, Number(request.query.page) || 1);
-      const pageSize = Math.min(200, Math.max(1, Number(request.query.pageSize) || 50));
+      const { page, pageSize } = parsePage(request.query);
 
-      const rows = await buildBookingReportRows(fastify.prisma, tenantId, filters);
-      const { counts, byStatus, byRoomType } = summarizeBookingRows(rows);
+      // Two passes on purpose: the summary needs every matching booking to
+      // get accurate counts, but only a lean select (no charges/payments/
+      // invoice/audit-trail joins) — the expensive enrichment in
+      // buildBookingReportRows only ever runs for this one page's rows now,
+      // not the whole filtered range (see reports.js for why that matters
+      // on a busy tenant).
+      const [summary, rows] = await Promise.all([
+        summarizeBookingsInRange(fastify.prisma, tenantId, filters),
+        buildBookingReportRows(fastify.prisma, tenantId, filters, { skip: (page - 1) * pageSize, take: pageSize }),
+      ]);
 
-      const start = (page - 1) * pageSize;
-      const pageRows = rows.slice(start, start + pageSize);
-
-      return { counts, byStatus, byRoomType, rows: pageRows, total: rows.length, page, pageSize };
+      return { ...summary, rows, total: summary.counts.totalRooms, page, pageSize };
     }
   );
 
@@ -124,15 +144,22 @@ export default async function reportsRoutes(fastify) {
       const { from, to } = request.query;
       const fromDate = startOfDay(from);
       const toDate = endOfDayExclusive(to);
+      const { page, pageSize } = parsePage(request.query);
 
-      const invoices = await fastify.prisma.invoice.findMany({
-        // Cancelled invoices never collected GST that's still owed — a
-        // cancel+reissue's replacement carries the real, current figures.
-        // A merely-reserved (pre-checkout) invoice hasn't collected
-        // anything yet either, so it's excluded until it's finalized.
-        where: { tenantId, isCancelled: false, isFinalized: true, generatedAt: { gte: fromDate, lt: toDate } },
-        include: { booking: { include: { guest: true, room: true } } },
-        orderBy: { generatedAt: "asc" },
+      // Cancelled invoices never collected GST that's still owed — a
+      // cancel+reissue's replacement carries the real, current figures. A
+      // merely-reserved (pre-checkout) invoice hasn't collected anything
+      // yet either, so it's excluded until it's finalized.
+      const where = { tenantId, isCancelled: false, isFinalized: true, generatedAt: { gte: fromDate, lt: toDate } };
+
+      // Totals/by-rate must reflect every matching invoice, not just the
+      // page on screen — but that only needs four numeric columns, so this
+      // stays cheap (no guest/room join) even on a "This Year" range with
+      // thousands of invoices. The guest/room-joined detail rows below are
+      // fetched for just the current page.
+      const allInvoices = await fastify.prisma.invoice.findMany({
+        where,
+        select: { subtotal: true, taxAmount: true, taxRateSnapshot: true },
       });
 
       let totalTaxable = 0;
@@ -140,11 +167,11 @@ export default async function reportsRoutes(fastify) {
       let totalSGST = 0;
       const byRate = new Map();
 
-      const rows = invoices.map((inv) => {
+      for (const inv of allInvoices) {
         const taxable = Number(inv.subtotal);
         const tax = Number(inv.taxAmount);
-        const half = Math.round((tax / 2) * 100) / 100;
-        const sgst = Math.round((tax - half) * 100) / 100;
+        const half = round2(tax / 2);
+        const sgst = round2(tax - half);
 
         totalTaxable += taxable;
         totalCGST += half;
@@ -157,7 +184,21 @@ export default async function reportsRoutes(fastify) {
         agg.cgst += half;
         agg.sgst += sgst;
         agg.count += 1;
+      }
 
+      const pageInvoices = await fastify.prisma.invoice.findMany({
+        where,
+        include: { booking: { include: { guest: true, room: true } } },
+        orderBy: [{ generatedAt: "asc" }, { id: "asc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+
+      const rows = pageInvoices.map((inv) => {
+        const taxable = Number(inv.subtotal);
+        const tax = Number(inv.taxAmount);
+        const half = round2(tax / 2);
+        const sgst = round2(tax - half);
         return {
           invoiceNumber: inv.invoiceNumber,
           date: inv.generatedAt,
@@ -171,11 +212,14 @@ export default async function reportsRoutes(fastify) {
       });
 
       return {
-        totalTaxable: Math.round(totalTaxable * 100) / 100,
-        totalCGST: Math.round(totalCGST * 100) / 100,
-        totalSGST: Math.round(totalSGST * 100) / 100,
+        totalTaxable: round2(totalTaxable),
+        totalCGST: round2(totalCGST),
+        totalSGST: round2(totalSGST),
         byRate: [...byRate.values()],
         rows,
+        total: allInvoices.length,
+        page,
+        pageSize,
       };
     }
   );
