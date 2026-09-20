@@ -22,6 +22,7 @@ const VIEW_MODES = [
 const BUCKETS = [
   { code: "available", label: "Available" },
   { code: "occupied", label: "Occupied" },
+  { code: "overdue", label: "Overdue" },
   { code: "reserved", label: "Reserved" },
   { code: "dirty", label: "Dirty" },
   { code: "cleaning", label: "Cleaning" },

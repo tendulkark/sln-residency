@@ -5,12 +5,6 @@ import { findBookingConflict, findClosureConflict } from "#src/lib/availability.
 import { priceRoom } from "#src/lib/tax.js";
 import { BOOKING_INCLUDE, nightsBetween, computeStayBreakdown, createReservedInvoice } from "#src/lib/billing.js";
 
-function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 function generateGroupCode() {
   return `GRP-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
 }
@@ -28,7 +22,11 @@ export default async function bookingsRoutes(fastify) {
           ...(roomId ? { roomId } : {}),
           ...(from ? { checkOut: { gt: new Date(from) } } : {}),
           ...(to ? { checkIn: { lt: new Date(to) } } : {}),
-          ...(activeOnly === "true" ? { checkOut: { gte: startOfToday() } } : {}),
+          // Not date-bounded: a checked-in guest who overstays their
+          // scheduled checkOut must stay "active" until someone actually
+          // checks them out, or staff would lose the ability to find that
+          // booking (and check it out) the moment the clock passes checkOut.
+          ...(activeOnly === "true" ? { status: { isTerminal: false } } : {}),
           ...(search
             ? {
                 OR: [
@@ -380,12 +378,32 @@ export default async function bookingsRoutes(fastify) {
         return reply.code(403).send({ error: `Missing permission: ${requiredPermission}` });
       }
 
+      // A reservation's checkIn/checkOut are only an approximate arrival
+      // window — the guest can walk in earlier or later than that. The
+      // moment staff actually check them in, the stay's rolling-24h billing
+      // clock (see billing.js nightsBetween) restarts from that real
+      // timestamp: checkIn moves to now and checkOut shifts to now plus
+      // however many nights were already reserved, so the room's schedule
+      // (and its "late checkout" detection) reflects when the guest truly
+      // arrived rather than the original estimate.
+      const shiftedSchedule =
+        status.code === "checked_in" && parsed.data.actualCheckIn
+          ? {
+              checkIn: parsed.data.actualCheckIn,
+              checkOut: new Date(
+                new Date(parsed.data.actualCheckIn).getTime() +
+                  nightsBetween(existing.checkIn, existing.checkOut) * 24 * 60 * 60 * 1000
+              ),
+            }
+          : {};
+
       const booking = await fastify.prisma.booking.update({
         where: { id: existing.id },
         data: {
           statusId: status.id,
           ...(parsed.data.actualCheckIn ? { actualCheckIn: parsed.data.actualCheckIn } : {}),
           ...(parsed.data.actualCheckOut ? { actualCheckOut: parsed.data.actualCheckOut } : {}),
+          ...shiftedSchedule,
         },
         include: BOOKING_INCLUDE,
       });

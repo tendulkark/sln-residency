@@ -147,14 +147,17 @@ export default async function dashboardRoutes(fastify) {
             tenantId,
             roomId: { in: roomIds },
             status: { isTerminal: false },
-            checkIn: { lte: asOf },
-            // A checked-in guest keeps occupying the room past their
-            // scheduled checkout until an actual checkout is recorded —
-            // otherwise an overdue/late checkout would silently vanish
-            // from the board the instant the clock passes checkOut, even
-            // though nobody has checked them out yet. A reservation that
-            // hasn't been checked in stays strictly bounded to its window.
-            OR: [{ checkOut: { gt: asOf } }, { status: { code: "checked_in" } }],
+            // A checked-in guest occupies the room the instant they check
+            // in (checkIn moves to that real timestamp — see the rolling
+            // 24h check-in shift in bookings.routes.js) and keeps occupying
+            // it past their scheduled checkout until an actual checkout is
+            // recorded, so a checked-in booking always covers "asOf"
+            // regardless of where checkIn/checkOut fall relative to it —
+            // otherwise a guest who just checked in (checkIn barely before
+            // "now") or one overstaying past checkOut would silently vanish
+            // from the board. A reservation that hasn't been checked in yet
+            // stays strictly bounded to its window.
+            OR: [{ status: { code: "checked_in" } }, { checkIn: { lte: asOf }, checkOut: { gt: asOf } }],
           },
           include: { guest: true, status: true },
         }),
@@ -184,13 +187,18 @@ export default async function dashboardRoutes(fastify) {
         const inHouse = bookings.filter((b) => b.status.code === "checked_in");
         const reserved = bookings.filter((b) => b.status.code !== "checked_in");
         const upcomingCount = upcomingCountByRoom.get(room.id) ?? 0;
+        // Checked in, past their scheduled checkout, not checked out yet —
+        // surfaced as its own bucket (distinct from a plain "occupied" room
+        // still within its stay) so staff can spot and clear it fast.
+        const overdueBooking = inHouse.find((b) => b.checkOut <= asOf);
 
         let bucket = room.status.code;
         if (closure) bucket = "closed";
+        else if (overdueBooking) bucket = "overdue";
         else if (inHouse.length > 0) bucket = "occupied";
         else if (reserved.length > 0) bucket = "reserved";
 
-        const primaryBooking = inHouse[0] ?? reserved[0] ?? null;
+        const primaryBooking = overdueBooking ?? inHouse[0] ?? reserved[0] ?? null;
 
         return {
           id: room.id,
@@ -213,9 +221,7 @@ export default async function dashboardRoutes(fastify) {
                 checkOut: primaryBooking.checkOut,
                 statusCode: primaryBooking.status.code,
                 statusLabel: primaryBooking.status.label,
-                // Checked in, past their scheduled checkout, not checked
-                // out yet — the case that used to vanish from the board.
-                isOverdue: primaryBooking.status.code === "checked_in" && primaryBooking.checkOut <= asOf,
+                isOverdue: bucket === "overdue",
               }
             : null,
         };
