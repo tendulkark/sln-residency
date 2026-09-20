@@ -375,10 +375,18 @@ function OccupancyReportTab({ from, to }) {
 }
 
 function GstReportTab({ from, to }) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState("50");
+
+  useEffect(() => setPage(1), [from, to, pageSize]);
+
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: [REPORTS_GST_QUERY_KEY, from, to],
-    queryFn: () => apiFetch(`/reports/gst?from=${from}&to=${to}`),
+    queryKey: [REPORTS_GST_QUERY_KEY, from, to, page, pageSize],
+    queryFn: () => apiFetch(`/reports/gst?${new URLSearchParams({ from, to, page: String(page), pageSize })}`),
+    placeholderData: (prev) => prev,
   });
+
+  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
     <div>
@@ -417,38 +425,59 @@ function GstReportTab({ from, to }) {
           {data.rows.length === 0 ? (
             <EmptyState icon={ReceiptText} title="No invoices generated in this range" />
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-line-strong bg-card shadow-sm">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-line bg-muted text-xs uppercase tracking-wide text-gray-500">
-                    <Th>Invoice No</Th>
-                    <Th>Date</Th>
-                    <Th>Guest</Th>
-                    <Th>Room</Th>
-                    <Th align="right">Taxable Value</Th>
-                    <Th align="right">CGST</Th>
-                    <Th align="right">SGST</Th>
-                    <Th align="right">Total</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.rows.map((r) => (
-                    <tr key={r.invoiceNumber} className="border-b border-line-soft odd:bg-muted/40 hover:bg-brand-tint">
-                      <Td className="font-medium text-gray-900">{r.invoiceNumber}</Td>
-                      <Td className="whitespace-nowrap">{formatDate(r.date)}</Td>
-                      <Td className="whitespace-nowrap">{r.guestName}</Td>
-                      <Td>{r.room}</Td>
-                      <Td align="right">{formatCurrencyPrecise(r.taxable)}</Td>
-                      <Td align="right">{formatCurrencyPrecise(r.cgst)}</Td>
-                      <Td align="right">{formatCurrencyPrecise(r.sgst)}</Td>
-                      <Td align="right" className="font-semibold text-gray-900">
-                        {formatCurrencyPrecise(r.total)}
-                      </Td>
+            <>
+              <div className="mb-3 flex items-center justify-end gap-2 print:hidden">
+                <div className="w-28">
+                  <Select
+                    options={[{ value: "25", label: "25 / page" }, { value: "50", label: "50 / page" }, { value: "100", label: "100 / page" }]}
+                    value={pageSize}
+                    onChange={setPageSize}
+                  />
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <p className="whitespace-nowrap text-sm text-gray-500">
+                  Page {page} of {totalPages} · {data.total} total
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-line-strong bg-card shadow-sm">
+                <table className="w-full border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-line bg-muted text-xs uppercase tracking-wide text-gray-500">
+                      <Th>Invoice No</Th>
+                      <Th>Date</Th>
+                      <Th>Guest</Th>
+                      <Th>Room</Th>
+                      <Th align="right">Taxable Value</Th>
+                      <Th align="right">CGST</Th>
+                      <Th align="right">SGST</Th>
+                      <Th align="right">Total</Th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {data.rows.map((r) => (
+                      <tr key={r.invoiceNumber} className="border-b border-line-soft odd:bg-muted/40 hover:bg-brand-tint">
+                        <Td className="font-medium text-gray-900">{r.invoiceNumber}</Td>
+                        <Td className="whitespace-nowrap">{formatDate(r.date)}</Td>
+                        <Td className="whitespace-nowrap">{r.guestName}</Td>
+                        <Td>{r.room}</Td>
+                        <Td align="right">{formatCurrencyPrecise(r.taxable)}</Td>
+                        <Td align="right">{formatCurrencyPrecise(r.cgst)}</Td>
+                        <Td align="right">{formatCurrencyPrecise(r.sgst)}</Td>
+                        <Td align="right" className="font-semibold text-gray-900">
+                          {formatCurrencyPrecise(r.total)}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </>
       )}
