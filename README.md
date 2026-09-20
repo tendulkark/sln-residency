@@ -28,7 +28,7 @@ payment methods) is hardcoded — it's all editable data. See
 - JWT auth with refresh rotation + a `requirePermission(code)` gate on every
   protected route.
 - A seed script that creates one tenant ("SLN Residency"), the Admin/
-  Employee roles, an admin login, default statuses/payment methods/tax
+  Manager/Employee roles, an admin and a manager login, default statuses/payment methods/tax
   rule, three room types, and 22 sample rooms with sample bookings and
   payments.
 
@@ -101,7 +101,10 @@ payment methods) is hardcoded — it's all editable data. See
    ```
 
    This prints the seeded admin login (default:
-   `admin@sln-residency.test` / `ChangeMe123!` unless overridden in `.env`).
+   `admin@sln-residency.test` / `ChangeMe123!` unless overridden in `.env`)
+   and a Manager login (`manager@sln-residency.test` / `ChangeMe123!`) that
+   has every permission except post-checkout corrections, for testing
+   role-based restrictions.
 
 5. **Run both apps** (in two terminals):
 

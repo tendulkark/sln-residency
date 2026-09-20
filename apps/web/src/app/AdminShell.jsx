@@ -5,31 +5,10 @@ import { LogOut, Hotel, ChevronLeft, ChevronRight, Menu as MenuIcon } from "luci
 import { useAuthStore } from "@/modules/auth/authStore.js";
 import { apiFetch } from "@/lib/api.js";
 import { Button } from "@/ui/index.js";
-import { DASHBOARD_NAV_ITEM } from "@/modules/dashboard/constants.js";
-import { ROOMS_NAV_ITEM } from "@/modules/rooms/constants.js";
-import { HOUSEKEEPING_NAV_ITEM } from "@/modules/housekeeping/constants.js";
-import { RESERVATIONS_NAV_ITEM } from "@/modules/reservations/constants.js";
-import { REPORTS_NAV_ITEM } from "@/modules/reports/constants.js";
-import { INVOICES_NAV_ITEM } from "@/modules/invoices/constants.js";
-import { SETTINGS_NAV_ITEM } from "@/modules/settings/constants.js";
+import { NAV_ITEMS } from "@/app/navigation.js";
 import { LOGIN_ROUTE_PATH } from "@/modules/auth/constants.js";
 
 const SIDEBAR_COLLAPSED_KEY = "sln:sidebarCollapsed";
-
-// Each entry is owned by its module's own constants.js (to/label/permission/
-// icon) — this just assembles them in sidebar order. An item is hidden if
-// the signed-in user lacks its permission; that's a UX nicety only, the API
-// re-checks every request regardless (AI_RULES.md #3).
-const NAV_ITEMS = [
-  DASHBOARD_NAV_ITEM,
-  ROOMS_NAV_ITEM,
-  HOUSEKEEPING_NAV_ITEM,
-  RESERVATIONS_NAV_ITEM,
-  INVOICES_NAV_ITEM,
-  REPORTS_NAV_ITEM,
-  SETTINGS_NAV_ITEM,
-  // Staff management lands in a later phase.
-];
 
 // The sidebar's header/nav/footer markup — shared by the persistent desktop
 // rail (which can also collapse to icons-only) and the mobile drawer (which

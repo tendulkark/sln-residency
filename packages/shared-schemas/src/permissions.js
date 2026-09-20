@@ -34,9 +34,28 @@ export const PERMISSIONS = [
 ];
 
 // Default permission sets used only to seed a brand-new tenant's built-in
-// Admin/Employee roles. After seeding, an Admin can freely edit these via
+// Admin/Manager/Employee roles. After seeding, an Admin can freely edit these via
 // the roles.manage UI — this list is not consulted again at runtime.
 export const DEFAULT_ADMIN_PERMISSION_CODES = PERMISSIONS.map((p) => p.code);
+
+// A Manager runs the desk day-to-day with everything an Admin has *except*
+// the post-checkout correction powers — once a stay is checked out and its
+// tax invoice finalized, only an Admin may edit it or cancel & reissue the
+// invoice (bookings.routes.js/payments.routes.js `isBookingLocked` gate,
+// invoices.routes.js `POST /invoices/:id/cancel`) — and the two account-
+// admin permissions, since anyone who can edit roles or staff can grant
+// themselves everything else anyway.
+const MANAGER_EXCLUDED_PERMISSION_CODES = new Set([
+  "bookings.correct",
+  "guests.correct",
+  "invoices.cancel",
+  "users.manage",
+  "roles.manage",
+]);
+
+export const DEFAULT_MANAGER_PERMISSION_CODES = DEFAULT_ADMIN_PERMISSION_CODES.filter(
+  (code) => !MANAGER_EXCLUDED_PERMISSION_CODES.has(code)
+);
 
 export const DEFAULT_EMPLOYEE_PERMISSION_CODES = [
   "rooms.view",

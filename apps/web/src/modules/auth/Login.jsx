@@ -4,7 +4,6 @@ import { Hotel } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { useAuthStore } from "@/modules/auth/authStore.js";
 import { Button, Input } from "@/ui/index.js";
-import { DASHBOARD_ROUTE_PATH } from "@/modules/dashboard/constants.js";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -24,7 +23,9 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       });
       setSession(data);
-      navigate(DASHBOARD_ROUTE_PATH, { replace: true });
+      // "/" resolves to the first page this role is allowed to see
+      // (router.jsx HomeRedirect) — not every role can open the Dashboard.
+      navigate("/", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
