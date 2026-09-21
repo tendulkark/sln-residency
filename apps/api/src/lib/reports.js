@@ -100,6 +100,54 @@ export async function summarizeBookingsInRange(prisma, tenantId, filters) {
   };
 }
 
+// Columns the Bookings report table can be sorted by. The client's sortBy
+// is validated against this list (reports.routes.js) before it ever
+// reaches a query — never trust it raw.
+export const BOOKINGS_REPORT_SORT_KEYS = [
+  "invoiceNumber",
+  "guest",
+  "room",
+  "checkIn",
+  "checkOut",
+  "actualCheckIn",
+  "actualCheckOut",
+  "taxableValue",
+  "discount",
+  "total",
+];
+
+// These map straight onto a Booking column or a to-one relation's column,
+// so the DB can sort *and* paginate in one query — the fast path the
+// pagination audit put in place stays intact for them.
+const DIRECT_SORT_ORDER_BY = {
+  guest: (dir) => ({ guest: { name: dir } }),
+  room: (dir) => ({ room: { roomNumber: dir } }),
+  checkIn: (dir) => ({ checkIn: dir }),
+  checkOut: (dir) => ({ checkOut: dir }),
+  actualCheckIn: (dir) => ({ actualCheckIn: dir }),
+  actualCheckOut: (dir) => ({ actualCheckOut: dir }),
+};
+
+// invoiceNumber/taxableValue/discount/total are never stored on Booking —
+// invoiceNumber lives on a joined Invoice row (and only the active one
+// counts), the rest are computed below from BookingCharge/Payment rows.
+// There's no Prisma orderBy that reaches them, so sorting by one of these
+// necessarily fetches every booking matching the filter (not just one
+// page), enriches all of them, sorts in JS, then slices the page out of
+// that — heavier than the direct-field path, but only paid when a caller
+// actually asks for one of these sorts.
+const COMPUTED_SORT_KEYS = new Set(["invoiceNumber", "taxableValue", "discount", "total"]);
+
+function compareForSort(a, b, dir) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1; // rows with no value for this column always sort last
+  if (b == null) return -1;
+  if (typeof a === "string" || typeof b === "string") {
+    return dir === "desc" ? String(b).localeCompare(String(a)) : String(a).localeCompare(String(b));
+  }
+  return dir === "desc" ? b - a : a - b;
+}
+
 // The "Rooms Reports > Bookings" row set, enriched with charges/payments/
 // invoice/audit-trail data so the table and its CSV export build from one
 // place and can never drift from each other. Pass `{ skip, take }` to fetch
@@ -114,7 +162,11 @@ export async function summarizeBookingsInRange(prisma, tenantId, filters) {
 // finalized at checkout (AI_RULES.md #4), so a Confirmed/Checked-in/
 // Cancelled row has no real tax figure yet and reports null instead of
 // guessing one.
-export async function buildBookingReportRows(prisma, tenantId, filters, { skip, take } = {}) {
+export async function buildBookingReportRows(prisma, tenantId, filters, { skip, take, sortBy, sortDir } = {}) {
+  const dir = sortDir === "desc" ? "desc" : "asc";
+  const isComputedSort = COMPUTED_SORT_KEYS.has(sortBy);
+  const directOrderBy = !isComputedSort && DIRECT_SORT_ORDER_BY[sortBy]?.(dir);
+
   const bookings = await prisma.booking.findMany({
     where: bookingReportWhere(tenantId, filters),
     include: {
@@ -125,9 +177,12 @@ export async function buildBookingReportRows(prisma, tenantId, filters, { skip, 
     },
     // A secondary id tiebreak keeps pagination stable when several bookings
     // share the same checkIn instant (e.g. a group booking created at once).
-    orderBy: [{ checkIn: "asc" }, { id: "asc" }],
-    ...(skip != null ? { skip } : {}),
-    ...(take != null ? { take } : {}),
+    // A computed-field sort ignores this order entirely (re-sorted in JS
+    // below once every row is enriched) and, since it needs every matching
+    // row anyway, skips skip/take here too.
+    orderBy: [directOrderBy || { checkIn: "asc" }, { id: "asc" }],
+    ...(!isComputedSort && skip != null ? { skip } : {}),
+    ...(!isComputedSort && take != null ? { take } : {}),
   });
 
   const bookingIds = bookings.map((b) => b.id);
@@ -173,7 +228,7 @@ export async function buildBookingReportRows(prisma, tenantId, filters, { skip, 
     eventsByBooking.get(log.entityId)[code] = log.user.name;
   }
 
-  return bookings.map((b) => {
+  const rows = bookings.map((b) => {
     const bCharges = chargesByBooking.get(b.id) ?? [];
     const bPayments = paymentsByBooking.get(b.id) ?? [];
     const invoice = invoiceByBooking.get(b.id);
@@ -239,6 +294,16 @@ export async function buildBookingReportRows(prisma, tenantId, filters, { skip, 
       notes: [b.notes, settlementNote].filter(Boolean).join("\n") || null,
     };
   });
+
+  if (isComputedSort) {
+    rows.sort((a, b) => compareForSort(a[sortBy], b[sortBy], dir));
+    if (skip != null || take != null) {
+      const start = skip ?? 0;
+      return rows.slice(start, take != null ? start + take : undefined);
+    }
+  }
+
+  return rows;
 }
 
 const CSV_COLUMNS = [

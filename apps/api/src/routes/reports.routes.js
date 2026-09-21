@@ -8,6 +8,7 @@ import {
   buildBookingReportRows,
   summarizeBookingsInRange,
   rowsToCsv,
+  BOOKINGS_REPORT_SORT_KEYS,
 } from "#src/lib/reports.js";
 
 function parsePage(query) {
@@ -27,6 +28,15 @@ function parseBookingsQuery(query) {
   };
 }
 
+// Never trust a raw client sortBy as a Prisma field/relation path — only a
+// value from the known column list is allowed through.
+function parseSort(query, allowedKeys) {
+  return {
+    sortBy: allowedKeys.includes(query.sortBy) ? query.sortBy : undefined,
+    sortDir: query.sortDir === "desc" ? "desc" : query.sortDir === "asc" ? "asc" : undefined,
+  };
+}
+
 export default async function reportsRoutes(fastify) {
   fastify.get(
     "/reports/bookings",
@@ -35,16 +45,20 @@ export default async function reportsRoutes(fastify) {
       const tenantId = request.user.tenantId;
       const filters = parseBookingsQuery(request.query);
       const { page, pageSize } = parsePage(request.query);
+      const { sortBy, sortDir } = parseSort(request.query, BOOKINGS_REPORT_SORT_KEYS);
 
       // Two passes on purpose: the summary needs every matching booking to
       // get accurate counts, but only a lean select (no charges/payments/
       // invoice/audit-trail joins) — the expensive enrichment in
       // buildBookingReportRows only ever runs for this one page's rows now,
       // not the whole filtered range (see reports.js for why that matters
-      // on a busy tenant).
+      // on a busy tenant) — unless sortBy is one of the computed columns
+      // (invoiceNumber/taxableValue/discount/total), which reports.js
+      // documents and handles by necessarily enriching the whole filtered
+      // range before it can sort and paginate.
       const [summary, rows] = await Promise.all([
         summarizeBookingsInRange(fastify.prisma, tenantId, filters),
-        buildBookingReportRows(fastify.prisma, tenantId, filters, { skip: (page - 1) * pageSize, take: pageSize }),
+        buildBookingReportRows(fastify.prisma, tenantId, filters, { skip: (page - 1) * pageSize, take: pageSize, sortBy, sortDir }),
       ]);
 
       return { ...summary, rows, total: summary.counts.totalRooms, page, pageSize };
