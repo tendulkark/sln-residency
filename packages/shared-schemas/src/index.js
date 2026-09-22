@@ -8,3 +8,4 @@ export * from "#src/booking.js";
 export * from "#src/bookingCharge.js";
 export * from "#src/payment.js";
 export * from "#src/tenant.js";
+export * from "#src/user.js";

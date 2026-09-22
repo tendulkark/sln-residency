@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api.js";
 import { Button } from "@/ui/index.js";
 import { NAV_ITEMS } from "@/app/navigation.js";
 import { LOGIN_ROUTE_PATH } from "@/modules/auth/constants.js";
+import { PROFILE_ROUTE_PATH } from "@/modules/profile/constants.js";
 
 const SIDEBAR_COLLAPSED_KEY = "sln:sidebarCollapsed";
 
@@ -55,7 +56,12 @@ function SidebarContent({ collapsed, tenant, user, permissions, onNavigate, onLo
 
       <div className={`shrink-0 border-t border-line bg-muted/60 p-4 ${collapsed ? "px-2" : ""}`}>
         {!collapsed && (
-          <div className="flex items-center gap-2.5">
+          <NavLink
+            to={PROFILE_ROUTE_PATH}
+            onClick={onNavigate}
+            className="flex items-center gap-2.5 rounded-md p-1 -m-1 transition hover:bg-muted-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
+            title="View your profile"
+          >
             <span
               aria-hidden
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white ring-2 ring-gold-tint"
@@ -66,7 +72,7 @@ function SidebarContent({ collapsed, tenant, user, permissions, onNavigate, onLo
               <p className="truncate text-sm font-medium text-ink">{user?.name}</p>
               <p className="truncate text-xs text-ink-muted">{user?.roleName}</p>
             </div>
-          </div>
+          </NavLink>
         )}
         <Button
           variant="outline"
