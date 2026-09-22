@@ -1,6 +1,7 @@
 import argon2 from "argon2";
-import { loginSchema } from "@sln/shared-schemas";
+import { loginSchema, changePasswordSchema } from "@sln/shared-schemas";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "#src/lib/tokens.js";
+import { recordAudit } from "#src/lib/audit.js";
 
 const REFRESH_COOKIE = "refreshToken";
 const REFRESH_COOKIE_OPTS = {
@@ -122,6 +123,38 @@ export default async function authRoutes(fastify) {
       }
     }
     reply.clearCookie(REFRESH_COOKIE, { path: "/auth" });
+    return { ok: true };
+  });
+
+  // Self-service — the Profile screen, available to every signed-in role
+  // regardless of users.manage. Re-typing the current password is the
+  // reverification (not the still-valid access token), so unlike an
+  // Admin's /users/:id/reset-password this doesn't need to force every
+  // other device to sign in again.
+  fastify.post("/auth/change-password", { preHandler: fastify.authenticate }, async (request, reply) => {
+    const parsed = changePasswordSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "Invalid payload", details: parsed.error.flatten() });
+    }
+
+    const user = await fastify.prisma.user.findUnique({ where: { id: request.user.id } });
+    if (!user || !(await argon2.verify(user.passwordHash, parsed.data.currentPassword))) {
+      return reply.code(401).send({ error: "Current password is incorrect" });
+    }
+
+    await fastify.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await argon2.hash(parsed.data.newPassword) },
+    });
+
+    await recordAudit(fastify.prisma, {
+      tenantId: user.tenantId,
+      userId: user.id,
+      action: "user.change_password",
+      entityType: "User",
+      entityId: user.id,
+    });
+
     return { ok: true };
   });
 

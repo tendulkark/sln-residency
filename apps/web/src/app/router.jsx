@@ -19,6 +19,10 @@ import ReportsPage from "@/modules/reports/pages/ReportsPage.jsx";
 import { REPORTS_NAV_ITEM } from "@/modules/reports/constants.js";
 import InvoicesPage from "@/modules/invoices/pages/InvoicesPage.jsx";
 import { INVOICES_NAV_ITEM } from "@/modules/invoices/constants.js";
+import StaffPage from "@/modules/staff/pages/StaffPage.jsx";
+import { STAFF_NAV_ITEM } from "@/modules/staff/constants.js";
+import ProfilePage from "@/modules/profile/pages/ProfilePage.jsx";
+import { PROFILE_ROUTE_PATH } from "@/modules/profile/constants.js";
 
 // Each page is registered from its module's NAV_ITEM so the route path and
 // the permission that gates it are the same values the sidebar uses — a
@@ -51,6 +55,11 @@ export const router = createBrowserRouter([
               page(SETTINGS_NAV_ITEM, <SettingsPage />),
               page(REPORTS_NAV_ITEM, <ReportsPage />),
               page(INVOICES_NAV_ITEM, <InvoicesPage />),
+              page(STAFF_NAV_ITEM, <StaffPage />),
+              // No RequirePermission wrapper — every signed-in role manages
+              // their own account, not just users.manage. ProtectedRoute
+              // (the parent) already guarantees authentication.
+              { path: PROFILE_ROUTE_PATH.slice(1), element: <ProfilePage /> },
             ],
           },
         ],

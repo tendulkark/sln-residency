@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Search, Receipt, Eye } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { formatCurrency, formatDateTime } from "@/lib/format.js";
+import { useSort } from "@/lib/useSort.js";
 import { Button, Input, Select, Badge, PageHeader, EmptyState, DataTable, Th, Td, Tr } from "@/ui/index.js";
 import InvoiceModal from "@/modules/invoices/components/InvoiceModal.jsx";
 import { INVOICES_LIST_QUERY_KEY } from "@/modules/invoices/constants.js";
@@ -27,16 +28,18 @@ export default function InvoicesPage() {
   const [page, setPage] = useState(1);
   const [openInvoiceId, setOpenInvoiceId] = useState(null);
   const pageSize = 25;
+  const sort = useSort();
 
   const { data, isLoading } = useQuery({
-    queryKey: [INVOICES_LIST_QUERY_KEY, { search, status, from, to, page }],
+    queryKey: [INVOICES_LIST_QUERY_KEY, { search, status, from, to, page, sortBy: sort.sortBy, sortDir: sort.sortDir }],
     queryFn: () =>
       apiFetch(
         `/invoices?page=${page}&pageSize=${pageSize}` +
           (search ? `&search=${encodeURIComponent(search)}` : "") +
           (status ? `&status=${status}` : "") +
           (from ? `&from=${from}` : "") +
-          (to ? `&to=${to}` : "")
+          (to ? `&to=${to}` : "") +
+          (sort.sortBy ? `&sortBy=${sort.sortBy}&sortDir=${sort.sortDir}` : "")
       ),
     placeholderData: (prev) => prev,
   });
@@ -46,6 +49,11 @@ export default function InvoicesPage() {
       setter(value);
       setPage(1);
     };
+  }
+
+  function handleSort(key) {
+    sort.toggle(key);
+    setPage(1);
   }
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / pageSize)) : 1;
@@ -92,10 +100,18 @@ export default function InvoicesPage() {
               <thead>
                 <tr>
                   <Th />
-                  <Th pinned>Invoice No</Th>
-                  <Th>Date</Th>
-                  <Th>Guest</Th>
-                  <Th>Room</Th>
+                  <Th pinned sortDir={sort.sortBy === "invoiceNumber" ? sort.sortDir : undefined} onSort={() => handleSort("invoiceNumber")}>
+                    Invoice No
+                  </Th>
+                  <Th sortDir={sort.sortBy === "date" ? sort.sortDir : undefined} onSort={() => handleSort("date")}>
+                    Date
+                  </Th>
+                  <Th sortDir={sort.sortBy === "guest" ? sort.sortDir : undefined} onSort={() => handleSort("guest")}>
+                    Guest
+                  </Th>
+                  <Th sortDir={sort.sortBy === "room" ? sort.sortDir : undefined} onSort={() => handleSort("room")}>
+                    Room
+                  </Th>
                   <Th align="right">Total</Th>
                   <Th>Status</Th>
                   <Th>Notes</Th>

@@ -13,6 +13,29 @@ const TENANT_LETTERHEAD_SELECT = {
   gstin: true,
 };
 
+// Whitelisted so a client can never smuggle an arbitrary Prisma orderBy
+// shape in through the query string (AI_RULES.md #3-style trust boundary,
+// applied to sort params too). "guest"/"room" sort by the *live*
+// booking.guest.name / room.roomNumber relation, not a finalized invoice's
+// frozen guestSnapshot — the same rare-edge-case simplification as the
+// list's own display already makes for anything except the guest name
+// shown in the row itself.
+function invoiceOrderBy(sortBy, sortDir) {
+  const dir = sortDir === "desc" ? "desc" : "asc";
+  switch (sortBy) {
+    case "invoiceNumber":
+      return { invoiceNumber: dir };
+    case "date":
+      return { generatedAt: dir };
+    case "guest":
+      return { booking: { guest: { name: dir } } };
+    case "room":
+      return { booking: { room: { roomNumber: dir } } };
+    default:
+      return { generatedAt: "desc" };
+  }
+}
+
 const INVOICE_LIST_INCLUDE = {
   booking: { select: { guest: { select: { name: true } }, room: { select: { roomNumber: true } } } },
   generatedBy: { select: { name: true } },
@@ -99,7 +122,7 @@ export default async function invoicesRoutes(fastify) {
     { preHandler: [fastify.authenticate, requirePermission("invoices.view")] },
     async (request) => {
       const tenantId = request.user.tenantId;
-      const { search, from, to, status } = request.query;
+      const { search, from, to, status, sortBy, sortDir } = request.query;
       const page = Math.max(1, Number(request.query.page) || 1);
       const pageSize = Math.min(200, Math.max(1, Number(request.query.pageSize) || 50));
 
@@ -127,7 +150,7 @@ export default async function invoicesRoutes(fastify) {
         fastify.prisma.invoice.findMany({
           where,
           include: INVOICE_LIST_INCLUDE,
-          orderBy: { generatedAt: "desc" },
+          orderBy: invoiceOrderBy(sortBy, sortDir),
           skip: (page - 1) * pageSize,
           take: pageSize,
         }),

@@ -4,6 +4,7 @@ import { HOUSEKEEPING_NAV_ITEM } from "@/modules/housekeeping/constants.js";
 import { RESERVATIONS_NAV_ITEM } from "@/modules/reservations/constants.js";
 import { INVOICES_NAV_ITEM } from "@/modules/invoices/constants.js";
 import { REPORTS_NAV_ITEM } from "@/modules/reports/constants.js";
+import { STAFF_NAV_ITEM } from "@/modules/staff/constants.js";
 import { SETTINGS_NAV_ITEM } from "@/modules/settings/constants.js";
 
 // Each entry is owned by its module's own constants.js (to/label/permission/
@@ -19,8 +20,8 @@ export const NAV_ITEMS = [
   RESERVATIONS_NAV_ITEM,
   INVOICES_NAV_ITEM,
   REPORTS_NAV_ITEM,
+  STAFF_NAV_ITEM,
   SETTINGS_NAV_ITEM,
-  // Staff management lands in a later phase.
 ];
 
 // The first page the signed-in user is actually allowed to see — where the

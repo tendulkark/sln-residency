@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Download, Printer, RefreshCw, Search, Receip
 import { apiFetch, downloadFile } from "@/lib/api.js";
 import { toISODate, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays } from "@/lib/dateRange.js";
 import { formatCurrency, formatCurrencyPrecise, formatDate, formatDateTime } from "@/lib/format.js";
+import { useSort } from "@/lib/useSort.js";
 import { Button, Input, Select, Switch, PageHeader, DonutChart, MiniBarChart, Badge, EmptyState, DataTable, Th, Td, Tr } from "@/ui/index.js";
 import StatCard from "@/modules/dashboard/components/StatCard.jsx";
 import InvoiceModal from "@/modules/invoices/components/InvoiceModal.jsx";
@@ -128,14 +129,15 @@ function BookingsReportTab({ from, to }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState("50");
   const [invoiceBookingId, setInvoiceBookingId] = useState(null);
+  const sort = useSort();
 
-  useEffect(() => setPage(1), [from, to, statusFilter, search, checkoutBasis, pageSize]);
+  useEffect(() => setPage(1), [from, to, statusFilter, search, checkoutBasis, pageSize, sort.sortBy, sort.sortDir]);
 
   const { data: statuses } = useQuery({ queryKey: statusesKey("booking"), queryFn: () => apiFetch("/statuses?domain=booking") });
   const statusOptions = [{ value: "", label: "All statuses" }, ...(statuses ?? []).map((s) => ({ value: s.code, label: s.label }))];
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: [REPORTS_BOOKINGS_QUERY_KEY, from, to, statusFilter, search, checkoutBasis, page, pageSize],
+    queryKey: [REPORTS_BOOKINGS_QUERY_KEY, from, to, statusFilter, search, checkoutBasis, page, pageSize, sort.sortBy, sort.sortDir],
     queryFn: () =>
       apiFetch(
         `/reports/bookings?${new URLSearchParams({
@@ -146,6 +148,7 @@ function BookingsReportTab({ from, to }) {
           checkoutBasis: String(checkoutBasis),
           page: String(page),
           pageSize,
+          ...(sort.sortBy ? { sortBy: sort.sortBy, sortDir: sort.sortDir } : {}),
         })}`
       ),
     placeholderData: (prev) => prev,
@@ -229,28 +232,48 @@ function BookingsReportTab({ from, to }) {
               <tr>
                 <Th>SL</Th>
                 <Th />
-                <Th>Invoice No</Th>
-                <Th pinned>Guest</Th>
-                <Th>Room</Th>
+                <Th sortDir={sort.sortBy === "invoiceNumber" ? sort.sortDir : undefined} onSort={() => sort.toggle("invoiceNumber")}>
+                  Invoice No
+                </Th>
+                <Th pinned sortDir={sort.sortBy === "guest" ? sort.sortDir : undefined} onSort={() => sort.toggle("guest")}>
+                  Guest
+                </Th>
+                <Th sortDir={sort.sortBy === "room" ? sort.sortDir : undefined} onSort={() => sort.toggle("room")}>
+                  Room
+                </Th>
                 <Th>Type</Th>
                 <Th>Booked By</Th>
-                <Th>Check-in</Th>
-                <Th>Check-out</Th>
+                <Th sortDir={sort.sortBy === "checkIn" ? sort.sortDir : undefined} onSort={() => sort.toggle("checkIn")}>
+                  Check-in
+                </Th>
+                <Th sortDir={sort.sortBy === "checkOut" ? sort.sortDir : undefined} onSort={() => sort.toggle("checkOut")}>
+                  Check-out
+                </Th>
                 <Th>Nights</Th>
-                <Th>Actual In</Th>
+                <Th sortDir={sort.sortBy === "actualCheckIn" ? sort.sortDir : undefined} onSort={() => sort.toggle("actualCheckIn")}>
+                  Actual In
+                </Th>
                 <Th>Checked In By</Th>
-                <Th>Actual Out</Th>
+                <Th sortDir={sort.sortBy === "actualCheckOut" ? sort.sortDir : undefined} onSort={() => sort.toggle("actualCheckOut")}>
+                  Actual Out
+                </Th>
                 <Th>Checked Out By</Th>
                 <Th>GSTIN</Th>
-                <Th align="right">Taxable Value</Th>
+                <Th align="right" sortDir={sort.sortBy === "taxableValue" ? sort.sortDir : undefined} onSort={() => sort.toggle("taxableValue")}>
+                  Taxable Value
+                </Th>
                 <Th align="right">CGST</Th>
                 <Th align="right">SGST</Th>
-                <Th align="right">Discount</Th>
+                <Th align="right" sortDir={sort.sortBy === "discount" ? sort.sortDir : undefined} onSort={() => sort.toggle("discount")}>
+                  Discount
+                </Th>
                 <Th align="right">Grand Total</Th>
                 <Th align="right">Other Charges</Th>
                 <Th align="right">Retained</Th>
                 <Th align="right">Advance</Th>
-                <Th align="right">Total</Th>
+                <Th align="right" sortDir={sort.sortBy === "total" ? sort.sortDir : undefined} onSort={() => sort.toggle("total")}>
+                  Total
+                </Th>
                 <Th>Status</Th>
                 <Th>Cancelled By</Th>
                 <Th>Notes</Th>

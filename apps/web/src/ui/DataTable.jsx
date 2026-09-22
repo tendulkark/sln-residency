@@ -1,3 +1,5 @@
+import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+
 // The one shell every data table in the app (Invoices list, Reports >
 // Bookings, Reports > GST) renders through.
 //
@@ -25,15 +27,45 @@
 
 const HEADER_CLASSES = "sticky top-0 z-20 border-b border-line-strong bg-muted px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-brand/75 print:static";
 
-export function Th({ children, align = "left", pinned = false, className = "" }) {
+// Pass `sortDir` ("asc" | "desc" | undefined) + `onSort` to make a header
+// cell clickable and sortable — see `useSort` in lib/useSort.js, which
+// pages use to track which column/direction is active and toggle it. A Th
+// with no `onSort` renders exactly as before (most columns, e.g. Notes/
+// Status, aren't sortable). The arrow/placeholder icon sits print:hidden
+// since a printed report has no interaction anyway.
+export function Th({ children, align = "left", pinned = false, className = "", sortDir, onSort }) {
+  const sortable = typeof onSort === "function";
   return (
     <th
       scope="col"
+      aria-sort={sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : sortable ? "none" : undefined}
       className={`${HEADER_CLASSES} ${align === "right" ? "text-right" : "text-left"} ${
         pinned ? "left-0 z-30 border-r border-line print:static print:border-r-0" : ""
-      } ${className}`}
+      } ${sortable ? "cursor-pointer select-none hover:text-brand" : ""} ${className}`}
+      onClick={sortable ? onSort : undefined}
+      onKeyDown={
+        sortable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSort();
+              }
+            }
+          : undefined
+      }
+      tabIndex={sortable ? 0 : undefined}
+      role={sortable ? "button" : undefined}
     >
-      {children}
+      {sortable ? (
+        <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
+          {children}
+          {sortDir === "asc" && <ArrowUp className="h-3 w-3 print:hidden" />}
+          {sortDir === "desc" && <ArrowDown className="h-3 w-3 print:hidden" />}
+          {!sortDir && <ChevronsUpDown className="h-3 w-3 opacity-40 print:hidden" />}
+        </span>
+      ) : (
+        children
+      )}
     </th>
   );
 }
