@@ -62,7 +62,7 @@ function PaperPreview({ zoom, children }) {
         <div
           ref={paperRef}
           data-print-area
-          className="origin-top-left scale-(--paper-scale) shadow-md ring-1 ring-line print:scale-none print:shadow-none print:ring-0"
+          className="origin-top-left scale-(--paper-scale) bg-white p-6 shadow-md ring-1 ring-line print:scale-none print:shadow-none print:ring-0"
           style={{ width: PAPER_WIDTH, "--paper-scale": scale }}
         >
           {children}
@@ -89,6 +89,17 @@ export default function InvoiceDesignPage() {
   const sample = useMemo(buildInvoicePreviewSample, []);
 
   const dirty = !!draft && !!saved && JSON.stringify(draft) !== JSON.stringify(saved);
+
+  const sentinelRef = useRef(null);
+  const [stuck, setStuck] = useState(false);
+  const ready = !!draft && !!tenant;
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(([entry]) => setStuck(!entry.isIntersecting), { root: sentinel.closest("main") });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [ready]);
 
   // Other screens cache the design for printing, so the first render can see
   // an older copy — start editing only from the fresh fetch, or a save would
@@ -146,9 +157,24 @@ export default function InvoiceDesignPage() {
         subtitle="Choose how printed Tax Invoices and Provisional Bills look. Amounts and invoice numbers are never affected."
       />
 
-      <div className="sticky top-0 z-20 -mx-4 mb-4 border-b border-line bg-surface/95 px-4 py-2.5 backdrop-blur md:-mx-6 md:px-6 print:hidden">
+      <div ref={sentinelRef} aria-hidden="true" />
+      {/* <main> scrolls and has p-4/md:p-6, and sticky offsets are measured
+          inside a scroll container's padding — so top-0 would pin this 24px
+          low with content scrolling past above it. The negative top cancels
+          that padding so it pins flush to the edge. */}
+      <div
+        className={`sticky -top-4 z-20 -mx-4 mb-4 border-b border-line bg-surface/95 px-4 py-2.5 backdrop-blur transition-shadow md:-top-6 md:-mx-6 md:px-6 print:hidden ${
+          stuck ? "shadow-sm" : ""
+        }`}
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
+            {stuck && (
+              <span className="hidden items-center gap-1.5 font-display text-lg font-bold text-ink xl:flex">
+                <Palette className="h-4 w-4 text-brand" />
+                Invoice Design
+              </span>
+            )}
             <div className="xl:hidden">
               <SegmentedControl size="sm" options={PANES} value={pane} onChange={setPane} />
             </div>
@@ -196,7 +222,7 @@ export default function InvoiceDesignPage() {
         </div>
 
         <div
-          className={`${pane === "preview" ? "" : "hidden"} xl:sticky xl:top-16 xl:block xl:max-h-[calc(100dvh-5rem)] xl:overflow-y-auto print:max-h-none print:overflow-visible`}
+          className={`${pane === "preview" ? "" : "hidden"} xl:sticky xl:top-11 xl:block xl:max-h-[calc(100dvh-6rem)] xl:overflow-y-auto print:max-h-none print:overflow-visible`}
         >
           <div className="rounded-lg border border-line bg-muted p-3 sm:p-4 print:border-0 print:bg-transparent print:p-0">
             <div className="mb-3 flex flex-wrap items-center gap-2 print:hidden">

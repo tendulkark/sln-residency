@@ -16,50 +16,53 @@ const LINE_SPACINGS = { compact: "space-y-0 leading-snug", normal: "space-y-0.5"
 
 // Per-layout class sets. --inv-accent / --inv-tint / --inv-soft are set on
 // the document root from the template's accent color.
+//
+// Alignment rule every layout follows: each block (header, panels, table,
+// totals, footer) spans exactly the document's width — no block bleeds
+// wider or sits narrower than the rest — and text inside any block starts
+// 16px (px-4) in from that shared edge, whether or not the block has a
+// fill or border. The page margin around the whole document comes from its
+// container (the dialog body, or the design preview's paper), never from
+// here, so the two can't stack into uneven gutters.
 const LAYOUTS = {
   classic: {
-    strip: true,
-    headerBox: "p-6 pb-4",
+    headerBox: "border-t-4 border-(--inv-accent) px-4 pb-4 pt-5",
     hotelName: "text-(--inv-accent)",
     headerText: "text-ink-soft",
     headerStrong: "text-ink",
     title: "text-ink",
     logo: "",
-    panel: "rounded-md bg-(--inv-tint) p-3",
+    panel: "rounded-md bg-(--inv-tint) p-4",
     label: "text-(--inv-accent)",
-    tableWrap: "mt-4",
     tableHead: "bg-(--inv-accent) text-white",
-    totals: "rounded-md border border-(--inv-accent) p-3",
-    settlement: "rounded-md bg-(--inv-tint) px-2 text-(--inv-accent)",
+    totals: "rounded-md border border-(--inv-accent) p-4",
+    settlement: "rounded-md bg-(--inv-tint) text-(--inv-accent)",
   },
   modern: {
-    strip: false,
-    headerBox: "mb-4 bg-(--inv-accent) p-6",
+    headerBox: "rounded-lg bg-(--inv-accent) px-4 py-5",
     hotelName: "text-white",
     headerText: "text-white/85",
     headerStrong: "text-white",
     title: "text-white",
     logo: "rounded-md bg-white p-1",
-    panel: "rounded-r-md border-l-4 border-(--inv-accent) bg-(--inv-soft) p-3",
+    // 4px rule + 12px padding = the same 16px text inset as every block.
+    panel: "rounded-r-md border-l-4 border-(--inv-accent) bg-(--inv-soft) py-4 pl-3 pr-4",
     label: "text-(--inv-accent)",
-    tableWrap: "mt-4 px-6",
     tableHead: "bg-(--inv-tint) text-(--inv-accent)",
-    totals: "rounded-md bg-(--inv-soft) p-3",
-    settlement: "rounded-md bg-(--inv-accent) px-2 text-white",
+    totals: "rounded-md bg-(--inv-soft) p-4",
+    settlement: "rounded-md bg-(--inv-accent) text-white",
   },
   minimal: {
-    strip: false,
-    headerBox: "mx-6 mb-4 border-b-2 border-(--inv-accent) py-6",
+    headerBox: "border-b-2 border-(--inv-accent) px-4 pb-5 pt-1",
     hotelName: "text-ink",
     headerText: "text-ink-soft",
     headerStrong: "text-ink",
     title: "text-(--inv-accent)",
     logo: "",
-    panel: "border-t border-line py-2",
+    panel: "border-t border-line px-4 py-3",
     label: "text-(--inv-accent)",
-    tableWrap: "mt-4 px-6",
     tableHead: "border-b-2 border-(--inv-accent) text-ink",
-    totals: "border-t-2 border-(--inv-accent) pt-2",
+    totals: "border-t-2 border-(--inv-accent) px-4 pt-3.5",
     settlement: "border-t border-line-soft text-(--inv-accent)",
   },
 };
@@ -117,8 +120,6 @@ export default function InvoiceDocument({
         WebkitPrintColorAdjust: "exact",
       }}
     >
-      {L.strip && <div className="h-1.5 w-full bg-(--inv-accent)" />}
-
       <div className={`flex items-start justify-between gap-4 ${L.headerBox}`}>
         <div className="flex min-w-0 items-start gap-3">
           {t.logoPlacement === "left" && logo}
@@ -159,7 +160,7 @@ export default function InvoiceDocument({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 px-6">
+      <div className="mt-4 grid grid-cols-2 gap-4">
         <div className={L.panel}>
           <p className={sectionLabel}>Billed To</p>
           <p className="text-[1.08em] font-bold uppercase text-ink">{primary.guest.name}</p>
@@ -200,49 +201,49 @@ export default function InvoiceDocument({
         </div>
       </div>
 
-      <div className={L.tableWrap}>
+      <div className="mt-4">
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className={L.tableHead}>
-              <th className="px-3 py-2 font-semibold">Description</th>
-              <th className="px-3 py-2 text-right font-semibold">Qty / Nights</th>
-              <th className="px-3 py-2 text-right font-semibold">Rate</th>
-              <th className="px-3 py-2 text-right font-semibold">Amount</th>
+              <th className="px-4 py-2 font-semibold">Description</th>
+              <th className="px-4 py-2 text-right font-semibold">Qty / Nights</th>
+              <th className="px-4 py-2 text-right font-semibold">Rate</th>
+              <th className="px-4 py-2 text-right font-semibold">Amount</th>
             </tr>
           </thead>
           <tbody>
             {bookings.map((b) => (
               <tr key={b.id} className="border-b border-line-soft">
-                <td className="px-3 py-2">
+                <td className="px-4 py-2">
                   Room Charges — {b.room.roomType.name} (Room {b.room.roomNumber})
                 </td>
-                <td className="px-3 py-2 text-right">{summary.nights}</td>
-                <td className="px-3 py-2 text-right">{formatCurrencyPrecise(b.ratePerNight)}</td>
-                <td className="px-3 py-2 text-right">{formatCurrencyPrecise(b.totalAmount)}</td>
+                <td className="px-4 py-2 text-right">{summary.nights}</td>
+                <td className="px-4 py-2 text-right">{formatCurrencyPrecise(b.ratePerNight)}</td>
+                <td className="px-4 py-2 text-right">{formatCurrencyPrecise(b.totalAmount)}</td>
               </tr>
             ))}
             {chargeRows.map((c) => (
               <tr key={c.id} className="border-b border-line-soft">
-                <td className="px-3 py-2">{c.description}</td>
-                <td className="px-3 py-2 text-right">-</td>
-                <td className="px-3 py-2 text-right">-</td>
-                <td className="px-3 py-2 text-right">{formatCurrencyPrecise(c.amount)}</td>
+                <td className="px-4 py-2">{c.description}</td>
+                <td className="px-4 py-2 text-right">-</td>
+                <td className="px-4 py-2 text-right">-</td>
+                <td className="px-4 py-2 text-right">{formatCurrencyPrecise(c.amount)}</td>
               </tr>
             ))}
             {discountRows.map((c) => (
               <tr key={c.id} className="border-b border-line-soft">
-                <td className="px-3 py-2">{c.description || "Discount / Concession"}</td>
-                <td className="px-3 py-2 text-right">-</td>
-                <td className="px-3 py-2 text-right">-</td>
-                <td className="px-3 py-2 text-right">- {formatCurrencyPrecise(c.amount)}</td>
+                <td className="px-4 py-2">{c.description || "Discount / Concession"}</td>
+                <td className="px-4 py-2 text-right">-</td>
+                <td className="px-4 py-2 text-right">-</td>
+                <td className="px-4 py-2 text-right">- {formatCurrencyPrecise(c.amount)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="grid grid-cols-2 gap-6 px-6 py-5">
-        <div>
+      <div className="mt-5 grid grid-cols-2 gap-4">
+        <div className="px-4 pt-4">
           <p className={sectionLabel}>Payment Terms &amp; Notes</p>
           <p className="text-ink">
             Final settlement via: <span className="font-semibold">{settlementLabel}</span>
@@ -278,7 +279,7 @@ export default function InvoiceDocument({
           <div className="my-1.5 border-t border-line-soft" />
           <TotalRow label="Grand Total" value={summary.grandTotal} bold />
           <TotalRow label="Less Advance Paid" value={-summary.advancePaid} muted />
-          <div className={`mt-2 flex items-center justify-between py-2 font-bold ${L.settlement}`}>
+          <div className={`-mx-2 mt-2 flex items-center justify-between px-2 py-2 font-bold ${L.settlement}`}>
             <span>Final Settlement</span>
             <span>{formatCurrencyPrecise(summary.balanceDue)}</span>
           </div>
@@ -286,13 +287,13 @@ export default function InvoiceDocument({
       </div>
 
       {t.termsAndConditions && (
-        <div className="px-6 pb-4">
+        <div className="mt-5 px-4">
           <p className={sectionLabel}>Terms &amp; Conditions</p>
           <p className="whitespace-pre-line text-[0.92em] text-ink-soft">{t.termsAndConditions}</p>
         </div>
       )}
 
-      <div className="flex items-end justify-between gap-4 border-t border-line-soft px-6 py-3 text-[0.92em] text-ink-muted">
+      <div className="flex items-end justify-between gap-4 mt-5 border-t border-line-soft px-4 pb-1 pt-3 text-[0.92em] text-ink-muted">
         <p>{provisional ? "Provisional Bill — Not a Tax Invoice" : t.footerNote}</p>
         <div className="shrink-0 text-right">
           {t.signatureImageUrl && <img src={t.signatureImageUrl} alt="Signature" className="mb-1 ml-auto h-12 max-w-40 object-contain" />}
