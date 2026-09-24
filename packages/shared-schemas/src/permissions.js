@@ -24,6 +24,7 @@ export const PERMISSIONS = [
   { code: "invoices.view", description: "View invoices" },
   { code: "invoices.generate", description: "Generate an invoice for a booking" },
   { code: "invoices.cancel", description: "Cancel a wrong invoice and reissue a replacement" },
+  { code: "invoices.customize", description: "Change the printed invoice's layout, colors, visible fields, and footer wording" },
   { code: "statuses.manage", description: "Manage room/booking/payment status lists" },
   { code: "taxrules.manage", description: "Manage GST/tax rule slabs" },
   { code: "users.manage", description: "Manage staff accounts" },
@@ -44,11 +45,13 @@ export const DEFAULT_ADMIN_PERMISSION_CODES = PERMISSIONS.map((p) => p.code);
 // invoice (bookings.routes.js/payments.routes.js `isBookingLocked` gate,
 // invoices.routes.js `POST /invoices/:id/cancel`) — and the two account-
 // admin permissions, since anyone who can edit roles or staff can grant
-// themselves everything else anyway.
+// themselves everything else anyway. Invoice design is Admin-only by
+// product decision (2026-09-24).
 const MANAGER_EXCLUDED_PERMISSION_CODES = new Set([
   "bookings.correct",
   "guests.correct",
   "invoices.cancel",
+  "invoices.customize",
   "users.manage",
   "roles.manage",
 ]);

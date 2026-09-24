@@ -1,71 +1,186 @@
 import { formatCurrencyPrecise, formatDate, formatDateTime } from "@/lib/format.js";
-import { ID_PROOF_TYPES } from "@sln/shared-schemas";
+import { DEFAULT_INVOICE_TEMPLATE, ID_PROOF_TYPES } from "@sln/shared-schemas";
 
-// Printable GST tax invoice — the letterhead (name/logo/address/GSTIN) comes
-// from Tenant profile fields (Settings screen), the numbers come from the
-// tax-snapshotted Invoice row plus the live stay breakdown. Renders inside
-// a Dialog's [data-print-area] panel, so @media print in index.css already
-// hides everything else on the page.
-export default function InvoiceDocument({ invoice, tenant, bookings, charges, payments, summary, provisional = false }) {
+const FONT_STACKS = {
+  sans: "var(--font-sans)",
+  serif: 'Georgia, "Times New Roman", serif',
+  mono: 'ui-monospace, "Courier New", monospace',
+};
+
+// Every size inside the document is in em, so this one value scales it all.
+const FONT_SIZES = { small: "12px", medium: "13px", large: "14.5px" };
+
+const LOGO_SIZES = { small: "h-14 w-14", medium: "h-20 w-20", large: "h-28 w-28" };
+
+const LINE_SPACINGS = { compact: "space-y-0 leading-snug", normal: "space-y-0.5", relaxed: "space-y-1.5 leading-relaxed" };
+
+// Per-layout class sets. --inv-accent / --inv-tint / --inv-soft are set on
+// the document root from the template's accent color.
+const LAYOUTS = {
+  classic: {
+    strip: true,
+    headerBox: "p-6 pb-4",
+    hotelName: "text-(--inv-accent)",
+    headerText: "text-ink-soft",
+    headerStrong: "text-ink",
+    title: "text-ink",
+    logo: "",
+    panel: "rounded-md bg-(--inv-tint) p-3",
+    label: "text-(--inv-accent)",
+    tableWrap: "mt-4",
+    tableHead: "bg-(--inv-accent) text-white",
+    totals: "rounded-md border border-(--inv-accent) p-3",
+    settlement: "rounded-md bg-(--inv-tint) px-2 text-(--inv-accent)",
+  },
+  modern: {
+    strip: false,
+    headerBox: "mb-4 bg-(--inv-accent) p-6",
+    hotelName: "text-white",
+    headerText: "text-white/85",
+    headerStrong: "text-white",
+    title: "text-white",
+    logo: "rounded-md bg-white p-1",
+    panel: "rounded-r-md border-l-4 border-(--inv-accent) bg-(--inv-soft) p-3",
+    label: "text-(--inv-accent)",
+    tableWrap: "mt-4 px-6",
+    tableHead: "bg-(--inv-tint) text-(--inv-accent)",
+    totals: "rounded-md bg-(--inv-soft) p-3",
+    settlement: "rounded-md bg-(--inv-accent) px-2 text-white",
+  },
+  minimal: {
+    strip: false,
+    headerBox: "mx-6 mb-4 border-b-2 border-(--inv-accent) py-6",
+    hotelName: "text-ink",
+    headerText: "text-ink-soft",
+    headerStrong: "text-ink",
+    title: "text-(--inv-accent)",
+    logo: "",
+    panel: "border-t border-line py-2",
+    label: "text-(--inv-accent)",
+    tableWrap: "mt-4 px-6",
+    tableHead: "border-b-2 border-(--inv-accent) text-ink",
+    totals: "border-t-2 border-(--inv-accent) pt-2",
+    settlement: "border-t border-line-soft text-(--inv-accent)",
+  },
+};
+
+// Printable GST tax invoice / provisional bill. The letterhead comes from
+// Tenant profile fields (Settings), the figures from the tax-snapshotted
+// Invoice row plus the live stay breakdown, and the look from the tenant's
+// invoice design (`template`, Invoice Design screen). Fields GST law
+// requires — title, hotel GSTIN, number/date, recipient company GSTIN, the
+// tax breakdown, signatory — render regardless of the design. Renders
+// inside a [data-print-area], so @media print in index.css hides the rest.
+export default function InvoiceDocument({
+  invoice,
+  tenant,
+  bookings,
+  charges,
+  payments,
+  summary,
+  provisional = false,
+  template = DEFAULT_INVOICE_TEMPLATE,
+}) {
+  const t = template;
+  const L = LAYOUTS[t.layout] ?? LAYOUTS.classic;
+  const accent = t.accentColor || "var(--color-brand)";
+
   const primary = bookings[0];
   const roomLabel = bookings.map((b) => `${b.room.roomNumber} (${b.room.roomType.name})`).join(", ");
-  const totalGuests = bookings.reduce((sum, b) => sum + b.adults + b.children, 0);
+  const adults = bookings.reduce((sum, b) => sum + b.adults, 0);
+  const children = bookings.reduce((sum, b) => sum + b.children, 0);
   const chargeRows = charges.filter((c) => c.type === "charge");
   const discountRows = charges.filter((c) => c.type === "discount");
   const halfRate = summary.taxRatePercent / 2;
+  const formatStayDate = t.showCheckInOutTime ? formatDateTime : formatDate;
 
   const lastPayment = payments[payments.length - 1];
   const settlementLabel = summary.balanceDue <= 0 && lastPayment ? lastPayment.method.name : "Pending";
 
-  return (
-    <div className="bg-white text-ink" style={{ fontSize: "13px" }}>
-      <div className="h-1.5 w-full bg-brand" />
+  const logo =
+    tenant.logoUrl && t.logoPlacement !== "hidden" ? (
+      <img src={tenant.logoUrl} alt={`${tenant.name} logo`} className={`${LOGO_SIZES[t.logoSize]} shrink-0 object-contain ${L.logo}`} />
+    ) : null;
 
-      <div className="flex items-start justify-between gap-4 p-6 pb-4">
-        <div className="min-w-0">
-          <h1 className="text-xl font-extrabold uppercase leading-tight text-brand">{tenant.name}</h1>
-          <div className="mt-2 space-y-0.5 text-ink-soft">
-            {tenant.address && <p>Address: {tenant.address}</p>}
-            {tenant.phone && <p>Phone: {tenant.phone}</p>}
-            {tenant.email && <p>Email: {tenant.email}</p>}
-            {tenant.gstin && <p>GSTIN: {tenant.gstin}</p>}
+  const sectionLabel = `mb-1.5 text-[0.85em] font-bold uppercase tracking-wide ${L.label}`;
+
+  return (
+    <div
+      className="bg-white text-ink"
+      style={{
+        "--inv-accent": accent,
+        "--inv-tint": `color-mix(in srgb, ${accent} 10%, white)`,
+        "--inv-soft": `color-mix(in srgb, ${accent} 5%, white)`,
+        fontFamily: FONT_STACKS[t.fontFamily],
+        fontSize: FONT_SIZES[t.fontSize],
+        printColorAdjust: "exact",
+        WebkitPrintColorAdjust: "exact",
+      }}
+    >
+      {L.strip && <div className="h-1.5 w-full bg-(--inv-accent)" />}
+
+      <div className={`flex items-start justify-between gap-4 ${L.headerBox}`}>
+        <div className="flex min-w-0 items-start gap-3">
+          {t.logoPlacement === "left" && logo}
+          <div className="min-w-0">
+            <h1
+              className={`font-extrabold uppercase leading-tight ${L.hotelName}`}
+              style={{ fontSize: `${(1.55 * t.hotelNameScale) / 100}em` }}
+            >
+              {tenant.name}
+            </h1>
+            <div
+              className={`mt-2 ${LINE_SPACINGS[t.hotelDetailsSpacing]} ${L.headerText}`}
+              style={{ fontSize: `${t.hotelDetailsScale / 100}em` }}
+            >
+              {t.showHotelAddress && tenant.address && <p className="whitespace-pre-line">Address: {tenant.address}</p>}
+              {t.showHotelPhone && tenant.phone && <p>Phone: {tenant.phone}</p>}
+              {t.showHotelEmail && tenant.email && <p>Email: {tenant.email}</p>}
+              {tenant.gstin && <p>GSTIN: {tenant.gstin}</p>}
+            </div>
           </div>
         </div>
 
-        {tenant.logoUrl && (
-          <img src={tenant.logoUrl} alt={`${tenant.name} logo`} className="h-20 w-20 shrink-0 object-contain" />
-        )}
+        {t.logoPlacement === "center" && logo}
 
         <div className="shrink-0 text-right">
-          <h2 className="text-2xl font-extrabold tracking-tight text-ink">{provisional ? "PROVISIONAL BILL" : "TAX INVOICE"}</h2>
+          <h2 className={`text-[1.85em] font-extrabold leading-tight tracking-tight ${L.title}`}>
+            {provisional ? "PROVISIONAL BILL" : "TAX INVOICE"}
+          </h2>
           {invoice.invoiceNumber && (
-            <p className="mt-2 text-ink-soft">
-              Invoice No: <span className="font-semibold text-ink">{invoice.invoiceNumber}</span>
-              {provisional && <span className="ml-1 text-xs text-ink-muted">(reserved — finalized at checkout)</span>}
+            <p className={`mt-2 ${L.headerText}`}>
+              Invoice No: <span className={`font-semibold ${L.headerStrong}`}>{invoice.invoiceNumber}</span>
+              {provisional && <span className="ml-1 text-[0.85em] opacity-75">(reserved — finalized at checkout)</span>}
             </p>
           )}
-          <p className={invoice.invoiceNumber ? "text-ink-soft" : "mt-2 text-ink-soft"}>
-            Date: <span className="font-semibold text-ink">{formatDate(invoice.generatedAt)}</span>
+          <p className={`${invoice.invoiceNumber ? "" : "mt-2"} ${L.headerText}`}>
+            Date: <span className={`font-semibold ${L.headerStrong}`}>{formatDate(invoice.generatedAt)}</span>
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 px-6">
-        <div className="rounded-md bg-brand-tint p-3">
-          <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-brand">Billed To</p>
-          <p className="text-sm font-bold uppercase text-ink">{primary.guest.name}</p>
-          {primary.guest.phone && <p className="text-ink-soft">Phone: {primary.guest.phone}</p>}
-          {primary.guest.phone2 && <p className="text-ink-soft">Alt. Phone: {primary.guest.phone2}</p>}
-          {primary.guest.email && <p className="text-ink-soft">Email: {primary.guest.email}</p>}
-          {primary.guest.address && <p className="whitespace-pre-line text-ink-soft">Address: {primary.guest.address}</p>}
-          {primary.guest.idProofType && (
+        <div className={L.panel}>
+          <p className={sectionLabel}>Billed To</p>
+          <p className="text-[1.08em] font-bold uppercase text-ink">{primary.guest.name}</p>
+          {t.showGuestContact && (
+            <>
+              {primary.guest.phone && <p className="text-ink-soft">Phone: {primary.guest.phone}</p>}
+              {primary.guest.phone2 && <p className="text-ink-soft">Alt. Phone: {primary.guest.phone2}</p>}
+              {primary.guest.email && <p className="text-ink-soft">Email: {primary.guest.email}</p>}
+            </>
+          )}
+          {t.showGuestAddress && primary.guest.address && (
+            <p className="whitespace-pre-line text-ink-soft">Address: {primary.guest.address}</p>
+          )}
+          {t.showGuestIdProof && primary.guest.idProofType && (
             <p className="text-ink-soft">
-              {ID_PROOF_TYPES.find((t) => t.value === primary.guest.idProofType)?.label ?? primary.guest.idProofType}
+              {ID_PROOF_TYPES.find((type) => type.value === primary.guest.idProofType)?.label ?? primary.guest.idProofType}
               {primary.guest.idProofNumber ? `: ${primary.guest.idProofNumber}` : ""}
             </p>
           )}
           {primary.guest.companyName && (
-            <div className="mt-2 border-t border-brand/20 pt-2">
+            <div className="mt-2 border-t border-(--inv-accent)/20 pt-2">
               <p className="text-ink-soft">
                 <span className="font-semibold text-ink">Company:</span> {primary.guest.companyName}
               </p>
@@ -73,81 +188,81 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
             </div>
           )}
         </div>
-        <div className="rounded-md bg-brand-tint p-3">
-          <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-brand">Stay Details</p>
-          <p className="text-ink-soft">
-            <span className="font-semibold text-ink">Room:</span> {roomLabel}
-          </p>
-          <p className="text-ink-soft">
-            <span className="font-semibold text-ink">Check-In:</span> {formatDateTime(primary.checkIn)}
-          </p>
-          <p className="text-ink-soft">
-            <span className="font-semibold text-ink">Check-Out:</span> {formatDateTime(primary.checkOut)}
-          </p>
-          <p className="text-ink-soft">
-            <span className="font-semibold text-ink">Total Nights:</span> {summary.nights}
-          </p>
-          <p className="text-ink-soft">
-            <span className="font-semibold text-ink">Guests:</span> {totalGuests} Adult(s)
-          </p>
+        <div className={L.panel}>
+          <p className={sectionLabel}>Stay Details</p>
+          <DetailRow label="Room" value={roomLabel} />
+          <DetailRow label="Check-In" value={formatStayDate(primary.checkIn)} />
+          <DetailRow label="Check-Out" value={formatStayDate(primary.checkOut)} />
+          <DetailRow label="Total Nights" value={summary.nights} />
+          {t.showGuestCount && (
+            <DetailRow label="Guests" value={`${adults} Adult(s)${children > 0 ? `, ${children} Child(ren)` : ""}`} />
+          )}
         </div>
       </div>
 
-      <table className="mt-4 w-full border-collapse px-6 text-left">
-        <thead>
-          <tr className="bg-brand text-white">
-            <th className="px-3 py-2 font-semibold">Description</th>
-            <th className="px-3 py-2 text-right font-semibold">Qty / Nights</th>
-            <th className="px-3 py-2 text-right font-semibold">Rate</th>
-            <th className="px-3 py-2 text-right font-semibold">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bookings.map((b) => (
-            <tr key={b.id} className="border-b border-line-soft">
-              <td className="px-3 py-2">
-                Room Charges — {b.room.roomType.name} (Room {b.room.roomNumber})
-              </td>
-              <td className="px-3 py-2 text-right">{summary.nights}</td>
-              <td className="px-3 py-2 text-right">{formatCurrencyPrecise(b.ratePerNight)}</td>
-              <td className="px-3 py-2 text-right">{formatCurrencyPrecise(b.totalAmount)}</td>
+      <div className={L.tableWrap}>
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr className={L.tableHead}>
+              <th className="px-3 py-2 font-semibold">Description</th>
+              <th className="px-3 py-2 text-right font-semibold">Qty / Nights</th>
+              <th className="px-3 py-2 text-right font-semibold">Rate</th>
+              <th className="px-3 py-2 text-right font-semibold">Amount</th>
             </tr>
-          ))}
-          {chargeRows.map((c) => (
-            <tr key={c.id} className="border-b border-line-soft">
-              <td className="px-3 py-2">{c.description}</td>
-              <td className="px-3 py-2 text-right">-</td>
-              <td className="px-3 py-2 text-right">-</td>
-              <td className="px-3 py-2 text-right">{formatCurrencyPrecise(c.amount)}</td>
-            </tr>
-          ))}
-          {discountRows.map((c) => (
-            <tr key={c.id} className="border-b border-line-soft">
-              <td className="px-3 py-2">{c.description || "Discount / Concession"}</td>
-              <td className="px-3 py-2 text-right">-</td>
-              <td className="px-3 py-2 text-right">-</td>
-              <td className="px-3 py-2 text-right">- {formatCurrencyPrecise(c.amount)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {bookings.map((b) => (
+              <tr key={b.id} className="border-b border-line-soft">
+                <td className="px-3 py-2">
+                  Room Charges — {b.room.roomType.name} (Room {b.room.roomNumber})
+                </td>
+                <td className="px-3 py-2 text-right">{summary.nights}</td>
+                <td className="px-3 py-2 text-right">{formatCurrencyPrecise(b.ratePerNight)}</td>
+                <td className="px-3 py-2 text-right">{formatCurrencyPrecise(b.totalAmount)}</td>
+              </tr>
+            ))}
+            {chargeRows.map((c) => (
+              <tr key={c.id} className="border-b border-line-soft">
+                <td className="px-3 py-2">{c.description}</td>
+                <td className="px-3 py-2 text-right">-</td>
+                <td className="px-3 py-2 text-right">-</td>
+                <td className="px-3 py-2 text-right">{formatCurrencyPrecise(c.amount)}</td>
+              </tr>
+            ))}
+            {discountRows.map((c) => (
+              <tr key={c.id} className="border-b border-line-soft">
+                <td className="px-3 py-2">{c.description || "Discount / Concession"}</td>
+                <td className="px-3 py-2 text-right">-</td>
+                <td className="px-3 py-2 text-right">-</td>
+                <td className="px-3 py-2 text-right">- {formatCurrencyPrecise(c.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="grid grid-cols-2 gap-6 px-6 py-5">
         <div>
-          <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-brand">Payment Terms & Notes</p>
+          <p className={sectionLabel}>Payment Terms &amp; Notes</p>
           <p className="text-ink">
             Final settlement via: <span className="font-semibold">{settlementLabel}</span>
           </p>
-          {payments.map((p) => (
-            <p key={p.id} className="text-ink">
-              Advance via: <span className="font-semibold">{p.method.name}</span> {formatCurrencyPrecise(p.amount)}
-            </p>
-          ))}
-          <p className="mt-3 italic text-ink-muted">Thank you for staying with us.</p>
-          <p className="italic text-ink-muted">We hope to see you again soon.</p>
+          {t.showPaymentBreakdown &&
+            payments.map((p) => (
+              <p key={p.id} className="text-ink">
+                Advance via: <span className="font-semibold">{p.method.name}</span> {formatCurrencyPrecise(p.amount)}
+              </p>
+            ))}
+          {t.thankYouNote && <p className="mt-3 whitespace-pre-line italic text-ink-muted">{t.thankYouNote}</p>}
+          {t.bankDetails && (
+            <div className="mt-3">
+              <p className={sectionLabel}>Bank Details</p>
+              <p className="whitespace-pre-line text-ink-soft">{t.bankDetails}</p>
+            </div>
+          )}
         </div>
 
-        <div className="rounded-md border border-brand p-3">
+        <div className={L.totals}>
           <TotalRow label="Sub Total (Rooms)" value={summary.roomsInclTax} />
           {summary.discountTotal > 0 && <TotalRow label="Less Discount" value={-summary.discountTotal} muted />}
           <TotalRow label="Taxable Value" value={summary.taxableValue} muted />
@@ -163,26 +278,44 @@ export default function InvoiceDocument({ invoice, tenant, bookings, charges, pa
           <div className="my-1.5 border-t border-line-soft" />
           <TotalRow label="Grand Total" value={summary.grandTotal} bold />
           <TotalRow label="Less Advance Paid" value={-summary.advancePaid} muted />
-          <div className="mt-2 flex items-center justify-between rounded-md bg-brand-tint px-2 py-2">
-            <span className="font-bold text-brand">Final Settlement</span>
-            <span className="font-bold text-brand">{formatCurrencyPrecise(summary.balanceDue)}</span>
+          <div className={`mt-2 flex items-center justify-between py-2 font-bold ${L.settlement}`}>
+            <span>Final Settlement</span>
+            <span>{formatCurrencyPrecise(summary.balanceDue)}</span>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-line-soft px-6 py-3 text-xs text-ink-muted">
-        <p>{provisional ? "Provisional Bill — Not a Tax Invoice" : "System Generated Invoice"}</p>
-        <p>Authorized Signatory</p>
+      {t.termsAndConditions && (
+        <div className="px-6 pb-4">
+          <p className={sectionLabel}>Terms &amp; Conditions</p>
+          <p className="whitespace-pre-line text-[0.92em] text-ink-soft">{t.termsAndConditions}</p>
+        </div>
+      )}
+
+      <div className="flex items-end justify-between gap-4 border-t border-line-soft px-6 py-3 text-[0.92em] text-ink-muted">
+        <p>{provisional ? "Provisional Bill — Not a Tax Invoice" : t.footerNote}</p>
+        <div className="shrink-0 text-right">
+          {t.signatureImageUrl && <img src={t.signatureImageUrl} alt="Signature" className="mb-1 ml-auto h-12 max-w-40 object-contain" />}
+          <p>{t.signatoryLabel}</p>
+        </div>
       </div>
     </div>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <p className="text-ink-soft">
+      <span className="font-semibold text-ink">{label}:</span> {value}
+    </p>
   );
 }
 
 function TotalRow({ label, value, bold, muted }) {
   return (
     <div className="flex items-center justify-between py-0.5">
-      <span className={muted ? "text-xs text-ink-muted" : "text-sm text-ink"}>{label}</span>
-      <span className={`${bold ? "font-bold text-ink" : muted ? "text-xs text-ink-soft" : "text-sm text-ink"}`}>
+      <span className={muted ? "text-[0.92em] text-ink-muted" : "text-[1.08em] text-ink"}>{label}</span>
+      <span className={bold ? "font-bold text-ink" : muted ? "text-[0.92em] text-ink-soft" : "text-[1.08em] text-ink"}>
         {value < 0 ? "- " : ""}
         {formatCurrencyPrecise(Math.abs(value))}
       </span>

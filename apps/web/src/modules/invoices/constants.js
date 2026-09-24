@@ -1,4 +1,4 @@
-import { Receipt } from "lucide-react";
+import { Palette, Receipt } from "lucide-react";
 
 // Invoices module constants — its route, sidebar nav entry, and the React
 // Query cache keys InvoiceModal/InvoicesPage use to fetch/generate/cancel a
@@ -11,6 +11,17 @@ export const INVOICES_NAV_ITEM = {
   permission: "invoices.view",
   icon: Receipt,
 };
+
+export const INVOICE_DESIGN_ROUTE_PATH = "/invoice-design";
+
+export const INVOICE_DESIGN_NAV_ITEM = {
+  to: INVOICE_DESIGN_ROUTE_PATH,
+  label: "Invoice Design",
+  permission: "invoices.customize",
+  icon: Palette,
+};
+
+export const INVOICE_TEMPLATE_QUERY_KEY = "invoice-template";
 
 export const BOOKING_INVOICE_QUERY_KEY = "booking-invoice";
 export const bookingInvoiceKey = (bookingId) => [BOOKING_INVOICE_QUERY_KEY, bookingId];

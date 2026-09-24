@@ -174,6 +174,37 @@ body {
   background-image: linear-gradient(90deg, var(--color-brand), var(--color-gold) 50%, var(--color-brand));
 }
 
+/* ui/Slider's range input: a brand-filled track up to --range-pct and a
+   white thumb with a brand ring, identical in WebKit and Firefox. */
+.ui-range {
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  cursor: pointer;
+  background: linear-gradient(to right, var(--color-brand) var(--range-pct, 50%), var(--color-line-strong) var(--range-pct, 50%));
+}
+.ui-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--color-card);
+  border: 2px solid var(--color-brand);
+  box-shadow: var(--shadow-sm);
+}
+.ui-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--color-card);
+  border: 2px solid var(--color-brand);
+  box-shadow: var(--shadow-sm);
+}
+.ui-range:focus-visible {
+  outline: 2px solid var(--color-brand-ring);
+  outline-offset: 4px;
+}
+
 .divine-pattern {
   background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--color-brand) 16%, transparent) 1px, transparent 0);
   background-size: 22px 22px;

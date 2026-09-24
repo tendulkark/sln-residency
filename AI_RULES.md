@@ -93,9 +93,11 @@ explicitly asked later.
       Printable from Manage Stay, reprinted from Reports, or found/managed
       from the dedicated **Invoices** module (search/filter by number,
       guest, room, date, status; cancel & reissue from there too).
-- [ ] Phase 4 — Admin controls: room types/pricing management (Rooms Setup)
-      and hotel profile/branding (Settings) are in; manage roles/permissions,
-      statuses, tax rules, and staff accounts are still outstanding.
+- [ ] Phase 4 — Admin controls: room types/pricing management (Rooms Setup),
+      hotel profile/branding (Settings), staff accounts (Staff), and the
+      printed invoice's look (Invoice Design, `invoice-template.routes.js`)
+      are in; manage roles/permissions, statuses, and tax rules are still
+      outstanding.
 - [x] Phase 5 — PWA polish: manifest + generated icons (favicons,
       apple-touch-icon, 192/512 + maskable) via `vite-plugin-pwa`, an
       offline-shell service worker (network-first for API calls), and iOS

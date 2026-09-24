@@ -5,6 +5,7 @@ import { Button, Modal } from "@/ui/index.js";
 import InvoiceDocument from "@/modules/invoices/components/InvoiceDocument.jsx";
 import { TENANT_QUERY_KEY } from "@/modules/settings/constants.js";
 import { bookingInvoiceKey } from "@/modules/invoices/constants.js";
+import { useInvoiceTemplate } from "@/modules/invoices/useInvoiceTemplate.js";
 
 // A print preview for a stay that hasn't checked out yet, sharing the same
 // branded InvoiceDocument layout as the final Tax Invoice so a guest never
@@ -23,6 +24,8 @@ export default function ProvisionalBillModal({ bookingId, stay, onClose }) {
     queryFn: () => apiFetch(`/bookings/${bookingId}/invoice`),
     retry: false,
   });
+  const template = useInvoiceTemplate();
+  const ready = tenant && template;
 
   const invoice = reserved?.invoice ?? { invoiceNumber: null, generatedAt: new Date().toISOString() };
 
@@ -32,7 +35,7 @@ export default function ProvisionalBillModal({ bookingId, stay, onClose }) {
       onClose={onClose}
       wide
       actions={
-        tenant && (
+        ready && (
           <Button size="sm" onClick={() => window.print()}>
             <Printer className="h-3.5 w-3.5" />
             Print
@@ -40,10 +43,11 @@ export default function ProvisionalBillModal({ bookingId, stay, onClose }) {
         )
       }
     >
-      {isLoading && <p className="text-sm text-ink-muted">Preparing bill…</p>}
-      {tenant && (
+      {(isLoading || !template) && <p className="text-sm text-ink-muted">Preparing bill…</p>}
+      {ready && (
         <InvoiceDocument
           provisional
+          template={template}
           invoice={invoice}
           tenant={tenant}
           bookings={stay.bookings}
