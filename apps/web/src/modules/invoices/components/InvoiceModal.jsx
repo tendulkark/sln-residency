@@ -7,6 +7,7 @@ import { useAuthStore } from "@/app/authStore.js";
 import { Button, Textarea, Modal } from "@/ui/index.js";
 import InvoiceDocument from "@/modules/invoices/components/InvoiceDocument.jsx";
 import GuestDetailsForm from "@/modules/invoices/components/GuestDetailsForm.jsx";
+import { useInvoiceTemplate } from "@/modules/invoices/useInvoiceTemplate.js";
 import { bookingInvoiceKey, invoiceKey, INVOICES_LIST_QUERY_KEY } from "@/modules/invoices/constants.js";
 import { GUESTS_QUERY_KEY } from "@/modules/reservations/constants.js";
 
@@ -35,6 +36,7 @@ const normalize = (v) => (v ?? "").toString().trim();
 export default function InvoiceModal({ bookingId, invoiceId, autoGenerate = false, autoReissueReason, onReissued, onClose }) {
   const permissions = useAuthStore((s) => s.permissions);
   const queryClient = useQueryClient();
+  const template = useInvoiceTemplate();
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
   const [correcting, setCorrecting] = useState(false);
@@ -167,7 +169,8 @@ export default function InvoiceModal({ bookingId, invoiceId, autoGenerate = fals
       onClose={onClose}
       wide
       actions={
-        data && (
+        data &&
+        template && (
           <>
             {canCorrectGuest && !correcting && !cancelling && (
               <Button size="sm" variant="outline" onClick={openCorrection}>
@@ -252,7 +255,7 @@ export default function InvoiceModal({ bookingId, invoiceId, autoGenerate = fals
         </div>
       )}
 
-      {data && <InvoiceDocument {...data} />}
+      {data && template && <InvoiceDocument {...data} template={template} />}
     </Modal>
   );
 }

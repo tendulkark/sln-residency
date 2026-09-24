@@ -13,7 +13,7 @@ export default function PageHeader({ title, subtitle, icon: Icon, actions }) {
         {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
         <div className="divine-rule mt-2 w-14 rounded-full" />
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }

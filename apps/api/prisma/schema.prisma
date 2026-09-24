@@ -44,6 +44,7 @@ model Tenant {
   auditLogs     AuditLog[]
   roomClosures  RoomClosure[]
   bookingCharges BookingCharge[]
+  invoiceTemplate InvoiceTemplate?
 }
 
 // ---------------------------------------------------------------------------
@@ -423,6 +424,23 @@ model Invoice {
   // file — don't expect `prisma migrate dev` to regenerate it from here.
   @@index([bookingId])
   @@index([tenantId])
+}
+
+// The tenant's printed invoice design (Invoice Design screen). At most one
+// per tenant; no row means every option is at its default. `config` is
+// written only through invoiceTemplateSchema and read through
+// resolveInvoiceTemplate (packages/shared-schemas/src/invoiceTemplate.js),
+// so options added later fill in their defaults on rows saved earlier.
+// Presentation only — never snapshotted onto an Invoice, so a reprint uses
+// the current design while its figures stay frozen.
+model InvoiceTemplate {
+  id        String   @id @default(cuid())
+  tenantId  String   @unique
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 // ---------------------------------------------------------------------------

@@ -60,7 +60,7 @@ Module map (`apps/web/src/modules/`):
 | `rooms`        | `RoomsSetupPage`  | `RoomFormModal`, `RoomTypesModal`                                                                                     |
 | `housekeeping` | `HousekeepingPage`| `RoomClosuresModal`                                                                                                   |
 | `reservations` | `ReservationsPage`| `BookingFormModal`, `ManageStayModal`, `EditBookingModal`, `ExtendStayModal`, `RoomBookingsModal`, `DayBookingsModal`, `DaySheet`, `BookingRow`, `MiniDatePicker`, `MonthYearPicker` (+ `calendarUtils.js`) |
-| `invoices`     | `InvoicesPage`    | `InvoiceModal`, `InvoiceDocument`, `ProvisionalBillModal`, `GuestDetailsForm`                                        |
+| `invoices`     | `InvoicesPage`, `InvoiceDesignPage` | `InvoiceModal`, `InvoiceDocument`, `ProvisionalBillModal`, `GuestDetailsForm`, `InvoiceDesignForm` (+ `useInvoiceTemplate.js`, `invoicePreviewSample.js`) |
 | `reports`      | `ReportsPage`     | —                                                                                                                     |
 | `settings`     | `SettingsPage`    | —                                                                                                                     |
 | `common`       | —                 | `StatusBadge`, `GstCalculator` — components/keys shared by several modules but still domain-aware (so not in `ui/`) |
@@ -117,6 +117,13 @@ Conventions:
   number).
 - **Settings** — hotel profile (name, address, phone, GSTIN, logo, brand
   color) used on every printed invoice and in the sidebar.
+- **Invoice Design** (Admin-only, `invoices.customize`) — pick the printed
+  invoice's layout (Classic/Modern/Minimal), accent color, font and size,
+  logo position, which optional hotel/guest fields show, and the wording of
+  the thank-you note, bank details, terms, footer and signatory (plus a
+  signature/stamp image), with a live preview. Stored per tenant in
+  `InvoiceTemplate`; presentation only — GST-required fields always print
+  and figures/numbers are never affected.
 - **Reports** — a Rooms Reports module with four tabs: Bookings (status/
   room-type breakdown, a full detail table with every audit-trail-backed
   column, CSV export), Revenue (by payment method + daily trend), Occupancy

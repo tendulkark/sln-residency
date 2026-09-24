@@ -2,7 +2,7 @@ import { DASHBOARD_NAV_ITEM } from "@/modules/dashboard/constants.js";
 import { ROOMS_NAV_ITEM } from "@/modules/rooms/constants.js";
 import { HOUSEKEEPING_NAV_ITEM } from "@/modules/housekeeping/constants.js";
 import { RESERVATIONS_NAV_ITEM } from "@/modules/reservations/constants.js";
-import { INVOICES_NAV_ITEM } from "@/modules/invoices/constants.js";
+import { INVOICES_NAV_ITEM, INVOICE_DESIGN_NAV_ITEM } from "@/modules/invoices/constants.js";
 import { REPORTS_NAV_ITEM } from "@/modules/reports/constants.js";
 import { STAFF_NAV_ITEM } from "@/modules/staff/constants.js";
 import { SETTINGS_NAV_ITEM } from "@/modules/settings/constants.js";
@@ -21,6 +21,7 @@ export const NAV_ITEMS = [
   INVOICES_NAV_ITEM,
   REPORTS_NAV_ITEM,
   STAFF_NAV_ITEM,
+  INVOICE_DESIGN_NAV_ITEM,
   SETTINGS_NAV_ITEM,
 ];
 
