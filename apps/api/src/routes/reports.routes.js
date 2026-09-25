@@ -11,6 +11,19 @@ import {
   BOOKINGS_REPORT_SORT_KEYS,
 } from "#src/lib/reports.js";
 
+// An invoice's GST, rate by rate — from the lines frozen in its snapshot
+// (room tariff and each charge at its own slab), or for an invoice issued
+// before those existed, its single stored rate with the tax split evenly.
+function taxLinesOf(invoice) {
+  const lines = invoice.snapshot?.summary?.taxLines;
+  if (Array.isArray(lines) && lines.length) {
+    return lines.map((l) => ({ ratePercent: Number(l.ratePercent), taxable: Number(l.taxable), cgst: Number(l.cgst), sgst: Number(l.sgst) }));
+  }
+  const tax = Number(invoice.taxAmount);
+  const half = round2(tax / 2);
+  return [{ ratePercent: Number(invoice.taxRateSnapshot), taxable: Number(invoice.subtotal), cgst: half, sgst: round2(tax - half) }];
+}
+
 function parsePage(query) {
   return {
     page: Math.max(1, Number(query.page) || 1),
@@ -90,25 +103,36 @@ export default async function reportsRoutes(fastify) {
       const toDate = endOfDayExclusive(to);
 
       const payments = await fastify.prisma.payment.findMany({
-        where: { tenantId, recordedAt: { gte: fromDate, lt: toDate } },
+        where: { tenantId, recordedAt: { gte: fromDate, lt: toDate }, status: { code: { notIn: ["failed", "refunded"] } } },
         include: { method: true },
       });
 
+      // Net collections: refunds (a cancelled stay's advance, an
+      // overpayment handed back) come off the day and method they were paid
+      // out on, and are also reported on their own.
       const byMethod = new Map();
       const byDay = new Map();
-      let total = 0;
+      let collected = 0;
+      let refunds = 0;
       for (const p of payments) {
         const amount = Number(p.amount);
-        total += amount;
-        byMethod.set(p.method.name, (byMethod.get(p.method.name) ?? 0) + amount);
+        const signed = p.type === "refund" ? -amount : amount;
+        if (p.type === "refund") refunds += amount;
+        else collected += amount;
+        const m = byMethod.get(p.method.name) ?? { name: p.method.name, amount: 0, refunded: 0 };
+        m.amount += signed;
+        if (p.type === "refund") m.refunded += amount;
+        byMethod.set(p.method.name, m);
         const day = localDateLabel(p.recordedAt);
-        byDay.set(day, (byDay.get(day) ?? 0) + amount);
+        byDay.set(day, (byDay.get(day) ?? 0) + signed);
       }
 
       return {
-        total,
-        byMethod: [...byMethod.entries()].map(([name, amount]) => ({ name, amount })),
-        daily: [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, amount]) => ({ date, amount })),
+        total: round2(collected - refunds),
+        collected: round2(collected),
+        refunds: round2(refunds),
+        byMethod: [...byMethod.values()].map((m) => ({ name: m.name, amount: round2(m.amount), refunded: round2(m.refunded) })),
+        daily: [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, amount]) => ({ date, amount: round2(amount) })),
       };
     }
   );
@@ -173,7 +197,7 @@ export default async function reportsRoutes(fastify) {
       // fetched for just the current page.
       const allInvoices = await fastify.prisma.invoice.findMany({
         where,
-        select: { subtotal: true, taxAmount: true, taxRateSnapshot: true },
+        select: { subtotal: true, taxAmount: true, taxRateSnapshot: true, snapshot: true },
       });
 
       let totalTaxable = 0;
@@ -182,22 +206,18 @@ export default async function reportsRoutes(fastify) {
       const byRate = new Map();
 
       for (const inv of allInvoices) {
-        const taxable = Number(inv.subtotal);
-        const tax = Number(inv.taxAmount);
-        const half = round2(tax / 2);
-        const sgst = round2(tax - half);
-
-        totalTaxable += taxable;
-        totalCGST += half;
-        totalSGST += sgst;
-
-        const rateKey = Number(inv.taxRateSnapshot);
-        if (!byRate.has(rateKey)) byRate.set(rateKey, { ratePercent: rateKey, taxable: 0, cgst: 0, sgst: 0, count: 0 });
-        const agg = byRate.get(rateKey);
-        agg.taxable += taxable;
-        agg.cgst += half;
-        agg.sgst += sgst;
-        agg.count += 1;
+        const lines = taxLinesOf(inv);
+        for (const line of lines) {
+          totalTaxable += line.taxable;
+          totalCGST += line.cgst;
+          totalSGST += line.sgst;
+          if (!byRate.has(line.ratePercent)) byRate.set(line.ratePercent, { ratePercent: line.ratePercent, taxable: 0, cgst: 0, sgst: 0, count: 0 });
+          const agg = byRate.get(line.ratePercent);
+          agg.taxable += line.taxable;
+          agg.cgst += line.cgst;
+          agg.sgst += line.sgst;
+          agg.count += 1;
+        }
       }
 
       const pageInvoices = await fastify.prisma.invoice.findMany({
@@ -209,18 +229,16 @@ export default async function reportsRoutes(fastify) {
       });
 
       const rows = pageInvoices.map((inv) => {
-        const taxable = Number(inv.subtotal);
-        const tax = Number(inv.taxAmount);
-        const half = round2(tax / 2);
-        const sgst = round2(tax - half);
+        const lines = taxLinesOf(inv);
         return {
           invoiceNumber: inv.invoiceNumber,
           date: inv.generatedAt,
-          guestName: inv.booking.guest.name,
+          guestName: inv.guestSnapshot?.name ?? inv.booking.guest.name,
           room: inv.booking.room.roomNumber,
-          taxable,
-          cgst: half,
-          sgst,
+          rates: lines.filter((l) => l.ratePercent > 0).map((l) => l.ratePercent),
+          taxable: round2(lines.reduce((sum, l) => sum + l.taxable, 0)),
+          cgst: round2(lines.reduce((sum, l) => sum + l.cgst, 0)),
+          sgst: round2(lines.reduce((sum, l) => sum + l.sgst, 0)),
           total: Number(inv.total),
         };
       });
@@ -229,7 +247,9 @@ export default async function reportsRoutes(fastify) {
         totalTaxable: round2(totalTaxable),
         totalCGST: round2(totalCGST),
         totalSGST: round2(totalSGST),
-        byRate: [...byRate.values()],
+        byRate: [...byRate.values()]
+          .sort((a, b) => a.ratePercent - b.ratePercent)
+          .map((r) => ({ ...r, taxable: round2(r.taxable), cgst: round2(r.cgst), sgst: round2(r.sgst) })),
         rows,
         total: allInvoices.length,
         page,

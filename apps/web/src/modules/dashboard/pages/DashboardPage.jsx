@@ -176,7 +176,10 @@ export default function DashboardPage() {
           icon={CreditCard}
           label="Room payments — today"
           value={formatCurrency(summary?.roomPaymentsToday.total)}
-          sublabel={(summary?.roomPaymentsToday.byMethod ?? []).map((m) => `${m.name} ${formatCurrency(m.amount)}`).join(" · ")}
+          sublabel={[
+            ...(summary?.roomPaymentsToday.byMethod ?? []).map((m) => `${m.name} ${formatCurrency(m.amount)}`),
+            ...(summary?.roomPaymentsToday.refunds > 0 ? [`Refunds -${formatCurrency(summary.roomPaymentsToday.refunds)}`] : []),
+          ].join(" · ")}
         />
       </div>
 

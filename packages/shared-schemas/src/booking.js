@@ -96,3 +96,30 @@ export const updateBookingStatusSchema = z.object({
   actualCheckIn: z.coerce.date().optional(),
   actualCheckOut: z.coerce.date().optional(),
 });
+
+const settlementRowSchema = z.object({
+  methodId: z.string().min(1),
+  amount: z.coerce.number().positive(),
+  paidAt: z.coerce.date().optional(),
+  referenceNote: z.string().optional().nullable(),
+});
+
+// How the stay is billed when the guest's real departure doesn't match the
+// booked dates: "booked" keeps the reserved nights, "actual" re-bills on the
+// real stay (extra nights for an overstay, fewer for an early departure) —
+// staff confirm which at checkout. Checkout also carries whatever settles
+// the bill to exactly zero: payments for money still due, or a refund for
+// anything overpaid. The API refuses a checkout that leaves any balance.
+export const CHECKOUT_BILLING = ["booked", "actual"];
+
+export const checkoutSchema = z.object({
+  billing: z.enum(CHECKOUT_BILLING).default("booked"),
+  payments: z.array(settlementRowSchema).optional(),
+  refund: settlementRowSchema.omit({ amount: true, paidAt: true }).optional(),
+});
+
+// Cancelling a stay refunds everything the guest paid, in full.
+export const cancelStaySchema = z.object({
+  refund: settlementRowSchema.omit({ amount: true, paidAt: true }).optional(),
+  reason: z.string().optional().nullable(),
+});

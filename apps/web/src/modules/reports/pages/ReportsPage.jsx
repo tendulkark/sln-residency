@@ -270,6 +270,7 @@ function BookingsReportTab({ from, to }) {
                 <Th align="right">Grand Total</Th>
                 <Th align="right">Other Charges</Th>
                 <Th align="right">Retained</Th>
+                <Th align="right">Refunded</Th>
                 <Th align="right">Advance</Th>
                 <Th align="right" sortDir={sort.sortBy === "total" ? sort.sortDir : undefined} onSort={() => sort.toggle("total")}>
                   Total
@@ -313,6 +314,7 @@ function BookingsReportTab({ from, to }) {
                   <Td align="right">{r.grandTotal != null ? formatCurrencyPrecise(r.grandTotal) : "-"}</Td>
                   <Td align="right">{r.otherCharges != null ? formatCurrencyPrecise(r.otherCharges) : "-"}</Td>
                   <Td align="right">{r.retained != null ? formatCurrencyPrecise(r.retained) : "-"}</Td>
+                  <Td align="right">{r.refunded != null ? formatCurrencyPrecise(r.refunded) : "-"}</Td>
                   <Td align="right">{r.advance != null ? formatCurrencyPrecise(r.advance) : "-"}</Td>
                   <Td align="right" className="font-semibold text-ink">
                     {r.total != null ? formatCurrencyPrecise(r.total) : "-"}
@@ -350,14 +352,19 @@ function RevenueReportTab({ from, to }) {
       {data && (
         <>
           <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total Collected" value={formatCurrency(data.total)} />
+            <StatCard
+              label="Net Collected"
+              value={formatCurrency(data.total)}
+              sublabel={data.refunds > 0 ? `Received ${formatCurrency(data.collected)} · Refunded ${formatCurrency(data.refunds)}` : undefined}
+            />
+            {data.refunds > 0 && <StatCard label="Refunds Paid Out" value={formatCurrency(data.refunds)} />}
             {data.byMethod.map((m) => (
-              <StatCard key={m.name} label={m.name} value={formatCurrency(m.amount)} />
+              <StatCard key={m.name} label={m.name} value={formatCurrency(m.amount)} sublabel={m.refunded > 0 ? `after ${formatCurrency(m.refunded)} refunded` : undefined} />
             ))}
           </div>
 
           <div className="rounded-lg border border-line-strong bg-muted p-4">
-            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand/75">Daily Collections</p>
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand/75">Daily Collections (net of refunds)</p>
             <MiniBarChart data={data.daily.map((d) => ({ label: d.date, value: d.amount }))} format={formatCurrency} />
           </div>
 

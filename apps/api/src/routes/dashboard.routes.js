@@ -65,8 +65,8 @@ export default async function dashboardRoutes(fastify) {
 
       const [tonightBookings, prevNightBookings, dirtyRoomsCount, overdueArrivals, dueCheckouts, todayPayments] =
         await Promise.all([
-          fastify.prisma.booking.findMany({ where: activeBookingWhere(dayStart, dayEnd), select: { totalAmount: true, roomId: true } }),
-          fastify.prisma.booking.findMany({ where: activeBookingWhere(prevDayStart, dayStart), select: { totalAmount: true } }),
+          fastify.prisma.booking.findMany({ where: activeBookingWhere(dayStart, dayEnd), select: { ratePerNight: true, roomId: true } }),
+          fastify.prisma.booking.findMany({ where: activeBookingWhere(prevDayStart, dayStart), select: { ratePerNight: true } }),
           fastify.prisma.room.count({ where: { tenantId, status: { code: "dirty" } } }),
           fastify.prisma.booking.count({
             where: {
@@ -79,22 +79,28 @@ export default async function dashboardRoutes(fastify) {
             where: { tenantId, status: { code: "checked_in" }, checkOut: { lt: dayEnd } },
           }),
           fastify.prisma.payment.findMany({
-            where: { tenantId, recordedAt: { gte: dayStart, lt: dayEnd } },
+            where: { tenantId, recordedAt: { gte: dayStart, lt: dayEnd }, status: { code: { notIn: ["failed", "refunded"] } } },
             include: { method: true },
           }),
         ]);
 
       const roomsOccupiedTonight = new Set(tonightBookings.map((b) => b.roomId)).size;
-      const tonightsRevenue = tonightBookings.reduce((sum, b) => sum + Number(b.totalAmount), 0);
-      const prevNightRevenue = prevNightBookings.reduce((sum, b) => sum + Number(b.totalAmount), 0);
+      // One night's tariff per occupied room — not each booking's whole-stay
+      // total, which would count a 3-night stay three times over tonight.
+      const tonightsRevenue = tonightBookings.reduce((sum, b) => sum + Number(b.ratePerNight), 0);
+      const prevNightRevenue = prevNightBookings.reduce((sum, b) => sum + Number(b.ratePerNight), 0);
       const revenueChangePercent = prevNightRevenue > 0 ? Math.round(((tonightsRevenue - prevNightRevenue) / prevNightRevenue) * 100) : null;
 
+      // Net of refunds paid out today, per method.
       const paymentsByMethod = new Map();
       let paymentsTotal = 0;
+      let refundsTotal = 0;
       for (const payment of todayPayments) {
-        paymentsTotal += Number(payment.amount);
+        const signed = payment.type === "refund" ? -Number(payment.amount) : Number(payment.amount);
+        if (payment.type === "refund") refundsTotal += Number(payment.amount);
+        paymentsTotal += signed;
         const key = payment.method.name;
-        paymentsByMethod.set(key, (paymentsByMethod.get(key) ?? 0) + Number(payment.amount));
+        paymentsByMethod.set(key, (paymentsByMethod.get(key) ?? 0) + signed);
       }
 
       return {
@@ -105,6 +111,7 @@ export default async function dashboardRoutes(fastify) {
         needsAttention: { overdue: overdueArrivals, checkOuts: dueCheckouts, dirty: dirtyRoomsCount },
         roomPaymentsToday: {
           total: paymentsTotal,
+          refunds: refundsTotal,
           byMethod: [...paymentsByMethod.entries()].map(([name, amount]) => ({ name, amount })),
         },
       };

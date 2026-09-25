@@ -1,7 +1,11 @@
 import { recordPaymentSchema } from "@sln/shared-schemas";
 import { requirePermission } from "#src/lib/permissions.js";
 import { recordAudit } from "#src/lib/audit.js";
-import { isBookingLocked } from "#src/lib/billing.js";
+import { isBookingLocked, computeStayBreakdown } from "#src/lib/billing.js";
+
+function rupees(value) {
+  return `₹${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 function dayRange(dateStr) {
   const start = dateStr ? new Date(dateStr) : new Date();
@@ -50,7 +54,7 @@ export default async function paymentsRoutes(fastify) {
       if (!parsed.success) {
         return reply.code(400).send({ error: "Invalid payload", details: parsed.error.flatten() });
       }
-      const { bookingId, methodId, statusId, amount, referenceNote, paidAt } = parsed.data;
+      const { bookingId, type, methodId, statusId, amount, referenceNote, paidAt } = parsed.data;
       const tenantId = request.user.tenantId;
 
       const booking = await fastify.prisma.booking.findFirst({ where: { id: bookingId, tenantId }, include: { status: true } });
@@ -65,10 +69,31 @@ export default async function paymentsRoutes(fastify) {
       const status = await fastify.prisma.status.findFirst({ where: { id: statusId, tenantId, domain: "payment" } });
       if (!status) return reply.code(400).send({ error: "Unknown payment status" });
 
+      // Money only moves to settle the bill: a payment can't go past what's
+      // due, and a refund can only hand back what was overpaid (a cancelled
+      // stay bills nothing, so everything it received is refundable).
+      const stay = await computeStayBreakdown(fastify.prisma, tenantId, bookingId);
+      const { balanceDue, stayIsVoid } = stay.summary;
+      if (type === "payment") {
+        if (stayIsVoid) return reply.code(409).send({ error: "This booking is cancelled — no payment can be taken on it" });
+        if (amount > balanceDue) {
+          return reply.code(409).send({
+            error: balanceDue > 0 ? `Only ${rupees(balanceDue)} is due — the payment can't be more than that.` : "Nothing is due on this stay.",
+            balanceDue,
+          });
+        }
+      } else if (amount > -balanceDue) {
+        return reply.code(409).send({
+          error: balanceDue < 0 ? `Only ${rupees(-balanceDue)} was overpaid — that's the most that can be refunded.` : "Nothing has been overpaid, so there's nothing to refund.",
+          balanceDue,
+        });
+      }
+
       const payment = await fastify.prisma.payment.create({
         data: {
           tenantId,
           bookingId,
+          type,
           methodId,
           statusId,
           amount,
@@ -82,7 +107,7 @@ export default async function paymentsRoutes(fastify) {
       await recordAudit(fastify.prisma, {
         tenantId,
         userId: request.user.id,
-        action: "payment.record",
+        action: type === "refund" ? "payment.refund" : "payment.record",
         entityType: "Payment",
         entityId: payment.id,
         metadata: { bookingId, amount, methodCode: method.code },

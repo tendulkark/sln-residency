@@ -38,12 +38,17 @@ export function splitTax(amount, ratePercent) {
 
 // Inverse of splitTax: given a tax-INCLUSIVE total (e.g. a booking's stored
 // totalAmount, which already includes GST), back out the taxable value and
-// the CGST/SGST that must have applied.
+// the CGST/SGST that apply to it. CGST and SGST are each levied on the
+// taxable value at half the rate, so they're always equal to the paisa;
+// whatever paisa that leaves between taxable + CGST + SGST and the amount
+// the guest actually pays is the invoice's round-off (±0.01 typically),
+// the standard way an Indian tax invoice reconciles an inclusive tariff.
 export function splitInclusiveTax(totalInclTax, ratePercent) {
-  const taxable = round2(totalInclTax / (1 + Number(ratePercent) / 100));
-  const taxAmount = round2(totalInclTax - taxable);
-  const half = round2(taxAmount / 2);
-  return { taxable, cgst: half, sgst: round2(taxAmount - half), taxAmount };
+  const rate = Number(ratePercent);
+  const taxable = round2(totalInclTax / (1 + rate / 100));
+  const half = round2((taxable * rate) / 200);
+  const taxAmount = round2(half * 2);
+  return { taxable, cgst: half, sgst: half, taxAmount, roundOff: round2(totalInclTax - taxable - taxAmount) };
 }
 
 // Resolves a room's live nightly pricing (base + CGST/SGST/total) from its

@@ -29,11 +29,7 @@ export async function createReservedInvoice(prisma, { tenantId, bookingId, gener
       tenantId,
       bookingId,
       invoiceNumber: await nextInvoiceNumber(prisma, tenantId),
-      subtotal: stay.summary.taxableValue,
-      taxRuleId: stay.taxRule?.id ?? null,
-      taxRateSnapshot: stay.summary.taxRatePercent,
-      taxAmount: stay.summary.cgst + stay.summary.sgst,
-      total: stay.summary.grandTotal,
+      ...invoiceFiguresFrom(stay),
       generatedById,
       isFinalized: false,
     },
@@ -130,43 +126,74 @@ export async function computeStayBreakdown(prisma, tenantId, bookingId) {
     }),
   ]);
 
-  const roomsInclTax = bookings.reduce((sum, b) => sum + Number(b.totalAmount), 0);
-  const chargeRows = charges.filter((c) => c.type === "charge");
-  const chargesTotal = chargeRows.reduce((sum, c) => sum + Number(c.amount), 0);
-  const discountTotal = charges.filter((c) => c.type === "discount").reduce((sum, c) => sum + Number(c.amount), 0);
+  // A cancelled/no-show room owes nothing — only rooms that were (or still
+  // will be) actually stayed in are billed. When every room in the stay is
+  // void, so is everything else on it (charges, discount): the whole stay
+  // then shows a zero bill and whatever the guest paid as money to refund.
+  const billable = bookings.filter((b) => !isVoidStatus(b.status));
+  const stayIsVoid = billable.length === 0;
+
+  const roomsInclTax = round2(billable.reduce((sum, b) => sum + Number(b.totalAmount), 0));
+  const chargeRows = stayIsVoid ? [] : charges.filter((c) => c.type === "charge");
+  const chargesTotal = round2(chargeRows.reduce((sum, c) => sum + Number(c.amount), 0));
+  const discountEntered = stayIsVoid ? 0 : round2(charges.filter((c) => c.type === "discount").reduce((sum, c) => sum + Number(c.amount), 0));
+  // A discount is a concession on the room tariff, so it can never take the
+  // rooms below zero (routes refuse such a discount up front; this only
+  // guards the case where the room total later shrinks under an existing
+  // one, e.g. an early checkout billed on the actual stay).
+  const discountTotal = Math.min(discountEntered, roomsInclTax);
 
   // A discount reduces the room charge's taxable base — GST is split off
   // the room amount *after* the discount, never off the pre-discount total
   // (a flat post-tax rupee deduction would overstate what was actually
   // taxed and understate the taxable value on the printed invoice).
-  const netRoomsInclTax = Math.round((roomsInclTax - discountTotal) * 100) / 100;
-  const taxRule = await getApplicableTaxRule(prisma, tenantId, netRoomsInclTax);
-  const roomTaxSplit = taxRule ? splitInclusiveTax(netRoomsInclTax, taxRule.ratePercent) : { taxable: netRoomsInclTax, cgst: 0, sgst: 0, taxAmount: 0 };
+  const netRoomsInclTax = round2(roomsInclTax - discountTotal);
+  // GST slabs for hotel rooms go by the tariff per room per night, not by
+  // the whole stay's total — look the rule up with the highest nightly rate
+  // in the stay, so a slab rule (appliesAbove/BelowAmount) picks correctly.
+  const nightlyTariff = billable.reduce((max, b) => Math.max(max, Number(b.ratePerNight)), 0);
+  const taxRule = await getApplicableTaxRule(prisma, tenantId, nightlyTariff);
+  const roomRate = taxRule ? Number(taxRule.ratePercent) : 0;
 
-  // Each charge (extra bed, damages, ...) carries its own GST-inclusive
-  // amount and its own rate — set via the GST calculator when the charge
-  // was added, since ancillary items can be taxed at a different slab than
-  // room tariff. Summed alongside the room split so invoice/report totals
-  // reflect every rupee of GST actually collected, not just on rooms.
-  const chargesTaxSplit = chargeRows.reduce(
-    (acc, c) => {
-      const rate = Number(c.taxRatePercent) || 0;
-      const split = rate > 0 ? splitInclusiveTax(Number(c.amount), rate) : { taxable: Number(c.amount), cgst: 0, sgst: 0, taxAmount: 0 };
-      return {
-        taxable: Math.round((acc.taxable + split.taxable) * 100) / 100,
-        cgst: Math.round((acc.cgst + split.cgst) * 100) / 100,
-        sgst: Math.round((acc.sgst + split.sgst) * 100) / 100,
-        taxAmount: Math.round((acc.taxAmount + split.taxAmount) * 100) / 100,
-      };
-    },
-    { taxable: 0, cgst: 0, sgst: 0, taxAmount: 0 }
+  // Rate-wise GST lines (what the invoice's tax table and the GST report
+  // file under): the room tariff at the TaxRule's rate, plus each charge
+  // (extra bed, food, damages, ...) at the rate it was entered with via the
+  // GST calculator — ancillary items can sit on a different slab than the
+  // room. Amounts are grouped per rate first and split once per rate, so
+  // rounding happens once per line rather than once per item.
+  const inclusiveByRate = new Map();
+  const addAtRate = (rate, amount) => inclusiveByRate.set(rate, round2((inclusiveByRate.get(rate) ?? 0) + amount));
+  if (netRoomsInclTax > 0 || chargeRows.length === 0) addAtRate(roomRate, netRoomsInclTax);
+  const chargesByRate = new Map();
+  for (const c of chargeRows) {
+    const rate = Number(c.taxRatePercent) || 0;
+    addAtRate(rate, Number(c.amount));
+    chargesByRate.set(rate, round2((chargesByRate.get(rate) ?? 0) + Number(c.amount)));
+  }
+
+  const taxLines = [...inclusiveByRate.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([ratePercent, inclusive]) => {
+      const split = ratePercent > 0 ? splitInclusiveTax(inclusive, ratePercent) : { taxable: inclusive, cgst: 0, sgst: 0, taxAmount: 0 };
+      return { ratePercent, taxable: split.taxable, cgst: split.cgst, sgst: split.sgst };
+    });
+  const chargesTaxAmount = round2(
+    [...chargesByRate.entries()].reduce((sum, [rate, amount]) => sum + (rate > 0 ? splitInclusiveTax(amount, rate).taxAmount : 0), 0)
   );
 
-  const grandTotal = Math.round((roomsInclTax + chargesTotal - discountTotal) * 100) / 100;
-  const advancePaid = payments
-    .filter((p) => !["failed", "refunded"].includes(p.status.code))
-    .reduce((sum, p) => sum + Number(p.amount), 0);
-  const balanceDue = Math.round((grandTotal - advancePaid) * 100) / 100;
+  const taxableValue = round2(taxLines.reduce((sum, l) => sum + l.taxable, 0));
+  const cgst = round2(taxLines.reduce((sum, l) => sum + l.cgst, 0));
+  const sgst = round2(taxLines.reduce((sum, l) => sum + l.sgst, 0));
+  const grandTotal = round2(roomsInclTax + chargesTotal - discountTotal);
+
+  // Money in minus money handed back. "failed"/"refunded" statuses mark a
+  // payment that never really landed (or was reversed wholesale), so those
+  // count for neither side.
+  const counted = payments.filter((p) => !["failed", "refunded"].includes(p.status.code));
+  const amountReceived = round2(counted.filter((p) => p.type !== "refund").reduce((sum, p) => sum + Number(p.amount), 0));
+  const refundedTotal = round2(counted.filter((p) => p.type === "refund").reduce((sum, p) => sum + Number(p.amount), 0));
+  const advancePaid = round2(amountReceived - refundedTotal);
+  const balanceDue = round2(grandTotal - advancePaid);
 
   return {
     primary,
@@ -176,17 +203,67 @@ export async function computeStayBreakdown(prisma, tenantId, bookingId) {
     taxRule,
     summary: {
       nights: nightsBetween(primary.checkIn, primary.checkOut),
+      stayIsVoid,
       roomsInclTax,
-      taxableValue: Math.round((roomTaxSplit.taxable + chargesTaxSplit.taxable) * 100) / 100,
-      taxRatePercent: taxRule ? Number(taxRule.ratePercent) : 0,
-      cgst: Math.round((roomTaxSplit.cgst + chargesTaxSplit.cgst) * 100) / 100,
-      sgst: Math.round((roomTaxSplit.sgst + chargesTaxSplit.sgst) * 100) / 100,
+      taxableValue,
+      taxRatePercent: roomRate,
+      cgst,
+      sgst,
+      roundOff: round2(grandTotal - taxableValue - cgst - sgst),
+      taxLines,
       chargesTotal,
-      chargesTaxAmount: chargesTaxSplit.taxAmount,
+      chargesTaxAmount,
       discountTotal,
+      discountEntered,
       grandTotal,
+      amountReceived,
+      refundedTotal,
+      // Net of refunds — what the guest has actually paid towards the bill.
       advancePaid,
       balanceDue,
     },
   };
+}
+
+function round2(value) {
+  return Math.round(value * 100) / 100;
+}
+
+// Cancelled / no-show: a terminal status that isn't a completed stay.
+export function isVoidStatus(status) {
+  return status.isTerminal && status.code !== "checked_out";
+}
+
+// The invoice's stored figures for a stay — shared by reservation,
+// finalize, reissue, and the "keep the reserved invoice current" refresh
+// below, so the Invoices list and GST report always match the document.
+export function invoiceFiguresFrom(stay) {
+  return {
+    subtotal: stay.summary.taxableValue,
+    taxRuleId: stay.taxRule?.id ?? null,
+    taxRateSnapshot: stay.summary.taxRatePercent,
+    taxAmount: round2(stay.summary.cgst + stay.summary.sgst),
+    total: stay.summary.grandTotal,
+  };
+}
+
+// Everything the printed invoice shows, frozen at finalize/reissue time
+// (Invoice.snapshot). JSON round-trip turns Prisma Decimals/Dates into the
+// same strings the API already sends, so the frontend reads it unchanged.
+export function invoiceSnapshotFrom(stay) {
+  return JSON.parse(JSON.stringify({ bookings: stay.bookings, charges: stay.charges, payments: stay.payments, summary: stay.summary }));
+}
+
+// A reserved (not-yet-finalized) invoice's stored figures are only a
+// preview, but the Invoices list shows them — so after anything that
+// changes the bill (dates, rate, room, charges, discount) they're
+// recomputed to match. A finalized invoice is never touched here.
+export async function refreshReservedInvoice(prisma, tenantId, bookingId) {
+  const stay = await computeStayBreakdown(prisma, tenantId, bookingId);
+  if (!stay) return;
+  const invoice = await prisma.invoice.findFirst({
+    where: { tenantId, bookingId: { in: stay.bookings.map((b) => b.id) }, isCancelled: false, isFinalized: false },
+  });
+  if (!invoice) return;
+  await prisma.invoice.update({ where: { id: invoice.id }, data: invoiceFiguresFrom(stay) });
 }
