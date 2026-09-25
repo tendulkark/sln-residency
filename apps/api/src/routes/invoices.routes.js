@@ -1,6 +1,6 @@
 import { requirePermission } from "#src/lib/permissions.js";
 import { recordAudit } from "#src/lib/audit.js";
-import { computeStayBreakdown, nextInvoiceNumber, guestSnapshotFrom } from "#src/lib/billing.js";
+import { computeStayBreakdown, nextInvoiceNumber, guestSnapshotFrom, invoiceFiguresFrom, invoiceSnapshotFrom } from "#src/lib/billing.js";
 import { startOfDay, endOfDayExclusive } from "#src/lib/reports.js";
 
 const TENANT_LETTERHEAD_SELECT = {
@@ -78,14 +78,24 @@ function bookingsForInvoiceView(invoice, stay) {
   return [{ ...primary, guest: { ...primary.guest, ...invoice.guestSnapshot } }, ...rest];
 }
 
+// A finalized invoice prints from its own frozen snapshot (Invoice.snapshot)
+// — the exact rooms, charges, payments and totals issued under its number —
+// never from the live stay, which an admin correction may have changed
+// since (that's what cancel + reissue is for). Reserved invoices, and ones
+// finalized before snapshots existed, read the live stay.
 function invoiceView(invoice, tenant, stay) {
+  const { snapshot, ...invoiceFields } = invoice;
+  const source = invoice.isFinalized && snapshot ? snapshot : stay;
   return {
-    invoice,
+    invoice: invoiceFields,
     tenant,
-    bookings: bookingsForInvoiceView(invoice, stay),
-    charges: stay.charges,
-    payments: stay.payments,
-    summary: stay.summary,
+    bookings: bookingsForInvoiceView(invoice, source),
+    charges: source.charges,
+    payments: source.payments,
+    summary: source.summary,
+    // True when the live stay no longer matches the finalized document, so
+    // the UI can offer a reissue instead of leaving it silently stale.
+    ...(invoice.isFinalized && snapshot ? { changedSinceIssue: Math.abs(stay.summary.grandTotal - snapshot.summary.grandTotal) > 0.001 || stay.charges.length !== snapshot.charges.length || stay.payments.length !== snapshot.payments.length } : {}),
   };
 }
 
@@ -202,13 +212,21 @@ export default async function invoicesRoutes(fastify) {
       let invoice = await fastify.prisma.invoice.findFirst({ where: { tenantId, bookingId: { in: bookingIds }, isCancelled: false } });
 
       const finalFigures = {
-        subtotal: stay.summary.taxableValue,
-        taxRuleId: stay.taxRule?.id ?? null,
-        taxRateSnapshot: stay.summary.taxRatePercent,
-        taxAmount: stay.summary.cgst + stay.summary.sgst,
-        total: stay.summary.grandTotal,
+        ...invoiceFiguresFrom(stay),
         guestSnapshot: guestSnapshotFrom(stay.primary.guest),
+        snapshot: invoiceSnapshotFrom(stay),
       };
+
+      // Checkout (POST /bookings/:id/checkout) finalizes the invoice itself;
+      // this only ever finalizes a stay that is already checked out (e.g. one
+      // closed before that endpoint existed) — never a live one.
+      const stillOpen = stay.bookings.some((b) => !b.status.isTerminal);
+      if (!invoice?.isFinalized && stillOpen) {
+        return reply.code(409).send({ error: "This stay isn't checked out yet — use Checkout to finalize its invoice." });
+      }
+      if (!invoice?.isFinalized && stay.summary.stayIsVoid) {
+        return reply.code(409).send({ error: "This booking was cancelled — there's no tax invoice to issue." });
+      }
 
       if (invoice && !invoice.isFinalized) {
         invoice = await fastify.prisma.invoice.update({
@@ -309,11 +327,8 @@ export default async function invoicesRoutes(fastify) {
                 tenantId,
                 bookingId: oldInvoice.bookingId,
                 invoiceNumber: await nextInvoiceNumber(tx, tenantId),
-                subtotal: stay.summary.taxableValue,
-                taxRuleId: stay.taxRule?.id ?? null,
-                taxRateSnapshot: stay.summary.taxRatePercent,
-                taxAmount: stay.summary.cgst + stay.summary.sgst,
-                total: stay.summary.grandTotal,
+                ...invoiceFiguresFrom(stay),
+                snapshot: invoiceSnapshotFrom(stay),
                 // Re-reads whatever the Guest row says right now — if this
                 // reissue was triggered by an admin correcting the guest's
                 // details (guests.routes.js `PATCH /guests/:id`) moments

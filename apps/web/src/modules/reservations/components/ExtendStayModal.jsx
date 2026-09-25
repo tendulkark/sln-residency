@@ -14,7 +14,7 @@ function nightsBetween(checkIn, checkOut) {
   return Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
 }
 
-export default function ExtendStayModal({ booking, onClose, onExtended }) {
+export default function ExtendStayModal({ booking, groupBookings, onClose, onExtended }) {
   const queryClient = useQueryClient();
   const [date, setDate] = useState(toDateInputValue(booking.checkOut));
   const [time, setTime] = useState(toTimeInputValue(booking.checkOut));
@@ -27,7 +27,11 @@ export default function ExtendStayModal({ booking, onClose, onExtended }) {
   const originalNights = nightsBetween(new Date(booking.checkIn), currentCheckOut);
   const nights = nightsBetween(new Date(booking.checkIn), newCheckOut);
   const extraNights = nights - originalNights;
-  const newRoomTotal = Number(booking.ratePerNight) * nights;
+  // A group booking's rooms share one stay — the server extends every one of
+  // them together, so the new total is across all of its (non-cancelled)
+  // rooms, each at its own rate.
+  const rooms = (groupBookings ?? [booking]).filter((b) => !b.status?.isTerminal || b.id === booking.id);
+  const newRoomTotal = rooms.reduce((sum, b) => sum + Number(b.ratePerNight) * nights, 0);
 
   const extendMutation = useMutation({
     mutationFn: async () => {
@@ -61,6 +65,11 @@ export default function ExtendStayModal({ booking, onClose, onExtended }) {
     <Modal title={`Extend stay · Room ${booking.room?.roomNumber ?? ""}`} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <p className="text-xs text-ink-muted">Current check-out: {formatDateTime(booking.checkOut)}</p>
+        {rooms.length > 1 && (
+          <p className="rounded-md bg-brand-tint px-3 py-2 text-xs text-ink-soft">
+            Group booking — all {rooms.length} rooms ({rooms.map((b) => b.room.roomNumber).join(", ")}) are extended together.
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <Input label="New check-out date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
@@ -83,7 +92,7 @@ export default function ExtendStayModal({ booking, onClose, onExtended }) {
         />
 
         <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-          <span className="font-medium text-ink-soft">New room total</span>
+          <span className="font-medium text-ink-soft">New room total{rooms.length > 1 ? ` (${rooms.length} rooms)` : ""}</span>
           <span className="font-semibold text-ink">{formatCurrency(newRoomTotal)}</span>
         </div>
 

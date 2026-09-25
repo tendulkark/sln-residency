@@ -320,6 +320,11 @@ model Payment {
   methodId       String
   statusId       String
   amount         Decimal  @db.Decimal(10, 2)
+  // "payment" money received from the guest, "refund" money handed back
+  // (a cancelled stay's advance, or an overpayment). Amount is always
+  // positive; refunds are subtracted wherever "paid" is computed
+  // (billing.js computeStayBreakdown, reports, dashboard).
+  type           String   @default("payment")
   referenceNote  String? // e.g. UPI transaction id or cheque number, entered by staff
   recordedById   String
   recordedAt     DateTime @default(now())
@@ -376,6 +381,14 @@ model Invoice {
   // invoice finalized before this column existed — both cases fall back to
   // reading the live Guest row (invoices.routes.js `invoiceView`).
   guestSnapshot      Json?
+  // The full printed picture — room lines, charges, payments and the billing
+  // summary (incl. rate-wise GST lines) — frozen when the invoice is
+  // finalized or reissued, so reprinting a finalized invoice always shows
+  // exactly what was issued under its number even if the stay is corrected
+  // afterwards (that needs cancel + reissue). Null on a reserved invoice
+  // and on invoices finalized before this column existed, which fall back
+  // to the live stay (invoices.routes.js `invoiceView`).
+  snapshot           Json?
   // A real, permanent invoice number is reserved the moment a booking is
   // created (bookings.routes.js) — not at checkout — so it's visible on
   // every print from booking onward, per product decision 2026-09-18.

@@ -115,6 +115,17 @@ Conventions:
   finalized invoice (never a bare edit/delete; the old one is kept,
   cancelled, and reasoned, and a replacement is issued under the next
   number).
+- **Checkout, cancellation & refunds** — check-in, checkout and cancel
+  act on the whole stay (every room of a group) at once, all-or-nothing
+  (`POST /bookings/:id/check-in|checkout|cancel`). When a guest leaves
+  later or earlier than booked, staff choose at checkout whether to bill
+  the actual stay or the booked nights; checkout is refused unless the
+  balance is exactly zero (collect what's due, or refund an overpayment,
+  in the same step). Cancelling refunds everything the guest paid.
+  Refunds are their own `Payment` rows (`type: "refund"`) and come off
+  collections in the dashboard and reports. A finalized invoice prints
+  from a frozen snapshot, with GST split rate by rate (equal CGST/SGST
+  plus a round-off line).
 - **Settings** — hotel profile (name, address, phone, GSTIN, logo, brand
   color) used on every printed invoice and in the sidebar.
 - **Invoice Design** (Admin-only, `invoices.customize`) — pick the printed

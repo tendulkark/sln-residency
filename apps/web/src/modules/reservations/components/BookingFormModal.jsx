@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, User, Building2, Wallet } from "lucide-react";
 import { ID_PROOF_TYPES } from "@sln/shared-schemas";
 import { apiFetch } from "@/lib/api.js";
-import { formatCurrency, toDateTimeInputValue } from "@/lib/format.js";
+import { formatCurrency, formatCurrencyExact, toDateTimeInputValue } from "@/lib/format.js";
 import { Button, Combobox, Input, Select, Switch, Textarea, Modal } from "@/ui/index.js";
 import GstCalculator, { computeGst, GST_MODE } from "@/modules/common/components/GstCalculator.jsx";
 import { roomsAvailableKey, ROOMS_QUERY_KEY } from "@/modules/rooms/constants.js";
@@ -157,6 +157,12 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
     if (!selectedGuestId && !guestPhone.trim()) return setError("Enter a guest phone number");
     if (paymentRows.some((r) => Number(r.amount) > 0 && !r.methodId)) return setError("Choose a payment method for every amount entered");
     if (chargeResults.some((r) => r.inclusiveAmount > 0 && !r.description.trim())) return setError("Enter a description for every charge amount");
+    if (discountAmount > roomsTotal) {
+      return setError(`Discount (${formatCurrencyExact(discountAmount)}) can't be more than the room charges (${formatCurrencyExact(roomsTotal)})`);
+    }
+    if (enteredTotal > grandTotal + 0.005) {
+      return setError(`Advance entered (${formatCurrencyExact(enteredTotal)}) is more than the bill (${formatCurrencyExact(grandTotal)})`);
+    }
 
     const validPayments = paymentRows.filter((r) => r.methodId && Number(r.amount) > 0);
     const validCharges = chargeResults.filter((r) => r.description.trim() && r.inclusiveAmount > 0);

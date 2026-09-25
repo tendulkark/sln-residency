@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Receipt, Split, Tag, Trash2, CalendarPlus, LogIn, XCircle, Printer, Pencil, RefreshCw } from "lucide-react";
+import { Plus, Receipt, Split, Tag, Trash2, CalendarPlus, LogIn, XCircle, Printer, Pencil, RefreshCw, Undo2 } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
-import { formatCurrency, formatDateTime, toDateTimeInputValue } from "@/lib/format.js";
+import { formatCurrency, formatCurrencyExact, formatDateTime, toDateTimeInputValue } from "@/lib/format.js";
 import { useAuthStore } from "@/app/authStore.js";
 import { Badge, Button, Input, Select, Modal } from "@/ui/index.js";
 import GstCalculator, { computeGst, GST_MODE } from "@/modules/common/components/GstCalculator.jsx";
 import ExtendStayModal from "@/modules/reservations/components/ExtendStayModal.jsx";
 import EditBookingModal from "@/modules/reservations/components/EditBookingModal.jsx";
+import CheckoutModal from "@/modules/reservations/components/CheckoutModal.jsx";
+import CancelStayModal from "@/modules/reservations/components/CancelStayModal.jsx";
 import InvoiceModal from "@/modules/invoices/components/InvoiceModal.jsx";
 import ProvisionalBillModal from "@/modules/invoices/components/ProvisionalBillModal.jsx";
 import { bookingStayKey, BOOKINGS_QUERY_KEY } from "@/modules/reservations/constants.js";
@@ -95,6 +97,9 @@ export default function ManageStayModal({ bookingId, onClose }) {
   const [addFormType, setAddFormType] = useState(null); // "charge" | "discount" | null
   const [settleRows, setSettleRows] = useState([{ methodId: "", amount: "", paidAt: toDateTimeInputValue(new Date()) }]);
   const [extendOpen, setExtendOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [refundRow, setRefundRow] = useState({ methodId: "", referenceNote: "" });
   const [editStayOpen, setEditStayOpen] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(null); // { autoGenerate, closeStayOnDone, autoReissueReason? } | null
   const [provisionalBillOpen, setProvisionalBillOpen] = useState(false);
@@ -117,6 +122,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
     queryClient.invalidateQueries({ queryKey: [DASHBOARD_ROOM_BOARD_QUERY_KEY] });
     queryClient.invalidateQueries({ queryKey: [DASHBOARD_SUMMARY_QUERY_KEY] });
     queryClient.invalidateQueries({ queryKey: [ROOMS_QUERY_KEY] });
+    queryClient.invalidateQueries({ queryKey: bookingInvoiceKey(bookingId) });
   }
 
   const addCharge = useMutation({
@@ -134,21 +140,6 @@ export default function ManageStayModal({ bookingId, onClose }) {
     onSuccess: () => {
       invalidateAll();
       if (isCheckedOut) setChangedSinceCheckout(true);
-    },
-    onError: (err) => setError(err.message),
-  });
-
-  const cancelBooking = useMutation({
-    mutationFn: async () => {
-      const bookingStatuses = await apiFetch("/statuses?domain=booking");
-      const cancelledStatus = bookingStatuses.find((s) => s.code === "cancelled");
-      for (const b of stay.bookings) {
-        await apiFetch(`/bookings/${b.id}/status`, { method: "PATCH", body: JSON.stringify({ statusId: cancelledStatus.id }) });
-      }
-    },
-    onSuccess: () => {
-      invalidateAll();
-      onClose();
     },
     onError: (err) => setError(err.message),
   });
@@ -176,14 +167,11 @@ export default function ManageStayModal({ bookingId, onClose }) {
     }
   }
 
+  // Checks in every room of the stay at once (all-or-nothing on the
+  // server), then records whatever advance was entered alongside.
   const checkIn = useMutation({
     mutationFn: async () => {
-      const bookingStatuses = await apiFetch("/statuses?domain=booking");
-      const checkedInStatus = bookingStatuses.find((s) => s.code === "checked_in");
-      const now = new Date().toISOString();
-      for (const b of stay.bookings) {
-        await apiFetch(`/bookings/${b.id}/status`, { method: "PATCH", body: JSON.stringify({ statusId: checkedInStatus.id, actualCheckIn: now }) });
-      }
+      await apiFetch(`/bookings/${bookingId}/check-in`, { method: "POST", body: "{}" });
       await submitSettleRows();
     },
     onSuccess: () => {
@@ -203,18 +191,25 @@ export default function ManageStayModal({ bookingId, onClose }) {
     onError: (err) => setError(err.message),
   });
 
-  const checkOut = useMutation({
-    mutationFn: async () => {
-      const bookingStatuses = await apiFetch("/statuses?domain=booking");
-      const checkedOutStatus = bookingStatuses.find((s) => s.code === "checked_out");
-      const now = new Date().toISOString();
-      for (const b of stay.bookings) {
-        await apiFetch(`/bookings/${b.id}/status`, { method: "PATCH", body: JSON.stringify({ statusId: checkedOutStatus.id, actualCheckOut: now }) });
-      }
-    },
+  // Hands back an overpayment (e.g. a discount or correction after the
+  // guest had already paid) — capped server-side at exactly what's overpaid.
+  const recordRefund = useMutation({
+    mutationFn: () =>
+      apiFetch("/payments", {
+        method: "POST",
+        body: JSON.stringify({
+          bookingId,
+          type: "refund",
+          methodId: refundRow.methodId,
+          statusId: paidStatus?.id,
+          amount: -stay.summary.balanceDue,
+          referenceNote: refundRow.referenceNote.trim() || undefined,
+        }),
+      }),
     onSuccess: () => {
       invalidateAll();
-      setInvoiceModal({ autoGenerate: true, closeStayOnDone: true });
+      setRefundRow({ methodId: "", referenceNote: "" });
+      if (isCheckedOut) setChangedSinceCheckout(true);
     },
     onError: (err) => setError(err.message),
   });
@@ -350,16 +345,13 @@ export default function ManageStayModal({ bookingId, onClose }) {
           ))}
           <Row label="Rooms total (incl. GST)" value={formatCurrency(stay.summary.roomsInclTax)} />
           <Row label="Taxable value" value={formatCurrency(stay.summary.taxableValue)} muted />
-          <Row
-            label={stay.summary.chargesTaxAmount > 0 ? "CGST incl." : `CGST (${stay.summary.taxRatePercent / 2}%) incl.`}
-            value={formatCurrency(stay.summary.cgst)}
-            muted
-          />
-          <Row
-            label={stay.summary.chargesTaxAmount > 0 ? "SGST incl." : `SGST (${stay.summary.taxRatePercent / 2}%) incl.`}
-            value={formatCurrency(stay.summary.sgst)}
-            muted
-          />
+          {(stay.summary.taxLines ?? []).filter((l) => l.ratePercent > 0).map((l) => (
+            <div key={l.ratePercent} className="space-y-1.5">
+              <Row label={`CGST (${l.ratePercent / 2}%) incl.`} value={formatCurrencyExact(l.cgst)} muted />
+              <Row label={`SGST (${l.ratePercent / 2}%) incl.`} value={formatCurrencyExact(l.sgst)} muted />
+            </div>
+          ))}
+          {Math.abs(stay.summary.roundOff ?? 0) > 0 && <Row label="Round off" value={formatCurrencyExact(stay.summary.roundOff)} muted />}
           {stay.summary.chargesTotal > 0 && (
             <Row
               label={stay.summary.chargesTaxAmount > 0 ? `Other charges (GST ${formatCurrency(stay.summary.chargesTaxAmount)} incl.)` : "Other charges"}
@@ -368,14 +360,15 @@ export default function ManageStayModal({ bookingId, onClose }) {
           )}
           {stay.summary.discountTotal > 0 && <Row label="Discount" value={`-${formatCurrency(stay.summary.discountTotal)}`} />}
           <div className="my-1 border-t border-line-soft" />
-          <Row label="Grand total" value={formatCurrency(stay.summary.grandTotal)} bold />
-          <Row label="Advance paid" value={`-${formatCurrency(stay.summary.advancePaid)}`} />
+          <Row label="Grand total" value={formatCurrencyExact(stay.summary.grandTotal)} bold />
+          <Row label="Paid" value={`-${formatCurrencyExact(stay.summary.amountReceived ?? stay.summary.advancePaid)}`} />
+          {stay.summary.refundedTotal > 0 && <Row label="Refunded to guest" value={`+${formatCurrencyExact(stay.summary.refundedTotal)}`} />}
           <div className="my-1 border-t border-line-soft" />
           <Row
-            label="Final balance due"
-            value={formatCurrency(stay.summary.balanceDue)}
+            label={stay.summary.balanceDue < 0 ? "Overpaid — refund due" : "Final balance due"}
+            value={formatCurrencyExact(Math.abs(stay.summary.balanceDue))}
             bold
-            valueClassName={stay.summary.balanceDue > 0 ? "text-danger" : "text-success"}
+            valueClassName={stay.summary.balanceDue > 0 ? "text-danger" : stay.summary.balanceDue < 0 ? "text-warning" : "text-success"}
           />
         </div>
 
@@ -385,15 +378,20 @@ export default function ManageStayModal({ bookingId, onClose }) {
             {stay.payments.map((p) => (
               <div key={p.id} className="mt-1 flex items-center justify-between text-sm first:mt-0">
                 <span className="text-ink-soft">
+                  {p.type === "refund" && <span className="font-semibold text-warning">Refund · </span>}
                   {p.method.name} · {formatDateTime(p.recordedAt)}
+                  {p.referenceNote && <span className="text-ink-muted"> · {p.referenceNote}</span>}
                 </span>
-                <span className="font-medium text-ink">{formatCurrency(p.amount)}</span>
+                <span className={`font-medium ${p.type === "refund" ? "text-warning" : "text-ink"}`}>
+                  {p.type === "refund" ? "-" : ""}
+                  {formatCurrency(p.amount)}
+                </span>
               </div>
             ))}
           </div>
         )}
 
-        {isCheckedOut && changedSinceCheckout && invoiceData?.invoice?.isFinalized && !invoiceData.invoice.isCancelled && permissions.has("invoices.cancel") && (
+        {isCheckedOut && (changedSinceCheckout || invoiceData?.changedSinceIssue) && invoiceData?.invoice?.isFinalized && !invoiceData.invoice.isCancelled && permissions.has("invoices.cancel") && (
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-warning/40 bg-warning-tint px-3 py-2 text-sm text-warning print:hidden">
             {/* min-w-0 is load-bearing: a flex item's default min-width is
                 its content's full un-wrapped size, so without it this text
@@ -460,12 +458,40 @@ export default function ManageStayModal({ bookingId, onClose }) {
                 Split payment
               </button>
               <p className="text-xs text-ink-muted">
-                Entered: {formatCurrency(settleTotal)} / Due: {formatCurrency(stay.summary.balanceDue)}
+                Entered: {formatCurrencyExact(settleTotal)} / Due: {formatCurrencyExact(stay.summary.balanceDue)}
               </p>
             </div>
             <div className="mt-2 flex justify-end">
-              <Button size="sm" onClick={() => recordPayment.mutate()} disabled={recordPayment.isPending || settleTotal <= 0}>
+              <Button
+                size="sm"
+                onClick={() => recordPayment.mutate()}
+                disabled={recordPayment.isPending || settleTotal <= 0 || settleTotal > stay.summary.balanceDue + 0.005}
+              >
                 {recordPayment.isPending ? "Recording…" : "Record Payment"}
+              </Button>
+            </div>
+            {settleTotal > stay.summary.balanceDue + 0.005 && (
+              <p className="mt-1 text-right text-xs text-danger">That's more than the {formatCurrencyExact(stay.summary.balanceDue)} due — reduce the amount.</p>
+            )}
+          </div>
+        )}
+
+        {financialActionsAllowed && stay.summary.balanceDue < 0 && permissions.has("payments.record") && (
+          <div className="mt-3 rounded-md border-2 border-warning bg-warning-tint p-3 print:hidden">
+            <p className="mb-1 text-xs font-bold uppercase tracking-wider text-warning">Refund Overpayment</p>
+            <p className="mb-2 text-sm text-ink-soft">
+              The guest has paid {formatCurrencyExact(-stay.summary.balanceDue)} more than the bill. Refund it in full:
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-40 flex-1">
+                <Select label="Refund method" options={methodOptions} value={refundRow.methodId} onChange={(v) => setRefundRow((r) => ({ ...r, methodId: v }))} placeholder="Select method" />
+              </div>
+              <div className="min-w-40 flex-1">
+                <Input label="Reference (optional)" value={refundRow.referenceNote} onChange={(e) => setRefundRow((r) => ({ ...r, referenceNote: e.target.value }))} />
+              </div>
+              <Button size="sm" variant="outline" onClick={() => recordRefund.mutate()} disabled={!refundRow.methodId || recordRefund.isPending}>
+                <Undo2 className="h-3.5 w-3.5" />
+                {recordRefund.isPending ? "Refunding…" : `Refund ${formatCurrencyExact(-stay.summary.balanceDue)}`}
               </Button>
             </div>
           </div>
@@ -497,7 +523,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
               Close
             </Button>
             {!isCheckedIn && permissions.has("bookings.cancel") && !primary.status.isTerminal && (
-              <Button variant="danger" size="sm" onClick={() => cancelBooking.mutate()} disabled={cancelBooking.isPending}>
+              <Button variant="danger" size="sm" onClick={() => setCancelOpen(true)}>
                 <XCircle className="h-4 w-4" />
                 Cancel Booking
               </Button>
@@ -509,9 +535,9 @@ export default function ManageStayModal({ bookingId, onClose }) {
               </Button>
             )}
             {isCheckedIn && permissions.has("bookings.edit") && (
-              <Button variant="danger" size="sm" onClick={() => checkOut.mutate()} disabled={checkOut.isPending}>
+              <Button variant="danger" size="sm" onClick={() => setCheckoutOpen(true)}>
                 <Printer className="h-4 w-4" />
-                {checkOut.isPending ? "Checking out…" : "Checkout & Print Bill"}
+                Checkout & Print Bill
               </Button>
             )}
             {isCheckedOut && permissions.has("invoices.view") && (
@@ -524,7 +550,32 @@ export default function ManageStayModal({ bookingId, onClose }) {
         </div>
       </Modal>
 
-      {extendOpen && <ExtendStayModal booking={primary} onClose={() => setExtendOpen(false)} />}
+      {extendOpen && <ExtendStayModal booking={primary} groupBookings={stay.bookings} onClose={() => setExtendOpen(false)} />}
+      {checkoutOpen && (
+        <CheckoutModal
+          bookingId={bookingId}
+          roomLabel={roomLabel}
+          onClose={() => setCheckoutOpen(false)}
+          onCheckedOut={() => {
+            invalidateAll();
+            setCheckoutOpen(false);
+            setInvoiceModal({ autoGenerate: false, closeStayOnDone: true });
+          }}
+        />
+      )}
+      {cancelOpen && (
+        <CancelStayModal
+          bookingId={bookingId}
+          stay={stay}
+          roomLabel={roomLabel}
+          onClose={() => setCancelOpen(false)}
+          onCancelled={() => {
+            invalidateAll();
+            setCancelOpen(false);
+            onClose();
+          }}
+        />
+      )}
       {editStayOpen && (
         <EditBookingModal
           booking={primary}

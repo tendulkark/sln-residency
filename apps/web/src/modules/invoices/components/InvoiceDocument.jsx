@@ -94,10 +94,15 @@ export default function InvoiceDocument({
   const children = bookings.reduce((sum, b) => sum + b.children, 0);
   const chargeRows = charges.filter((c) => c.type === "charge");
   const discountRows = charges.filter((c) => c.type === "discount");
-  const halfRate = summary.taxRatePercent / 2;
+  // Rate-wise GST (room tariff and each charge at its own slab). Older
+  // snapshots without lines fall back to one line at the room rate.
+  const taxLines = (summary.taxLines ?? [{ ratePercent: summary.taxRatePercent, cgst: summary.cgst, sgst: summary.sgst }]).filter(
+    (l) => l.ratePercent > 0
+  );
+  const roundOff = Number(summary.roundOff ?? 0);
   const formatStayDate = t.showCheckInOutTime ? formatDateTime : formatDate;
 
-  const lastPayment = payments[payments.length - 1];
+  const lastPayment = [...payments].reverse().find((p) => p.type !== "refund");
   const settlementLabel = summary.balanceDue <= 0 && lastPayment ? lastPayment.method.name : "Pending";
 
   const logo =
@@ -251,7 +256,8 @@ export default function InvoiceDocument({
           {t.showPaymentBreakdown &&
             payments.map((p) => (
               <p key={p.id} className="text-ink">
-                Advance via: <span className="font-semibold">{p.method.name}</span> {formatCurrencyPrecise(p.amount)}
+                {p.type === "refund" ? "Refunded via" : "Advance via"}: <span className="font-semibold">{p.method.name}</span>{" "}
+                {formatCurrencyPrecise(p.type === "refund" ? -p.amount : p.amount)}
               </p>
             ))}
           {t.thankYouNote && <p className="mt-3 whitespace-pre-line italic text-ink-muted">{t.thankYouNote}</p>}
@@ -267,8 +273,12 @@ export default function InvoiceDocument({
           <TotalRow label="Sub Total (Rooms)" value={summary.roomsInclTax} />
           {summary.discountTotal > 0 && <TotalRow label="Less Discount" value={-summary.discountTotal} muted />}
           <TotalRow label="Taxable Value" value={summary.taxableValue} muted />
-          <TotalRow label={summary.chargesTaxAmount > 0 ? "CGST incl." : `CGST (${halfRate}%) incl.`} value={summary.cgst} muted />
-          <TotalRow label={summary.chargesTaxAmount > 0 ? "SGST incl." : `SGST (${halfRate}%) incl.`} value={summary.sgst} muted />
+          {taxLines.map((l) => (
+            <div key={l.ratePercent}>
+              <TotalRow label={`CGST (${l.ratePercent / 2}%) incl.`} value={l.cgst} muted />
+              <TotalRow label={`SGST (${l.ratePercent / 2}%) incl.`} value={l.sgst} muted />
+            </div>
+          ))}
           {summary.chargesTotal > 0 && (
             <TotalRow
               label={summary.chargesTaxAmount > 0 ? `Other Charges (GST ${formatCurrencyPrecise(summary.chargesTaxAmount)} incl.)` : "Other Charges"}
@@ -276,9 +286,10 @@ export default function InvoiceDocument({
               muted
             />
           )}
+          {Math.abs(roundOff) > 0 && <TotalRow label="Round Off" value={roundOff} muted />}
           <div className="my-1.5 border-t border-line-soft" />
           <TotalRow label="Grand Total" value={summary.grandTotal} bold />
-          <TotalRow label="Less Advance Paid" value={-summary.advancePaid} muted />
+          <TotalRow label={summary.refundedTotal > 0 ? "Less Amount Paid (net of refunds)" : "Less Advance Paid"} value={-summary.advancePaid} muted />
           <div className={`-mx-2 mt-2 flex items-center justify-between px-2 py-2 font-bold ${L.settlement}`}>
             <span>Final Settlement</span>
             <span>{formatCurrencyPrecise(summary.balanceDue)}</span>

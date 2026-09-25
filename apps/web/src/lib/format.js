@@ -2,6 +2,15 @@ export function formatCurrency(amount) {
   return `₹${Number(amount ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
+// Rupees, with paise shown only when there are any — for amounts staff
+// have to match exactly (a balance to collect, a refund, a GST line), where
+// the whole-rupee formatter above would hide a stray ₹0.50.
+export function formatCurrencyExact(amount) {
+  const n = Number(amount ?? 0);
+  const whole = Math.abs(n - Math.round(n)) < 0.005;
+  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 })}`;
+}
+
 // Paise-precise formatting for GST invoices, where rounded-off rupee
 // amounts would make the CGST/SGST split not add back up to the total.
 export function formatCurrencyPrecise(amount) {

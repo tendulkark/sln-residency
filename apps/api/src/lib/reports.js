@@ -236,9 +236,10 @@ export async function buildBookingReportRows(prisma, tenantId, filters, { skip, 
 
     const chargesTotal = round2(bCharges.filter((c) => c.type === "charge").reduce((s, c) => s + Number(c.amount), 0));
     const discountTotal = round2(bCharges.filter((c) => c.type === "discount").reduce((s, c) => s + Number(c.amount), 0));
-    const advance = round2(
-      bPayments.filter((p) => !["failed", "refunded"].includes(p.status.code)).reduce((s, p) => s + Number(p.amount), 0)
-    );
+    const countedPayments = bPayments.filter((p) => !["failed", "refunded"].includes(p.status.code));
+    const refunded = round2(countedPayments.filter((p) => p.type === "refund").reduce((s, p) => s + Number(p.amount), 0));
+    // Net of refunds — what the guest actually left with the hotel.
+    const advance = round2(countedPayments.filter((p) => p.type !== "refund").reduce((s, p) => s + Number(p.amount), 0) - refunded);
 
     const isCheckedOut = b.status.code === "checked_out";
     const isCancelled = b.status.code === "cancelled";
@@ -287,6 +288,7 @@ export async function buildBookingReportRows(prisma, tenantId, filters, { skip, 
       grandTotal,
       otherCharges: chargesTotal || null,
       retained: isCancelled ? advance || null : null,
+      refunded: refunded || null,
       advance: advance || null,
       total,
       status: { code: b.status.code, label: b.status.label, color: b.status.color },
@@ -328,6 +330,7 @@ const CSV_COLUMNS = [
   ["Grand Total", (r) => r.grandTotal ?? ""],
   ["Other Charges", (r) => r.otherCharges ?? ""],
   ["Retained", (r) => r.retained ?? ""],
+  ["Refunded", (r) => r.refunded ?? ""],
   ["Advance", (r) => r.advance ?? ""],
   ["Total", (r) => r.total ?? ""],
   ["Status", (r) => r.status.label],
