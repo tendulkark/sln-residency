@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api.js";
 import { formatDate, toDateInputValue } from "@/lib/format.js";
 import { useAuthStore } from "@/app/authStore.js";
-import { Button, EmptyState, Input, Select, Modal } from "@/ui/index.js";
+import { Button, EmptyState, ErrorState, Input, ListSkeleton, Select, Modal } from "@/ui/index.js";
 import { CalendarOff } from "lucide-react";
 import { ROOMS_QUERY_KEY } from "@/modules/rooms/constants.js";
 import { ROOM_CLOSURES_QUERY_KEY } from "@/modules/housekeeping/constants.js";
@@ -17,10 +17,11 @@ export default function RoomClosuresModal({ onClose }) {
   // for managing current/upcoming blocks, not browsing history — an
   // already-ended closure has nothing left to "Remove", so bounding the
   // query to endDate >= today keeps it from growing unbounded.
-  const { data: closures, isLoading } = useQuery({
+  const closuresQuery = useQuery({
     queryKey: [ROOM_CLOSURES_QUERY_KEY],
     queryFn: () => apiFetch(`/room-closures?from=${toDateInputValue(new Date())}`),
   });
+  const closures = closuresQuery.data;
   const roomOptions = useMemo(() => (rooms ?? []).map((r) => ({ value: r.id, label: `${r.roomNumber} · ${r.roomType.name}` })), [rooms]);
 
   const [roomId, setRoomId] = useState("");
@@ -65,8 +66,13 @@ export default function RoomClosuresModal({ onClose }) {
     <Modal title="Closed periods" onClose={onClose} wide>
       {error && <div className="mb-3 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
-      {closures?.length === 0 && <EmptyState icon={CalendarOff} title="No rooms are currently blocked out." />}
+      {closures === undefined && !closuresQuery.isError && <ListSkeleton rows={2} />}
+      {closures === undefined && closuresQuery.isError && (
+        <ErrorState compact title="Couldn't load closed periods" error={closuresQuery.error} onRetry={() => closuresQuery.refetch()} />
+      )}
+      {closures?.length === 0 && (
+        <EmptyState compact icon={CalendarOff} title="No rooms are currently blocked out." subtitle="Block a room below for repairs or deep cleaning — it won't be offered for booking on those dates." />
+      )}
       <div className="space-y-2">
         {closures?.map((c) => (
           <div key={c.id} className="flex items-center justify-between rounded-md border border-line px-3 py-2">
@@ -77,7 +83,7 @@ export default function RoomClosuresModal({ onClose }) {
               </p>
             </div>
             {canManage && (
-              <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(c.id)}>
+              <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(c.id)} loading={deleteMutation.isPending && deleteMutation.variables === c.id}>
                 Remove
               </Button>
             )}
@@ -90,7 +96,7 @@ export default function RoomClosuresModal({ onClose }) {
           <p className="mb-2 text-sm font-semibold text-ink">Block a room</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <Select options={roomOptions} value={roomId} onChange={setRoomId} placeholder="Select a room" />
+              <Select loading={!rooms} emptyText="No rooms set up yet" options={roomOptions} value={roomId} onChange={setRoomId} placeholder="Select a room" />
             </div>
             <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
@@ -99,7 +105,7 @@ export default function RoomClosuresModal({ onClose }) {
             </div>
           </div>
           <div className="mt-3 flex justify-end">
-            <Button type="submit" size="sm" disabled={createMutation.isPending}>
+            <Button type="submit" size="sm" loading={createMutation.isPending}>
               {createMutation.isPending ? "Blocking…" : "Block room"}
             </Button>
           </div>

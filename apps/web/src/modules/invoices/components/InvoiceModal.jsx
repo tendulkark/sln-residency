@@ -4,8 +4,8 @@ import { Printer, Ban, Pencil } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { formatDateTime } from "@/lib/format.js";
 import { useAuthStore } from "@/app/authStore.js";
-import { Button, Textarea, Modal } from "@/ui/index.js";
-import InvoiceDocument from "@/modules/invoices/components/InvoiceDocument.jsx";
+import { Button, ErrorState, Textarea, Modal } from "@/ui/index.js";
+import InvoiceDocument, { InvoiceDocumentSkeleton } from "@/modules/invoices/components/InvoiceDocument.jsx";
 import GuestDetailsForm from "@/modules/invoices/components/GuestDetailsForm.jsx";
 import { useInvoiceTemplate } from "@/modules/invoices/useInvoiceTemplate.js";
 import { bookingInvoiceKey, invoiceKey, INVOICES_LIST_QUERY_KEY } from "@/modules/invoices/constants.js";
@@ -192,8 +192,16 @@ export default function InvoiceModal({ bookingId, invoiceId, autoGenerate = fals
         )
       }
     >
-      {loading && <p className="text-sm text-ink-muted">Preparing invoice…</p>}
-      {loadError && <p className="text-sm text-danger">{loadError.message}</p>}
+      {loadError && !data ? (
+        <ErrorState
+          compact
+          title="Couldn't load the invoice"
+          error={loadError}
+          onRetry={() => (invoiceId ? byId.refetch() : autoGenerate ? generate.mutate() : byBooking.refetch())}
+        />
+      ) : (
+        (loading || !data || !template) && <InvoiceDocumentSkeleton />
+      )}
 
       {invoice?.isCancelled && (
         <div className="mb-3 rounded-md border border-danger/30 bg-danger-tint px-3 py-2 text-sm text-danger print:hidden">
@@ -223,7 +231,7 @@ export default function InvoiceModal({ bookingId, invoiceId, autoGenerate = fals
             <Button size="sm" variant="ghost" onClick={() => setCorrecting(false)} disabled={correctGuest.isPending}>
               Cancel
             </Button>
-            <Button size="sm" disabled={!normalize(guestForm.name) || correctGuest.isPending} onClick={saveCorrection}>
+            <Button size="sm" disabled={!normalize(guestForm.name)} loading={correctGuest.isPending} onClick={saveCorrection}>
               {correctGuest.isPending ? "Saving…" : "Save"}
             </Button>
           </div>
@@ -246,7 +254,7 @@ export default function InvoiceModal({ bookingId, invoiceId, autoGenerate = fals
             <Button
               size="sm"
               variant="danger"
-              disabled={!reason.trim() || cancelAndReissue.isPending}
+              disabled={!reason.trim()} loading={cancelAndReissue.isPending}
               onClick={() => cancelAndReissue.mutate()}
             >
               {cancelAndReissue.isPending ? "Cancelling…" : "Confirm Cancel & Reissue"}

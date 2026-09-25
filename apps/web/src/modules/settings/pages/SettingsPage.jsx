@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, ImagePlus, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { useAuthStore } from "@/app/authStore.js";
-import { Button, Input, Textarea, PageHeader } from "@/ui/index.js";
+import { Button, Input, Textarea, PageHeader, ErrorState, FormSkeleton } from "@/ui/index.js";
 import { TENANT_QUERY_KEY } from "@/modules/settings/constants.js";
 
 const MAX_LOGO_BYTES = 1_500_000; // ~1.5MB decoded, well under the shared-schema's cap
@@ -20,7 +20,8 @@ function fileToDataUrl(file) {
 export default function SettingsPage() {
   const queryClient = useQueryClient();
   const updateTenant = useAuthStore((s) => s.updateTenant);
-  const { data: tenant, isLoading } = useQuery({ queryKey: [TENANT_QUERY_KEY], queryFn: () => apiFetch("/tenant") });
+  const tenantQuery = useQuery({ queryKey: [TENANT_QUERY_KEY], queryFn: () => apiFetch("/tenant") });
+  const tenant = tenantQuery.data;
   const fileInputRef = useRef(null);
 
   const [form, setForm] = useState(null);
@@ -68,8 +69,27 @@ export default function SettingsPage() {
     setForm((f) => ({ ...f, logoUrl: dataUrl }));
   }
 
-  if (isLoading || !form) {
-    return <p className="text-sm text-ink-muted">Loading…</p>;
+  const header = (
+    <PageHeader
+      icon={Building2}
+      title="Hotel Settings"
+      subtitle="This letterhead — name, logo, address, phone, GSTIN — appears on every printed tax invoice."
+    />
+  );
+
+  if (!form) {
+    return (
+      <div className="max-w-2xl">
+        {header}
+        {tenantQuery.isError ? (
+          <ErrorState title="Couldn't load hotel settings" error={tenantQuery.error} onRetry={() => tenantQuery.refetch()} />
+        ) : (
+          <div className="rounded-lg border border-line bg-card p-5">
+            <FormSkeleton fields={6} />
+          </div>
+        )}
+      </div>
+    );
   }
 
   function field(key) {
@@ -78,11 +98,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <PageHeader
-        icon={Building2}
-        title="Hotel Settings"
-        subtitle="This letterhead — name, logo, address, phone, GSTIN — appears on every printed tax invoice."
-      />
+      {header}
 
       <div className="space-y-5 rounded-lg border border-line bg-card p-5">
         <div>
@@ -137,7 +153,7 @@ export default function SettingsPage() {
         {save.error && <p className="text-sm text-danger">{save.error.message}</p>}
 
         <div className="flex items-center gap-3 border-t border-line-soft pt-4">
-          <Button onClick={() => save.mutate(form)} disabled={save.isPending}>
+          <Button onClick={() => save.mutate(form)} loading={save.isPending}>
             {save.isPending ? "Saving…" : "Save changes"}
           </Button>
           {saved && <p className="text-sm text-success">Saved.</p>}

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api.js";
 import { formatCurrency } from "@/lib/format.js";
-import { Button, Input, Modal } from "@/ui/index.js";
+import { Tags } from "lucide-react";
+import { Button, EmptyState, ErrorState, Input, ListSkeleton, Modal } from "@/ui/index.js";
 import GstCalculator, { computeGst, GST_MODE } from "@/modules/common/components/GstCalculator.jsx";
 import { ROOMS_QUERY_KEY, ROOM_TYPES_QUERY_KEY } from "@/modules/rooms/constants.js";
 
@@ -11,7 +12,8 @@ const EMPTY_GST = { amount: "", ratePercent: "", mode: GST_MODE.INCLUDE };
 
 export default function RoomTypesModal({ onClose }) {
   const queryClient = useQueryClient();
-  const { data: roomTypes, isLoading } = useQuery({ queryKey: [ROOM_TYPES_QUERY_KEY], queryFn: () => apiFetch("/room-types") });
+  const roomTypesQuery = useQuery({ queryKey: [ROOM_TYPES_QUERY_KEY], queryFn: () => apiFetch("/room-types") });
+  const roomTypes = roomTypesQuery.data;
   const [form, setForm] = useState(EMPTY_FORM);
   const [gst, setGst] = useState(EMPTY_GST);
   const [editingId, setEditingId] = useState(null);
@@ -81,7 +83,13 @@ export default function RoomTypesModal({ onClose }) {
     <Modal title="Manage room types" onClose={onClose} wide>
       {error && <div className="mb-3 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+      {roomTypes === undefined && !roomTypesQuery.isError && <ListSkeleton rows={3} />}
+      {roomTypes === undefined && roomTypesQuery.isError && (
+        <ErrorState compact title="Couldn't load room types" error={roomTypesQuery.error} onRetry={() => roomTypesQuery.refetch()} />
+      )}
+      {roomTypes?.length === 0 && (
+        <EmptyState compact icon={Tags} title="No room types yet" subtitle="Add your first one below — e.g. Deluxe, ₹2,400 incl. GST, sleeps 2." />
+      )}
 
       <div className="space-y-2">
         {roomTypes?.map((rt) => (
@@ -98,7 +106,7 @@ export default function RoomTypesModal({ onClose }) {
               <Button variant="ghost" size="sm" onClick={() => startEdit(rt)}>
                 Edit
               </Button>
-              <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(rt.id)} disabled={rt._count?.rooms > 0}>
+              <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(rt.id)} disabled={rt._count?.rooms > 0} loading={deleteMutation.isPending && deleteMutation.variables === rt.id}>
                 Delete
               </Button>
             </div>
@@ -147,7 +155,7 @@ export default function RoomTypesModal({ onClose }) {
               Cancel edit
             </Button>
           )}
-          <Button size="sm" onClick={submitForm} disabled={!basePrice}>
+          <Button size="sm" onClick={submitForm} disabled={!basePrice} loading={createMutation.isPending || updateMutation.isPending}>
             {editingId ? "Save changes" : "Add room type"}
           </Button>
         </div>

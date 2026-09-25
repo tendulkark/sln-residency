@@ -1,7 +1,8 @@
 import { createBrowserRouter } from "react-router-dom";
 import RootLayout from "@/app/RootLayout.jsx";
+import RouteError from "@/app/RouteError.jsx";
 import ProtectedRoute from "@/app/guards/ProtectedRoute.jsx";
-import RequirePermission, { HomeRedirect } from "@/app/guards/RequirePermission.jsx";
+import RequirePermission, { HomeRedirect, NotFound } from "@/app/guards/RequirePermission.jsx";
 import LoginPage from "@/modules/auth/pages/LoginPage.jsx";
 import { LOGIN_ROUTE_PATH } from "@/modules/auth/constants.js";
 import AdminShell from "@/app/AdminShell.jsx";
@@ -35,11 +36,13 @@ import { PROFILE_ROUTE_PATH } from "@/modules/profile/constants.js";
 const page = (navItem, element) => ({
   path: navItem.to.slice(1),
   element: <RequirePermission permission={navItem.permission}>{element}</RequirePermission>,
+  errorElement: <RouteError />,
 });
 
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
+    errorElement: <RouteError fullScreen />,
     children: [
       { path: LOGIN_ROUTE_PATH, element: <LoginPage /> },
       {
@@ -61,7 +64,8 @@ export const router = createBrowserRouter([
               // No RequirePermission wrapper — every signed-in role manages
               // their own account, not just users.manage. ProtectedRoute
               // (the parent) already guarantees authentication.
-              { path: PROFILE_ROUTE_PATH.slice(1), element: <ProfilePage /> },
+              { path: PROFILE_ROUTE_PATH.slice(1), element: <ProfilePage />, errorElement: <RouteError /> },
+              { path: "*", element: <NotFound /> },
             ],
           },
         ],

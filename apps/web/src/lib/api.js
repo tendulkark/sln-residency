@@ -4,11 +4,31 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 let refreshPromise = null;
 
+export const OFFLINE_MESSAGE = "Can't reach the server. Check the internet connection and try again.";
+
+// fetch() itself only rejects when the request never got an answer (no
+// network, server down, DNS) — turn that into one plain-language message
+// every screen can show as-is, instead of the browser's "Failed to fetch".
+async function send(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch {
+    throw new Error(OFFLINE_MESSAGE);
+  }
+}
+
 // Exported so the app shell can call this once on load to silently restore
 // a session from the httpOnly refresh cookie (e.g. after a page reload,
 // when the in-memory access token is gone).
 export async function refreshSession() {
-  const res = await fetch(`${API_URL}/auth/refresh`, { method: "POST", credentials: "include" });
+  let res;
+  try {
+    res = await send(`${API_URL}/auth/refresh`, { method: "POST", credentials: "include" });
+  } catch {
+    // Offline at startup: stay signed out for now rather than crash the boot.
+    useAuthStore.getState().clearSession();
+    return null;
+  }
   if (!res.ok) {
     useAuthStore.getState().clearSession();
     return null;
@@ -24,7 +44,7 @@ export async function refreshSession() {
 export async function apiFetch(path, { retry = true, ...options } = {}) {
   const accessToken = useAuthStore.getState().accessToken;
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await send(`${API_URL}${path}`, {
     ...options,
     credentials: "include",
     headers: {
@@ -60,7 +80,7 @@ export async function apiFetch(path, { retry = true, ...options } = {}) {
 // browser a download via a throwaway object URL.
 export async function downloadFile(path, filename) {
   const accessToken = useAuthStore.getState().accessToken;
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await send(`${API_URL}${path}`, {
     credentials: "include",
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });

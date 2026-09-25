@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { CalendarX2, ChevronLeft, ChevronRight, Plus, Search, SearchX } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { rangeFor, addDays, startOfMonth, toISODate } from "@/lib/dateRange.js";
 import BookingFormModal from "@/modules/reservations/components/BookingFormModal.jsx";
@@ -10,7 +10,7 @@ import ManageStayModal from "@/modules/reservations/components/ManageStayModal.j
 import MiniDatePicker from "@/modules/reservations/components/MiniDatePicker.jsx";
 import MonthYearPicker from "@/modules/reservations/components/MonthYearPicker.jsx";
 import { useAuthStore } from "@/app/authStore.js";
-import { Button, CardSkeleton, Input, SegmentedControl, PageHeader } from "@/ui/index.js";
+import { Button, Input, SegmentedControl, PageHeader, Skeleton, ErrorState, Spinner } from "@/ui/index.js";
 import { bookingsKey } from "@/modules/reservations/constants.js";
 import { statusesKey } from "@/modules/common/constants.js";
 import { ROOMS_QUERY_KEY } from "@/modules/rooms/constants.js";
@@ -44,7 +44,11 @@ export default function ReservationsPage() {
 
   const { start, end } = rangeFor(viewMode, anchorDate);
 
-  const { data: bookings, isLoading } = useQuery({
+  // Stepping to the next week/month (or typing a search) keeps the current
+  // calendar on screen with a small "Updating…" spinner until the new range
+  // arrives, rather than blanking it to skeletons every time.
+  const bookingsQuery = useQuery({
+    placeholderData: keepPreviousData,
     queryKey: bookingsKey(toISODate(start), toISODate(end), search),
     queryFn: () => {
       const params = new URLSearchParams({ from: start.toISOString(), to: end.toISOString() });
@@ -52,6 +56,11 @@ export default function ReservationsPage() {
       return apiFetch(`/bookings?${params.toString()}`);
     },
   });
+  const bookings = bookingsQuery.data;
+  const isLoading = bookings === undefined && !bookingsQuery.isError;
+  const loadFailed = bookings === undefined && bookingsQuery.isError;
+  // Day view has its own "No bookings touch this day" sheet.
+  const showEmptyHint = Boolean(bookings) && bookings.length === 0 && !bookingsQuery.isPlaceholderData && viewMode !== "day";
 
   const { data: bookingStatuses } = useQuery({ queryKey: statusesKey("booking"), queryFn: () => apiFetch("/statuses?domain=booking") });
 
@@ -134,12 +143,42 @@ export default function ReservationsPage() {
       </div>
 
       {isLoading && (
-        <div className="grid grid-cols-1 gap-3">
-          <CardSkeleton count={4} />
+        <div role="status" aria-label="Loading bookings" className="rounded-xl border border-line bg-card p-3 shadow-sm">
+          <div className="mb-3 grid grid-cols-7 gap-2">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-3" />
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: viewMode === "month" ? 35 : 7 }).map((_, i) => (
+              <Skeleton key={i} className={viewMode === "month" ? "h-20" : "h-40"} />
+            ))}
+          </div>
         </div>
       )}
 
-      {viewMode === "month" && !isLoading && (
+      {loadFailed && <ErrorState title="Couldn't load bookings" error={bookingsQuery.error} onRetry={() => bookingsQuery.refetch()} />}
+
+      {bookings && (bookingsQuery.isFetching || showEmptyHint) && (
+        <div className="mb-2 flex min-h-6 flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
+          <span className="flex items-center gap-1.5">
+            {showEmptyHint && (
+              <>
+                {search ? <SearchX className="h-4 w-4" /> : <CalendarX2 className="h-4 w-4" />}
+                {search ? `No bookings match "${search}" in this ${viewMode}.` : `No bookings in this ${viewMode} yet.`}
+                {search && (
+                  <button type="button" onClick={() => setSearch("")} className="font-medium text-brand hover:underline">
+                    Clear search
+                  </button>
+                )}
+              </>
+            )}
+          </span>
+          {bookingsQuery.isFetching && <Spinner label="Updating…" />}
+        </div>
+      )}
+
+      {viewMode === "month" && bookings && (
         <div className="rounded-xl border border-line bg-card shadow-sm">
           {bookingStatuses?.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-3 py-2">
@@ -219,7 +258,7 @@ export default function ReservationsPage() {
         </div>
       )}
 
-      {viewMode === "week" && !isLoading && (
+      {viewMode === "week" && bookings && (
         <div className="rounded-xl border border-line bg-card shadow-sm">
           {bookingStatuses?.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-3 py-2">
@@ -296,7 +335,7 @@ export default function ReservationsPage() {
         </div>
       )}
 
-      {viewMode === "day" && !isLoading && (
+      {viewMode === "day" && bookings && (
         <DaySheet
           date={anchorDate}
           bookings={bookings ?? []}

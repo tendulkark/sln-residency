@@ -51,7 +51,7 @@ export default function LoginPage() {
           <Input id="email" label="Email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input id="password" label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
 
-          <Button type="submit" disabled={submitting} className="w-full">
+          <Button type="submit" loading={submitting} className="w-full">
             {submitting ? "Signing in…" : "Sign in"}
           </Button>
         </div>

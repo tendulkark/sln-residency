@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { DoorOpen, Wallet, AlertTriangle, CreditCard, CalendarOff, Plus, Search } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { DoorOpen, Wallet, AlertTriangle, CreditCard, CalendarOff, Plus, Search, BedDouble, SearchX } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { toISODate, rangeFor } from "@/lib/dateRange.js";
 import { formatCurrency, toTimeInputValue } from "@/lib/format.js";
@@ -9,7 +10,8 @@ import RoomBoardCard from "@/modules/dashboard/components/RoomBoardCard.jsx";
 import BookingFormModal from "@/modules/reservations/components/BookingFormModal.jsx";
 import RoomBookingsModal from "@/modules/reservations/components/RoomBookingsModal.jsx";
 import RoomClosuresModal from "@/modules/housekeeping/components/RoomClosuresModal.jsx";
-import { Button, Chip, Input, SegmentedControl, CardSkeleton, PageHeader } from "@/ui/index.js";
+import { Button, Chip, Input, SegmentedControl, CardSkeleton, PageHeader, EmptyState, ErrorState, Spinner, buttonVariants } from "@/ui/index.js";
+import { ROOMS_NAV_ITEM } from "@/modules/rooms/constants.js";
 import { useAuthStore } from "@/app/authStore.js";
 import { dashboardSummaryKey, dashboardRoomBoardKey, SYNTHETIC_BUCKET_COLOR } from "@/modules/dashboard/constants.js";
 
@@ -55,12 +57,18 @@ export default function DashboardPage() {
     return d;
   }, [selectedDate, selectedTime]);
 
-  const { data: summary } = useQuery({
+  const summaryQuery = useQuery({
     queryKey: dashboardSummaryKey(dateISO),
     queryFn: () => apiFetch(`/dashboard/summary?date=${dateISO}`),
+    placeholderData: keepPreviousData,
   });
+  const summary = summaryQuery.data;
+  const summaryLoading = summary === undefined && !summaryQuery.isError;
 
-  const { data: board, isLoading } = useQuery({
+  // Changing the date/time, floor or search keeps the current board on
+  // screen (with a small spinner) until the new one arrives, instead of
+  // flashing skeletons on every keystroke.
+  const boardQuery = useQuery({
     queryKey: dashboardRoomBoardKey(dateISO, selectedTime, floorFilter, search),
     queryFn: () => {
       const params = new URLSearchParams({ date: dateISO, time: selectedTime });
@@ -68,7 +76,11 @@ export default function DashboardPage() {
       if (search) params.set("search", search);
       return apiFetch(`/dashboard/room-board?${params.toString()}`);
     },
+    placeholderData: keepPreviousData,
   });
+  const board = boardQuery.data;
+  const boardLoading = board === undefined && !boardQuery.isError;
+  const filtersActive = Boolean(search || floorFilter || bucketFilter);
 
   const floors = useMemo(() => [...new Set((board ?? []).map((r) => r.floor).filter(Boolean))].sort(), [board]);
   const bucketCounts = useMemo(() => {
@@ -137,6 +149,7 @@ export default function DashboardPage() {
         <StatCard
           icon={DoorOpen}
           label="Rooms open tonight"
+          loading={boardLoading}
           value={`${bucketCounts.available} / ${board?.length ?? 0} rooms`}
           sublabel={
             <div className="mt-1 h-1.5 w-full rounded-full bg-muted-strong">
@@ -150,6 +163,7 @@ export default function DashboardPage() {
         <StatCard
           icon={Wallet}
           label="Tonight's revenue"
+          loading={summaryLoading}
           value={formatCurrency(summary?.tonightsRevenue)}
           badge={summary?.revenueChangePercent != null ? `↑ ${summary.revenueChangePercent}%` : null}
           sublabel="Projected from confirmed stays"
@@ -158,6 +172,7 @@ export default function DashboardPage() {
           icon={AlertTriangle}
           label="Needs attention"
           tone="warn"
+          loading={summaryLoading}
           value={
             <span className="flex gap-4 text-base">
               <span>
@@ -175,13 +190,23 @@ export default function DashboardPage() {
         <StatCard
           icon={CreditCard}
           label="Room payments — today"
+          loading={summaryLoading}
           value={formatCurrency(summary?.roomPaymentsToday.total)}
           sublabel={[
             ...(summary?.roomPaymentsToday.byMethod ?? []).map((m) => `${m.name} ${formatCurrency(m.amount)}`),
             ...(summary?.roomPaymentsToday.refunds > 0 ? [`Refunds -${formatCurrency(summary.roomPaymentsToday.refunds)}`] : []),
-          ].join(" · ")}
+          ].join(" · ") || "No payments yet today"}
         />
       </div>
+
+      {summaryQuery.isError && summary === undefined && (
+        <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-danger/30 bg-danger-tint px-3 py-2 text-sm text-danger">
+          <span>Couldn't load today's figures.</span>
+          <Button variant="outline" size="sm" onClick={() => summaryQuery.refetch()}>
+            Try again
+          </Button>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -262,10 +287,57 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {isLoading && (
+      {boardLoading && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <CardSkeleton count={10} />
         </div>
+      )}
+
+      {boardQuery.isError && board === undefined && (
+        <ErrorState title="Couldn't load the room board" error={boardQuery.error} onRetry={() => boardQuery.refetch()} />
+      )}
+
+      {boardQuery.isFetching && !boardLoading && (
+        <div className="mb-2 flex justify-end">
+          <Spinner label="Updating…" />
+        </div>
+      )}
+
+      {board && board.length === 0 && !filtersActive && (
+        <EmptyState
+          icon={BedDouble}
+          title="No rooms set up yet"
+          subtitle="Add your rooms and room types first — the board fills in as soon as they exist."
+          action={
+            permissions.has(ROOMS_NAV_ITEM.permission) && (
+              <Link to={ROOMS_NAV_ITEM.to} className={`${buttonVariants({ variant: "outline", size: "sm" })} mt-2`}>
+                Go to {ROOMS_NAV_ITEM.label}
+              </Link>
+            )
+          }
+        />
+      )}
+
+      {board && roomsByFloor.length === 0 && (board.length > 0 || filtersActive) && (
+        <EmptyState
+          icon={SearchX}
+          title="No rooms match"
+          subtitle={search ? `Nothing matches "${search}" with the current filters.` : "No rooms are in this state right now."}
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => {
+                setSearch("");
+                setFloorFilter(null);
+                setBucketFilter(null);
+              }}
+            >
+              Clear filters
+            </Button>
+          }
+        />
       )}
 
       {roomsByFloor.map(([floor, rooms]) => (

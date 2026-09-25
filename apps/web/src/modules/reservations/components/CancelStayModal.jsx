@@ -45,7 +45,7 @@ export default function CancelStayModal({ bookingId, stay, roomLabel, onClose, o
           <div className="rounded-md border-2 border-warning bg-warning-tint p-3">
             <p className="mb-2 text-sm font-semibold text-warning">The guest has paid {formatCurrency(refundDue)} — all of it will be refunded.</p>
             <div className="space-y-2">
-              <Select label="Refund method" options={methodOptions} value={refundMethodId} onChange={setRefundMethodId} placeholder="Select method" />
+              <Select label="Refund method" options={methodOptions} loading={!methods} value={refundMethodId} onChange={setRefundMethodId} placeholder="Select method" />
               <Input label="Reference (optional)" value={refundNote} onChange={(e) => setRefundNote(e.target.value)} placeholder="e.g. UPI ref / handed over in cash" />
             </div>
           </div>
@@ -67,7 +67,7 @@ export default function CancelStayModal({ bookingId, stay, roomLabel, onClose, o
               setError(null);
               cancel.mutate();
             }}
-            disabled={cancel.isPending || (refundDue > 0 && !refundMethodId)}
+            disabled={(refundDue > 0 && !refundMethodId)} loading={cancel.isPending}
           >
             <XCircle className="h-4 w-4" />
             {cancel.isPending ? "Cancelling…" : refundDue > 0 ? `Refund ${formatCurrency(refundDue)} & Cancel` : "Cancel Booking"}

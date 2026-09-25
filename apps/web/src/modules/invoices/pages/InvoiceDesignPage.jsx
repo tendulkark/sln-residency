@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Palette, Printer, RotateCcw, Undo2 } from "lucide-react";
 import { DEFAULT_INVOICE_TEMPLATE, invoiceTemplateSchema } from "@sln/shared-schemas";
 import { apiFetch } from "@/lib/api.js";
-import { Badge, Button, PageHeader, SegmentedControl } from "@/ui/index.js";
+import { Badge, Button, PageHeader, SegmentedControl, ErrorState, FormSkeleton, Skeleton } from "@/ui/index.js";
 import InvoiceDocument from "@/modules/invoices/components/InvoiceDocument.jsx";
 import InvoiceDesignForm from "@/modules/invoices/components/InvoiceDesignForm.jsx";
 import { buildInvoicePreviewSample } from "@/modules/invoices/invoicePreviewSample.js";
@@ -78,7 +78,8 @@ function PaperPreview({ zoom, children }) {
 export default function InvoiceDesignPage() {
   const queryClient = useQueryClient();
   const templateQuery = useQuery({ queryKey: [INVOICE_TEMPLATE_QUERY_KEY], queryFn: () => apiFetch("/invoice-template") });
-  const { data: tenant } = useQuery({ queryKey: [TENANT_QUERY_KEY], queryFn: () => apiFetch("/tenant") });
+  const tenantQuery = useQuery({ queryKey: [TENANT_QUERY_KEY], queryFn: () => apiFetch("/tenant") });
+  const tenant = tenantQuery.data;
   const saved = templateQuery.data;
 
   const [draft, setDraft] = useState(null);
@@ -138,11 +139,41 @@ export default function InvoiceDesignPage() {
     },
   });
 
-  if (templateQuery.isError) {
-    return <p className="text-sm text-danger">Couldn't load the invoice design: {templateQuery.error.message}</p>;
+  const header = (
+    <PageHeader
+      icon={Palette}
+      title="Invoice Design"
+      subtitle="Choose how printed Tax Invoices and Provisional Bills look. Amounts and invoice numbers are never affected."
+    />
+  );
+  const failed = (templateQuery.isError && !draft) || (tenantQuery.isError && !tenant);
+  if (failed) {
+    return (
+      <div>
+        {header}
+        <ErrorState
+          title="Couldn't load the invoice design"
+          error={templateQuery.error ?? tenantQuery.error}
+          onRetry={() => {
+            templateQuery.refetch();
+            tenantQuery.refetch();
+          }}
+        />
+      </div>
+    );
   }
   if (!draft || !tenant) {
-    return <p className="text-sm text-ink-muted">Loading…</p>;
+    return (
+      <div>
+        {header}
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+          <div className="rounded-lg border border-line bg-card p-5">
+            <FormSkeleton fields={7} />
+          </div>
+          <Skeleton className="hidden h-[32rem] xl:block" />
+        </div>
+      </div>
+    );
   }
 
   const validation = invoiceTemplateSchema.safeParse(draft);
@@ -151,11 +182,7 @@ export default function InvoiceDesignPage() {
 
   return (
     <div>
-      <PageHeader
-        icon={Palette}
-        title="Invoice Design"
-        subtitle="Choose how printed Tax Invoices and Provisional Bills look. Amounts and invoice numbers are never affected."
-      />
+      {header}
 
       <div ref={sentinelRef} aria-hidden="true" />
       {/* <main> scrolls and has p-4/md:p-6, and sticky offsets are measured
@@ -203,7 +230,7 @@ export default function InvoiceDesignPage() {
               <Undo2 className="h-3.5 w-3.5 sm:hidden" />
               <span className="hidden sm:inline">Discard</span>
             </Button>
-            <Button size="sm" onClick={() => save.mutate(draft)} disabled={!dirty || !validation.success || save.isPending}>
+            <Button size="sm" onClick={() => save.mutate(draft)} disabled={!dirty || !validation.success} loading={save.isPending}>
               {save.isPending ? "Saving…" : (
                 <>
                   Save<span className="hidden sm:inline">&nbsp;design</span>

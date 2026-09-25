@@ -4,7 +4,7 @@ import { Plus, Receipt, Split, Tag, Trash2, CalendarPlus, LogIn, XCircle, Printe
 import { apiFetch } from "@/lib/api.js";
 import { formatCurrency, formatCurrencyExact, formatDateTime, toDateTimeInputValue } from "@/lib/format.js";
 import { useAuthStore } from "@/app/authStore.js";
-import { Badge, Button, Input, Select, Modal } from "@/ui/index.js";
+import { Badge, Button, ErrorState, Input, Select, Modal, Skeleton } from "@/ui/index.js";
 import GstCalculator, { computeGst, GST_MODE } from "@/modules/common/components/GstCalculator.jsx";
 import ExtendStayModal from "@/modules/reservations/components/ExtendStayModal.jsx";
 import EditBookingModal from "@/modules/reservations/components/EditBookingModal.jsx";
@@ -49,7 +49,8 @@ function AddChargeForm({ type, onAdd, onCancel, pending }) {
       <div className="flex justify-end gap-2">
         <Button
           size="sm"
-          disabled={pending || !description.trim() || !amount}
+          disabled={!description.trim() || !amount}
+          loading={pending}
           onClick={() => {
             onAdd({
               type,
@@ -74,7 +75,8 @@ function AddChargeForm({ type, onAdd, onCancel, pending }) {
 export default function ManageStayModal({ bookingId, onClose }) {
   const permissions = useAuthStore((s) => s.permissions);
   const queryClient = useQueryClient();
-  const { data: stay, isLoading } = useQuery({ queryKey: bookingStayKey(bookingId), queryFn: () => apiFetch(`/bookings/${bookingId}/stay`) });
+  const stayQuery = useQuery({ queryKey: bookingStayKey(bookingId), queryFn: () => apiFetch(`/bookings/${bookingId}/stay`) });
+  const stay = stayQuery.data;
   const { data: methods } = useQuery({ queryKey: [PAYMENT_METHODS_QUERY_KEY], queryFn: () => apiFetch("/payment-methods") });
   const { data: paymentStatuses } = useQuery({ queryKey: statusesKey("payment"), queryFn: () => apiFetch("/statuses?domain=payment") });
   // Only to know whether a *finalized* invoice already exists, so a
@@ -214,10 +216,23 @@ export default function ManageStayModal({ bookingId, onClose }) {
     onError: (err) => setError(err.message),
   });
 
-  if (isLoading || !stay) {
+  if (!stay) {
     return (
-      <Modal title="Manage Stay" onClose={onClose}>
-        <p className="text-sm text-ink-muted">Loading…</p>
+      <Modal title="Manage Stay" onClose={onClose} wide>
+        {stayQuery.isError ? (
+          <ErrorState compact title="Couldn't open this stay" error={stayQuery.error} onRetry={() => stayQuery.refetch()} />
+        ) : (
+          <div role="status" aria-label="Loading stay" className="space-y-3">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-40 w-full" />
+            <div className="flex justify-end gap-2">
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-32" />
+            </div>
+          </div>
+        )}
       </Modal>
     );
   }
@@ -290,7 +305,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
                 <span className="flex items-center gap-2">
                   {formatCurrency(c.amount)}
                   {financialActionsAllowed && permissions.has("bookings.edit") && (
-                    <button onClick={() => deleteCharge.mutate(c.id)} className="text-ink-faint hover:text-danger print:hidden" aria-label="Remove charge">
+                    <button onClick={() => deleteCharge.mutate(c.id)} disabled={deleteCharge.isPending} className="text-ink-faint hover:text-danger print:hidden" aria-label="Remove charge">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -323,7 +338,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
                 <span className="flex items-center gap-2">
                   -{formatCurrency(c.amount)}
                   {financialActionsAllowed && permissions.has("bookings.edit") && (
-                    <button onClick={() => deleteCharge.mutate(c.id)} className="text-ink-faint hover:text-danger print:hidden" aria-label="Remove discount">
+                    <button onClick={() => deleteCharge.mutate(c.id)} disabled={deleteCharge.isPending} className="text-ink-faint hover:text-danger print:hidden" aria-label="Remove discount">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -419,6 +434,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
                     <Select
                       label={i === 0 ? "Payment method" : undefined}
                       options={methodOptions}
+                      loading={!methods}
                       value={row.methodId}
                       onChange={(v) => setSettleRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, methodId: v } : r)))}
                       placeholder="Select method"
@@ -465,7 +481,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
               <Button
                 size="sm"
                 onClick={() => recordPayment.mutate()}
-                disabled={recordPayment.isPending || settleTotal <= 0 || settleTotal > stay.summary.balanceDue + 0.005}
+                disabled={!paidStatus || settleTotal <= 0 || settleTotal > stay.summary.balanceDue + 0.005} loading={recordPayment.isPending}
               >
                 {recordPayment.isPending ? "Recording…" : "Record Payment"}
               </Button>
@@ -484,12 +500,12 @@ export default function ManageStayModal({ bookingId, onClose }) {
             </p>
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-40 flex-1">
-                <Select label="Refund method" options={methodOptions} value={refundRow.methodId} onChange={(v) => setRefundRow((r) => ({ ...r, methodId: v }))} placeholder="Select method" />
+                <Select label="Refund method" options={methodOptions} loading={!methods} value={refundRow.methodId} onChange={(v) => setRefundRow((r) => ({ ...r, methodId: v }))} placeholder="Select method" />
               </div>
               <div className="min-w-40 flex-1">
                 <Input label="Reference (optional)" value={refundRow.referenceNote} onChange={(e) => setRefundRow((r) => ({ ...r, referenceNote: e.target.value }))} />
               </div>
-              <Button size="sm" variant="outline" onClick={() => recordRefund.mutate()} disabled={!refundRow.methodId || recordRefund.isPending}>
+              <Button size="sm" variant="outline" onClick={() => recordRefund.mutate()} disabled={!refundRow.methodId || !paidStatus} loading={recordRefund.isPending}>
                 <Undo2 className="h-3.5 w-3.5" />
                 {recordRefund.isPending ? "Refunding…" : `Refund ${formatCurrencyExact(-stay.summary.balanceDue)}`}
               </Button>
@@ -529,7 +545,7 @@ export default function ManageStayModal({ bookingId, onClose }) {
               </Button>
             )}
             {!isCheckedIn && !primary.status.isTerminal && permissions.has("bookings.edit") && (
-              <Button variant="success" size="sm" onClick={() => checkIn.mutate()} disabled={checkIn.isPending}>
+              <Button variant="success" size="sm" onClick={() => checkIn.mutate()} loading={checkIn.isPending}>
                 <LogIn className="h-4 w-4" />
                 {checkIn.isPending ? "Checking in…" : "Check In"}
               </Button>

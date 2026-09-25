@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useAuthStore } from "@/app/authStore.js";
 import { refreshSession } from "@/lib/api.js";
+import { Spinner } from "@/ui/index.js";
 
 // Runs once on app load: tries to silently restore a session from the
 // httpOnly refresh cookie before rendering anything that depends on
@@ -33,7 +34,7 @@ export default function RootLayout() {
     return (
       <div className="divine-pattern flex h-screen flex-col items-center justify-center gap-3 text-ink-muted">
         <div className="divine-rule w-14 rounded-full" />
-        <p className="text-sm">Loading…</p>
+        <Spinner label="Opening your console…" />
       </div>
     );
   }

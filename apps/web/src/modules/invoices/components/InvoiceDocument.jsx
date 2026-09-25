@@ -1,5 +1,6 @@
 import { formatCurrencyPrecise, formatDate, formatDateTime } from "@/lib/format.js";
 import { DEFAULT_INVOICE_TEMPLATE, ID_PROOF_TYPES } from "@sln/shared-schemas";
+import { Skeleton } from "@/ui/index.js";
 
 const FONT_STACKS = {
   sans: "var(--font-sans)",
@@ -331,6 +332,31 @@ function TotalRow({ label, value, bold, muted }) {
         {value < 0 ? "- " : ""}
         {formatCurrencyPrecise(Math.abs(value))}
       </span>
+    </div>
+  );
+}
+
+// Stand-in for the document while its data or design is still loading —
+// the same letterhead / billed-to / line-items / totals rhythm.
+export function InvoiceDocumentSkeleton() {
+  return (
+    <div role="status" aria-label="Preparing invoice" className="space-y-4 bg-white p-4">
+      <div className="flex justify-between gap-4">
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="h-3 w-1/3" />
+        </div>
+        <Skeleton className="h-10 w-28" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+      <Skeleton className="h-28 w-full" />
+      <div className="flex justify-end">
+        <Skeleton className="h-32 w-1/2" />
+      </div>
     </div>
   );
 }
