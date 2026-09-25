@@ -4,7 +4,7 @@ import { UserPlus, Users, KeyRound, Pencil, Power } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { formatDate } from "@/lib/format.js";
 import { useAuthStore } from "@/app/authStore.js";
-import { Button, Badge, PageHeader, EmptyState, DataTable, Th, Td, Tr } from "@/ui/index.js";
+import { Button, Badge, PageHeader, EmptyState, ErrorState, TableSkeleton, DataTable, Th, Td, Tr } from "@/ui/index.js";
 import UserFormModal from "@/modules/staff/components/UserFormModal.jsx";
 import ResetPasswordModal from "@/modules/staff/components/ResetPasswordModal.jsx";
 import { USERS_QUERY_KEY } from "@/modules/staff/constants.js";
@@ -20,10 +20,12 @@ export default function StaffPage() {
   const [resetUser, setResetUser] = useState(null);
   const [error, setError] = useState(null);
 
-  const { data: users, isLoading } = useQuery({ queryKey: [USERS_QUERY_KEY], queryFn: () => apiFetch("/users") });
+  const usersQuery = useQuery({ queryKey: [USERS_QUERY_KEY], queryFn: () => apiFetch("/users") });
+  const users = usersQuery.data;
 
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, isActive }) => apiFetch(`/users/${id}`, { method: "PATCH", body: JSON.stringify({ isActive }) }),
+    onMutate: () => setError(null),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] }),
     onError: (err) => setError(err.message),
   });
@@ -44,10 +46,24 @@ export default function StaffPage() {
 
       {error && <div className="mb-4 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{error}</div>}
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+      {users === undefined && !usersQuery.isError && <TableSkeleton rows={4} columns={6} />}
+
+      {users === undefined && usersQuery.isError && (
+        <ErrorState title="Couldn't load staff accounts" error={usersQuery.error} onRetry={() => usersQuery.refetch()} />
+      )}
 
       {users && users.length === 0 && (
-        <EmptyState icon={Users} title="No staff accounts yet" subtitle="Add one to give a worker their own login." />
+        <EmptyState
+          icon={Users}
+          title="No staff accounts yet"
+          subtitle="Add one to give a worker their own login."
+          action={
+            <Button size="sm" className="mt-2" onClick={() => setFormUser(null)}>
+              <UserPlus className="h-4 w-4" />
+              Add Staff
+            </Button>
+          }
+        />
       )}
 
       {users && users.length > 0 && (
@@ -93,6 +109,7 @@ export default function StaffPage() {
                         disabled={isSelf && u.isActive}
                         title={isSelf && u.isActive ? "You can't deactivate your own account" : undefined}
                         onClick={() => toggleActiveMutation.mutate({ id: u.id, isActive: !u.isActive })}
+                        loading={toggleActiveMutation.isPending && toggleActiveMutation.variables?.id === u.id}
                       >
                         <Power className="h-3 w-3" />
                         {u.isActive ? "Deactivate" : "Activate"}

@@ -57,7 +57,7 @@ export default function UserFormModal({ user, onClose }) {
 
         <Input label="Name" required {...field("name")} />
         <Input label="Email" type="email" required {...field("email")} />
-        <Select label="Role" options={roleOptions} value={form.roleId} onChange={(v) => setForm((f) => ({ ...f, roleId: v }))} />
+        <Select label="Role" options={roleOptions} loading={!roles} value={form.roleId} onChange={(v) => setForm((f) => ({ ...f, roleId: v }))} />
 
         {!isEdit && (
           <div>
@@ -77,7 +77,7 @@ export default function UserFormModal({ user, onClose }) {
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={saveMutation.isPending || !form.roleId}>
+          <Button type="submit" disabled={!form.roleId} loading={saveMutation.isPending}>
             {isEdit ? "Save changes" : "Create account"}
           </Button>
         </div>

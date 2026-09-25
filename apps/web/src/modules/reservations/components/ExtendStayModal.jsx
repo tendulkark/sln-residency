@@ -103,7 +103,7 @@ export default function ExtendStayModal({ booking, groupBookings, onClose, onExt
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={!isValid || extendMutation.isPending}>
+          <Button type="submit" disabled={!isValid} loading={extendMutation.isPending}>
             {extendMutation.isPending ? "Extending…" : "Extend"}
           </Button>
         </div>

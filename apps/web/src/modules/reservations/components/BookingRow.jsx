@@ -1,6 +1,6 @@
 import { Phone, StickyNote } from "lucide-react";
 import { formatCurrency, formatDateTime } from "@/lib/format.js";
-import { Badge } from "@/ui/index.js";
+import { Badge, Skeleton } from "@/ui/index.js";
 
 // A booking's summary card — guest, room, phone, notes, and paid/balance —
 // shared by the month/week day-detail popover (DayBookingsModal) and the
@@ -39,12 +39,23 @@ export default function BookingRow({ booking: b, summary, onClick, tag }) {
           Total <span className="font-semibold text-ink">{formatCurrency(summary ? summary.grandTotal : b.totalAmount)}</span>
         </span>
         <span className="text-ink-muted">
-          Paid <span className="font-semibold text-ink">{summary ? formatCurrency(summary.advancePaid) : "…"}</span>
+          Paid{" "}
+          {summary ? (
+            <span className="font-semibold text-ink">{formatCurrency(summary.advancePaid)}</span>
+          ) : (
+            <Skeleton className="inline-block h-3 w-12 align-middle" />
+          )}
         </span>
-        {summary && (
-          <span className={`font-semibold ${summary.balanceDue > 0 ? "text-danger" : "text-success"}`}>
-            {summary.balanceDue > 0 ? `Balance due ${formatCurrency(summary.balanceDue)}` : "Fully paid"}
+        {summary ? (
+          <span className={`font-semibold ${summary.balanceDue > 0 ? "text-danger" : summary.balanceDue < 0 ? "text-warning" : "text-success"}`}>
+            {summary.balanceDue > 0
+              ? `Balance due ${formatCurrency(summary.balanceDue)}`
+              : summary.balanceDue < 0
+                ? `Refund due ${formatCurrency(-summary.balanceDue)}`
+                : "Fully paid"}
           </span>
+        ) : (
+          <Skeleton className="inline-block h-3 w-20 align-middle" />
         )}
       </div>
       {b.notes && (

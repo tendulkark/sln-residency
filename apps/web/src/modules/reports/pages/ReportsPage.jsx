@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Download, Printer, RefreshCw, Search, ReceiptText } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Download, Printer, RefreshCw, Search, ReceiptText, SearchX, BedDouble } from "lucide-react";
 import { apiFetch, downloadFile } from "@/lib/api.js";
 import { toISODate, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays } from "@/lib/dateRange.js";
 import { formatCurrency, formatCurrencyPrecise, formatDate, formatDateTime } from "@/lib/format.js";
 import { useSort } from "@/lib/useSort.js";
-import { Button, Input, Select, Switch, PageHeader, DonutChart, MiniBarChart, Badge, EmptyState, DataTable, Th, Td, Tr } from "@/ui/index.js";
+import { Button, Input, Select, Switch, PageHeader, DonutChart, MiniBarChart, Badge, EmptyState, ErrorState, Skeleton, CardSkeleton, TableSkeleton, DataTable, Th, Td, Tr } from "@/ui/index.js";
 import StatCard from "@/modules/dashboard/components/StatCard.jsx";
 import InvoiceModal from "@/modules/invoices/components/InvoiceModal.jsx";
 import { statusesKey } from "@/modules/common/constants.js";
@@ -37,6 +37,20 @@ function todayRange() {
 export default function ReportsPage() {
   const [tab, setTab] = useState("bookings");
   const [{ from, to }, setRange] = useState(todayRange());
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(null);
+
+  async function downloadCsv() {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await downloadFile(`/reports/bookings.csv?from=${from}&to=${to}`, `room-bookings-${from}-to-${to}.csv`);
+    } catch (err) {
+      setDownloadError(`Couldn't download the CSV — ${err.message}`);
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   const isThisMonth = (() => {
     const today = new Date();
@@ -55,12 +69,9 @@ export default function ReportsPage() {
         subtitle="Revenue, occupancy & tax analytics for rooms"
         actions={
           <>
-            <Button
-              variant="outline"
-              onClick={() => downloadFile(`/reports/bookings.csv?from=${from}&to=${to}`, `room-bookings-${from}-to-${to}.csv`)}
-            >
-              <Download className="h-4 w-4" />
-              Download CSV
+            <Button variant="outline" onClick={downloadCsv} loading={downloading}>
+              {!downloading && <Download className="h-4 w-4" />}
+              {downloading ? "Preparing CSV…" : "Download CSV"}
             </Button>
             <Button onClick={() => window.print()}>
               <Printer className="h-4 w-4" />
@@ -69,6 +80,8 @@ export default function ReportsPage() {
           </>
         }
       />
+
+      {downloadError && <div className="mb-4 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger print:hidden">{downloadError}</div>}
 
       <div className="mb-4 flex flex-wrap gap-2 print:hidden">
         {TABS.map((t) => (
@@ -136,7 +149,7 @@ function BookingsReportTab({ from, to }) {
   const { data: statuses } = useQuery({ queryKey: statusesKey("booking"), queryFn: () => apiFetch("/statuses?domain=booking") });
   const statusOptions = [{ value: "", label: "All statuses" }, ...(statuses ?? []).map((s) => ({ value: s.code, label: s.label }))];
 
-  const { data, isLoading, isFetching, refetch } = useQuery({
+  const bookingsQuery = useQuery({
     queryKey: [REPORTS_BOOKINGS_QUERY_KEY, from, to, statusFilter, search, checkoutBasis, page, pageSize, sort.sortBy, sort.sortDir],
     queryFn: () =>
       apiFetch(
@@ -153,8 +166,14 @@ function BookingsReportTab({ from, to }) {
       ),
     placeholderData: (prev) => prev,
   });
+  const { data, isFetching, refetch } = bookingsQuery;
+  const firstLoad = data === undefined && !bookingsQuery.isError;
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+
+  if (data === undefined && bookingsQuery.isError) {
+    return <ErrorState title="Couldn't load the bookings report" error={bookingsQuery.error} onRetry={() => refetch()} />;
+  }
 
   return (
     <div>
@@ -163,9 +182,9 @@ function BookingsReportTab({ from, to }) {
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Bookings" value={data?.counts.bookings ?? "—"} />
-        <StatCard label="Total Rooms" value={data?.counts.totalRooms ?? "—"} />
-        <StatCard label="Cancelled" value={data?.counts.cancelled ?? "—"} />
+        <StatCard label="Bookings" loading={firstLoad} value={data?.counts.bookings ?? "—"} />
+        <StatCard label="Total Rooms" loading={firstLoad} value={data?.counts.totalRooms ?? "—"} />
+        <StatCard label="Cancelled" loading={firstLoad} value={data?.counts.cancelled ?? "—"} />
       </div>
 
       <div className="mb-4 flex items-center gap-3 rounded-lg border border-line-strong bg-muted p-3 print:hidden">
@@ -180,11 +199,15 @@ function BookingsReportTab({ from, to }) {
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-line-strong bg-brand-tint p-4">
           <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand/75">Bookings by Status</p>
-          <DonutChart data={(data?.byStatus ?? []).map((s) => ({ label: s.label, value: s.count, color: s.color }))} />
+          {firstLoad ? <DonutSkeleton /> : <DonutChart data={(data?.byStatus ?? []).map((s) => ({ label: s.label, value: s.count, color: s.color }))} />}
         </div>
         <div className="rounded-lg border border-line-strong bg-gold-tint p-4">
           <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gold-dark">Bookings by Room Type</p>
-          <DonutChart data={(data?.byRoomType ?? []).map((rt, i) => ({ label: rt.name, value: rt.count, color: PALETTE[i % PALETTE.length] }))} />
+          {firstLoad ? (
+            <DonutSkeleton />
+          ) : (
+            <DonutChart data={(data?.byRoomType ?? []).map((rt, i) => ({ label: rt.name, value: rt.count, color: PALETTE[i % PALETTE.length] }))} />
+          )}
         </div>
       </div>
 
@@ -221,8 +244,30 @@ function BookingsReportTab({ from, to }) {
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
-      {data && data.rows.length === 0 && <EmptyState icon={ReceiptText} title="No bookings in this range" subtitle="Try widening the date range or clearing filters." />}
+      {firstLoad && <TableSkeleton rows={8} columns={8} />}
+      {data && data.rows.length === 0 &&
+        (search || statusFilter ? (
+          <EmptyState
+            icon={SearchX}
+            title="No bookings match these filters"
+            subtitle="Try another search or status, or widen the date range."
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("");
+                }}
+              >
+                Clear filters
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState icon={ReceiptText} title="No bookings in this date range" subtitle="Try a wider range — e.g. This Year." />
+        ))}
 
       {/* Guest is the pinned column rather than SL/Invoice No: it's the one
           a person actually identifies a row by while the other 26 scroll. */}
@@ -336,10 +381,12 @@ function BookingsReportTab({ from, to }) {
 }
 
 function RevenueReportTab({ from, to }) {
-  const { data, isLoading, isFetching, refetch } = useQuery({
+  const query = useQuery({
     queryKey: [REPORTS_REVENUE_QUERY_KEY, from, to],
     queryFn: () => apiFetch(`/reports/revenue?from=${from}&to=${to}`),
+    placeholderData: keepPreviousData,
   });
+  const { data, isFetching, refetch } = query;
 
   return (
     <div>
@@ -347,9 +394,13 @@ function RevenueReportTab({ from, to }) {
         <RangeRefreshButton onClick={refetch} isFetching={isFetching} />
       </div>
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+      <ReportLoadState query={query} title="Couldn't load the revenue report" cards={4} />
 
-      {data && (
+      {data && data.daily.length === 0 && data.refunds === 0 && (
+        <EmptyState icon={ReceiptText} title="No payments recorded in this range" subtitle="Payments show up here as soon as they're taken at the desk." />
+      )}
+
+      {data && (data.daily.length > 0 || data.refunds > 0) && (
         <>
           <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
@@ -367,8 +418,6 @@ function RevenueReportTab({ from, to }) {
             <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand/75">Daily Collections (net of refunds)</p>
             <MiniBarChart data={data.daily.map((d) => ({ label: d.date, value: d.amount }))} format={formatCurrency} />
           </div>
-
-          {data.daily.length === 0 && <EmptyState icon={ReceiptText} title="No payments recorded in this range" />}
         </>
       )}
     </div>
@@ -376,10 +425,12 @@ function RevenueReportTab({ from, to }) {
 }
 
 function OccupancyReportTab({ from, to }) {
-  const { data, isLoading, isFetching, refetch } = useQuery({
+  const query = useQuery({
     queryKey: [REPORTS_OCCUPANCY_QUERY_KEY, from, to],
     queryFn: () => apiFetch(`/reports/occupancy?from=${from}&to=${to}`),
+    placeholderData: keepPreviousData,
   });
+  const { data, isFetching, refetch } = query;
 
   return (
     <div>
@@ -387,9 +438,13 @@ function OccupancyReportTab({ from, to }) {
         <RangeRefreshButton onClick={refetch} isFetching={isFetching} />
       </div>
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+      <ReportLoadState query={query} title="Couldn't load the occupancy report" cards={2} />
 
-      {data && (
+      {data && data.totalRooms === 0 && (
+        <EmptyState icon={BedDouble} title="No rooms set up yet" subtitle="Occupancy is worked out against your rooms — add them in Rooms Setup." />
+      )}
+
+      {data && data.totalRooms > 0 && (
         <>
           <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <StatCard label="Average Occupancy" value={`${data.avgOccupancyPercent}%`} />
@@ -412,11 +467,12 @@ function GstReportTab({ from, to }) {
 
   useEffect(() => setPage(1), [from, to, pageSize]);
 
-  const { data, isLoading, isFetching, refetch } = useQuery({
+  const query = useQuery({
     queryKey: [REPORTS_GST_QUERY_KEY, from, to, page, pageSize],
     queryFn: () => apiFetch(`/reports/gst?${new URLSearchParams({ from, to, page: String(page), pageSize })}`),
     placeholderData: (prev) => prev,
   });
+  const { data, isFetching, refetch } = query;
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
@@ -426,7 +482,7 @@ function GstReportTab({ from, to }) {
         <RangeRefreshButton onClick={refetch} isFetching={isFetching} />
       </div>
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+      <ReportLoadState query={query} title="Couldn't load the GST report" cards={3} />
 
       {data && (
         <>
@@ -513,6 +569,38 @@ function GstReportTab({ from, to }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Full class names (not built from the number) so Tailwind generates them.
+const CARD_COLUMNS = { 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4" };
+
+// First-load placeholder and load-failure state shared by the Revenue,
+// Occupancy and GST tabs (stat cards over a chart/table). Later range
+// changes keep the previous figures on screen while the Refresh button spins.
+function ReportLoadState({ query, title, cards }) {
+  if (query.data !== undefined) return null;
+  if (query.isError) return <ErrorState title={title} error={query.error} onRetry={() => query.refetch()} />;
+  return (
+    <div role="status" aria-label="Loading report">
+      <div className={`mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 ${CARD_COLUMNS[cards] ?? "lg:grid-cols-4"}`}>
+        <CardSkeleton count={cards} />
+      </div>
+      <Skeleton className="h-48 w-full" />
+    </div>
+  );
+}
+
+function DonutSkeleton() {
+  return (
+    <div className="flex items-center gap-6" aria-hidden="true">
+      <Skeleton className="h-32 w-32 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-3 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+        <Skeleton className="h-3 w-2/3" />
+      </div>
     </div>
   );
 }

@@ -11,7 +11,9 @@ import { Fragment } from "react";
 // (used to create a new record when nothing is selected), `options` are the
 // matches to pick from instead. Used for the guest lookup in
 // BookingFormModal, but generic enough for any "find or create" field.
-export default function Combobox({ label, query, onQueryChange, options, onSelect, placeholder, createLabel }) {
+// `loading` shows "Searching…" in the list while matches are on their way,
+// instead of briefly (and wrongly) claiming there are none.
+export default function Combobox({ label, query, onQueryChange, options, onSelect, placeholder, createLabel, loading = false }) {
   return (
     <div className="space-y-1">
       {label && <span className="block text-sm font-medium text-ink-soft">{label}</span>}
@@ -26,7 +28,9 @@ export default function Combobox({ label, query, onQueryChange, options, onSelec
           />
           <Transition as={Fragment} leave="transition ease-in duration-100" leaveFrom="opacity-100" leaveTo="opacity-0">
             <ComboboxOptions className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-line bg-card py-1 text-sm shadow-lg focus:outline-none">
-              {options.length === 0 ? (
+              {loading ? (
+                <div className="px-3 py-2 text-ink-muted">Searching…</div>
+              ) : options.length === 0 ? (
                 <div className="px-3 py-2 text-ink-muted">{createLabel ?? "No matches — a new record will be created"}</div>
               ) : (
                 options.map((option) => (

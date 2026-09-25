@@ -7,20 +7,24 @@ import StatusBadge from "@/modules/common/components/StatusBadge.jsx";
 import RoomFormModal from "@/modules/rooms/components/RoomFormModal.jsx";
 import RoomTypesModal from "@/modules/rooms/components/RoomTypesModal.jsx";
 import { useAuthStore } from "@/app/authStore.js";
-import { Button, CardSkeleton, EmptyState, Menu, PageHeader } from "@/ui/index.js";
+import { Button, CardSkeleton, EmptyState, ErrorState, Menu, PageHeader } from "@/ui/index.js";
 import { ROOMS_QUERY_KEY } from "@/modules/rooms/constants.js";
 
 export default function RoomsSetupPage() {
   const permissions = useAuthStore((s) => s.permissions);
   const queryClient = useQueryClient();
-  const { data: rooms, isLoading, error } = useQuery({ queryKey: [ROOMS_QUERY_KEY], queryFn: () => apiFetch("/rooms") });
+  const roomsQuery = useQuery({ queryKey: [ROOMS_QUERY_KEY], queryFn: () => apiFetch("/rooms") });
+  const { data: rooms, isLoading } = roomsQuery;
+  const [actionError, setActionError] = useState(null);
 
   const [roomModal, setRoomModal] = useState(null); // "new" | room | null
   const [roomTypesOpen, setRoomTypesOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: (id) => apiFetch(`/rooms/${id}`, { method: "DELETE" }),
+    onMutate: () => setActionError(null),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [ROOMS_QUERY_KEY] }),
+    onError: (err) => setActionError(err.message),
   });
 
   return (
@@ -46,7 +50,9 @@ export default function RoomsSetupPage() {
         }
       />
 
-      {error && <p className="text-sm text-danger">{error.message}</p>}
+      {actionError && <div className="mb-4 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{actionError}</div>}
+
+      {roomsQuery.isError && !rooms && <ErrorState title="Couldn't load rooms" error={roomsQuery.error} onRetry={() => roomsQuery.refetch()} />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {isLoading && <CardSkeleton count={10} />}
@@ -92,7 +98,19 @@ export default function RoomsSetupPage() {
       </div>
 
       {rooms && rooms.length === 0 && (
-        <EmptyState icon={ImageOff} title="No rooms yet" subtitle="Add one above to get started." />
+        <EmptyState
+          icon={ImageOff}
+          title="No rooms yet"
+          subtitle="Create a room type first (name, price, GST), then add each room under it."
+          action={
+            permissions.has("rooms.edit") && (
+              <Button size="sm" className="mt-2" onClick={() => setRoomModal("new")}>
+                <Plus className="h-4 w-4" />
+                Add Room
+              </Button>
+            )
+          }
+        />
       )}
 
       {roomModal && <RoomFormModal room={roomModal === "new" ? null : roomModal} onClose={() => setRoomModal(null)} />}

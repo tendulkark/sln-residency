@@ -4,7 +4,7 @@ import { CalendarDays, Pencil, Plus, Users } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { formatCurrency, formatDateTime } from "@/lib/format.js";
 import { useAuthStore } from "@/app/authStore.js";
-import { Badge, Button, EmptyState, Modal } from "@/ui/index.js";
+import { Badge, Button, EmptyState, ErrorState, ListSkeleton, Modal } from "@/ui/index.js";
 import BookingFormModal from "@/modules/reservations/components/BookingFormModal.jsx";
 import EditBookingModal from "@/modules/reservations/components/EditBookingModal.jsx";
 import ManageStayModal from "@/modules/reservations/components/ManageStayModal.jsx";
@@ -12,10 +12,11 @@ import { bookingsByRoomKey } from "@/modules/reservations/constants.js";
 
 export default function RoomBookingsModal({ room, onClose }) {
   const permissions = useAuthStore((s) => s.permissions);
-  const { data: bookings, isLoading } = useQuery({
+  const bookingsQuery = useQuery({
     queryKey: bookingsByRoomKey(room.id),
     queryFn: () => apiFetch(`/bookings?roomId=${room.id}&activeOnly=true`),
   });
+  const bookings = bookingsQuery.data;
   // Checked-out (and cancelled/no-show) stays are history, not something
   // staff act on here — arriving, checked-in and reserved bookings are the
   // ones this quick-management view is for. Past stays are reprintable
@@ -41,10 +42,26 @@ export default function RoomBookingsModal({ room, onClose }) {
         onClose={onClose}
         wide
       >
-        {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+        {bookings === undefined && !bookingsQuery.isError && <ListSkeleton rows={2} />}
+        {bookings === undefined && bookingsQuery.isError && (
+          <ErrorState compact title="Couldn't load this room's bookings" error={bookingsQuery.error} onRetry={() => bookingsQuery.refetch()} />
+        )}
 
         {activeBookings?.length === 0 && (
-          <EmptyState icon={CalendarDays} title="No active bookings for this room" subtitle="Past stays are reprintable from Reports." />
+          <EmptyState
+            compact
+            icon={CalendarDays}
+            title="No active bookings for this room"
+            subtitle="Past stays are reprintable from Reports."
+            action={
+              permissions.has("bookings.create") && (
+                <Button size="sm" className="mt-2" onClick={() => setNewBookingOpen(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Book this room
+                </Button>
+              )
+            }
+          />
         )}
 
         <div className="space-y-3">

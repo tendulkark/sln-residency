@@ -63,7 +63,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
   const checkInIso = useMemo(() => new Date(checkIn).toISOString(), [checkIn]);
   const checkOutIso = useMemo(() => new Date(checkOut).toISOString(), [checkOut]);
   const roomsQueryEnabled = !Number.isNaN(new Date(checkIn).getTime()) && !Number.isNaN(new Date(checkOut).getTime()) && new Date(checkOut) > new Date(checkIn);
-  const { data: rooms } = useQuery({
+  const { data: rooms, isFetching: roomsLoading } = useQuery({
     queryKey: roomsAvailableKey(checkInIso, checkOutIso),
     queryFn: () => apiFetch(`/rooms?checkIn=${encodeURIComponent(checkInIso)}&checkOut=${encodeURIComponent(checkOutIso)}`),
     enabled: roomsQueryEnabled,
@@ -79,7 +79,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
     [rooms, groupRoomIds]
   );
 
-  const { data: guestMatches } = useQuery({
+  const { data: guestMatches, isFetching: guestsSearching } = useQuery({
     queryKey: guestsKey(guestName),
     queryFn: () => apiFetch(`/guests?search=${encodeURIComponent(guestName)}`),
     enabled: guestName.trim().length >= 2 && !selectedGuestId,
@@ -249,6 +249,8 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
                   {room.roomNumber} · {room.roomType.name} · {formatCurrency(room.pricing.total)}/night
                 </label>
               ))}
+              {roomsQueryEnabled && roomsLoading && !rooms && <p className="px-2 py-1 text-xs text-ink-muted">Checking which rooms are free…</p>}
+              {!roomsQueryEnabled && <p className="px-2 py-1 text-xs text-ink-muted">Pick a valid check-in/check-out first.</p>}
               {roomsQueryEnabled && rooms?.length === 0 && <p className="px-2 py-1 text-xs text-ink-muted">No rooms free for this window.</p>}
             </div>
             {groupRoomIds.length > 0 && (
@@ -262,6 +264,8 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
             <Select
               label="Room"
               options={roomOptions}
+              loading={roomsQueryEnabled && roomsLoading && !rooms}
+              emptyText="No rooms are free for these dates"
               value={roomId}
               onChange={handleRoomChange}
               placeholder={roomsQueryEnabled ? "Select a room" : "Pick a valid check-in/check-out first"}
@@ -292,6 +296,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
               clearSelectedGuest();
             }}
             options={guestOptions}
+            loading={guestsSearching && !guestMatches}
             onSelect={selectGuest}
             placeholder="Search existing guest or type a new name"
             createLabel="No matches — a new guest will be created"
@@ -423,6 +428,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
                     <Select
                       label={`Method${i > 0 ? ` ${i + 1}` : ""}`}
                       options={methodOptions}
+                      loading={!methods}
                       value={row.methodId}
                       onChange={(v) => updatePaymentRow(i, { methodId: v })}
                       placeholder="Select method"
@@ -527,7 +533,7 @@ export default function BookingFormModal({ defaultRoomId, defaultDate, onClose }
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={createBooking.isPending}>
+          <Button type="submit" loading={createBooking.isPending}>
             {createBooking.isPending ? "Creating…" : "Create booking"}
           </Button>
         </div>

@@ -42,13 +42,21 @@ export default function RoomFormModal({ room, onClose }) {
 
         <Input label="Room number" value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} required />
         <Input label="Floor" value={floor} onChange={(e) => setFloor(e.target.value)} />
-        <Select label="Room type" options={roomTypeOptions} value={roomTypeId} onChange={setRoomTypeId} placeholder="Select a room type" />
+        <Select
+          label="Room type"
+          options={roomTypeOptions}
+          loading={!roomTypes}
+          emptyText="No room types yet — add one with Manage Room Types first"
+          value={roomTypeId}
+          onChange={setRoomTypeId}
+          placeholder="Select a room type"
+        />
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={saveMutation.isPending}>
+          <Button type="submit" loading={saveMutation.isPending}>
             {saveMutation.isPending ? "Saving…" : room ? "Save changes" : "Add room"}
           </Button>
         </div>

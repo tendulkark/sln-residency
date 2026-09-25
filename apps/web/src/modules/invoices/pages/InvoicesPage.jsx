@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Search, Receipt, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Receipt, Eye, SearchX } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { formatCurrency, formatDateTime } from "@/lib/format.js";
 import { useSort } from "@/lib/useSort.js";
-import { Button, Input, Select, Badge, PageHeader, EmptyState, DataTable, Th, Td, Tr } from "@/ui/index.js";
+import { Button, Input, Select, Badge, PageHeader, EmptyState, ErrorState, Spinner, TableSkeleton, DataTable, Th, Td, Tr } from "@/ui/index.js";
 import InvoiceModal from "@/modules/invoices/components/InvoiceModal.jsx";
 import { INVOICES_LIST_QUERY_KEY } from "@/modules/invoices/constants.js";
 
@@ -30,7 +30,7 @@ export default function InvoicesPage() {
   const pageSize = 25;
   const sort = useSort();
 
-  const { data, isLoading } = useQuery({
+  const invoicesQuery = useQuery({
     queryKey: [INVOICES_LIST_QUERY_KEY, { search, status, from, to, page, sortBy: sort.sortBy, sortDir: sort.sortDir }],
     queryFn: () =>
       apiFetch(
@@ -43,6 +43,16 @@ export default function InvoicesPage() {
       ),
     placeholderData: (prev) => prev,
   });
+  const { data } = invoicesQuery;
+  const filtersActive = Boolean(search || status || from || to);
+
+  function clearFilters() {
+    setSearch("");
+    setStatus("");
+    setFrom("");
+    setTo("");
+    setPage(1);
+  }
 
   function resetToFirstPage(setter) {
     return (value) => {
@@ -88,11 +98,27 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+      {data === undefined && !invoicesQuery.isError && <TableSkeleton rows={8} columns={7} />}
 
-      {data && data.rows.length === 0 && (
-        <EmptyState icon={Receipt} title="No invoices found" subtitle="Try widening the date range or clearing filters." />
+      {data === undefined && invoicesQuery.isError && (
+        <ErrorState title="Couldn't load invoices" error={invoicesQuery.error} onRetry={() => invoicesQuery.refetch()} />
       )}
+
+      {data && data.rows.length === 0 &&
+        (filtersActive ? (
+          <EmptyState
+            icon={SearchX}
+            title="No invoices match these filters"
+            subtitle="Try a different search or a wider date range."
+            action={
+              <Button variant="outline" size="sm" className="mt-2" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState icon={Receipt} title="No invoices yet" subtitle="An invoice number is reserved as soon as a booking is made, and finalized at checkout." />
+        ))}
 
       {data && data.rows.length > 0 && (
         <>
@@ -159,8 +185,9 @@ export default function InvoicesPage() {
           </DataTable>
 
           <div className="mt-3 flex shrink-0 items-center justify-between text-sm text-ink-muted">
-            <p>
+            <p className="flex items-center gap-2">
               {data.total} invoice{data.total === 1 ? "" : "s"}
+              {invoicesQuery.isFetching && <Spinner />}
             </p>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>

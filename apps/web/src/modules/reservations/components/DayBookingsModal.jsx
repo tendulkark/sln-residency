@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api.js";
-import { Modal } from "@/ui/index.js";
+import { CalendarX2 } from "lucide-react";
+import { EmptyState, Modal } from "@/ui/index.js";
 import BookingRow from "@/modules/reservations/components/BookingRow.jsx";
 import { bookingStaySummariesKey } from "@/modules/reservations/constants.js";
 
@@ -25,7 +26,7 @@ export default function DayBookingsModal({ date, bookings, onSelectBooking, onCl
 
   return (
     <Modal title={date.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} onClose={onClose}>
-      {bookings.length === 0 && <p className="text-sm text-ink-muted">No bookings touch this day.</p>}
+      {bookings.length === 0 && <EmptyState compact icon={CalendarX2} title="No bookings touch this day." />}
       <div className="space-y-2">
         {bookings.map((b) => (
           <BookingRow key={b.id} booking={b} summary={summaries?.[b.id]} onClick={onSelectBooking ? () => onSelectBooking(b) : undefined} />

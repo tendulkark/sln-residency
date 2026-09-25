@@ -1,11 +1,13 @@
-import { Card } from "@/ui/index.js";
+import { Card, Skeleton } from "@/ui/index.js";
 
 const TONE_CLASSES = {
   neutral: { card: "", iconWrap: "bg-brand-tint text-brand" },
   warn: { card: "bg-danger-tint border-danger/25", iconWrap: "bg-danger-tint text-danger" },
 };
 
-export default function StatCard({ label, value, sublabel, badge, icon: Icon, tone = "neutral" }) {
+// `loading` shows placeholder bars instead of the figures, so an unloaded
+// card never reads as a real "₹0" or "0 rooms".
+export default function StatCard({ label, value, sublabel, badge, icon: Icon, tone = "neutral", loading = false }) {
   const toneClasses = TONE_CLASSES[tone] ?? TONE_CLASSES.neutral;
 
   return (
@@ -18,11 +20,20 @@ export default function StatCard({ label, value, sublabel, badge, icon: Icon, to
           </div>
         )}
       </div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-3xl font-bold tabular-nums tracking-tight text-ink">{value}</span>
-        {badge && <span className="text-xs font-semibold text-success">{badge}</span>}
-      </div>
-      {sublabel && <div className="mt-1 text-xs text-ink-muted">{sublabel}</div>}
+      {loading ? (
+        <>
+          <Skeleton className="mt-3 h-8 w-28" />
+          <Skeleton className="mt-2 h-3 w-40" />
+        </>
+      ) : (
+        <>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-3xl font-bold tabular-nums tracking-tight text-ink">{value}</span>
+            {badge && <span className="text-xs font-semibold text-success">{badge}</span>}
+          </div>
+          {sublabel && <div className="mt-1 text-xs text-ink-muted">{sublabel}</div>}
+        </>
+      )}
     </Card>
   );
 }

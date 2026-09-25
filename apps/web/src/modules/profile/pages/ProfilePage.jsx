@@ -129,7 +129,7 @@ export default function ProfilePage() {
             onChange={(e) => setForm((f) => ({ ...f, confirmPassword: e.target.value }))}
           />
           <div className="flex justify-end pt-1">
-            <Button type="submit" disabled={changePasswordMutation.isPending}>
+            <Button type="submit" loading={changePasswordMutation.isPending}>
               Update password
             </Button>
           </div>

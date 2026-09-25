@@ -1,5 +1,5 @@
 import { Navigate, Link } from "react-router-dom";
-import { ShieldOff } from "lucide-react";
+import { MapPinOff, ShieldOff } from "lucide-react";
 import { useAuthStore } from "@/app/authStore.js";
 import { firstAllowedNavItem } from "@/app/navigation.js";
 import { EmptyState, buttonVariants } from "@/ui/index.js";
@@ -47,4 +47,25 @@ export function HomeRedirect() {
     );
   }
   return <Navigate to={home.to} replace />;
+}
+
+// Any URL inside the signed-in app that isn't a page — a mistyped address or
+// an old bookmark — gets a way back instead of a blank shell.
+export function NotFound() {
+  const permissions = useAuthStore((s) => s.permissions);
+  const home = firstAllowedNavItem(permissions);
+  return (
+    <EmptyState
+      icon={MapPinOff}
+      title="This page doesn't exist"
+      subtitle="The link may be old or mistyped."
+      action={
+        home && (
+          <Link to={home.to} className={`${buttonVariants({ variant: "outline", size: "sm" })} mt-2`}>
+            Go to {home.label}
+          </Link>
+        )
+      }
+    />
+  );
 }

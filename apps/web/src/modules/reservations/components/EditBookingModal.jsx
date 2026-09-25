@@ -61,7 +61,7 @@ export default function EditBookingModal({ booking, onClose, onSaved }) {
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={saveMutation.isPending}>
+          <Button type="submit" loading={saveMutation.isPending}>
             {saveMutation.isPending ? "Saving…" : "Save changes"}
           </Button>
         </div>

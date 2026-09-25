@@ -58,7 +58,7 @@ export default function ResetPasswordModal({ user, onClose }) {
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={() => resetMutation.mutate()} disabled={resetMutation.isPending || password.length < 8}>
+            <Button variant="danger" onClick={() => resetMutation.mutate()} disabled={password.length < 8} loading={resetMutation.isPending}>
               Reset password
             </Button>
           </div>

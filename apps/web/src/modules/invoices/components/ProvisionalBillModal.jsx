@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
-import { Button, Modal } from "@/ui/index.js";
-import InvoiceDocument from "@/modules/invoices/components/InvoiceDocument.jsx";
+import { Button, ErrorState, Modal } from "@/ui/index.js";
+import InvoiceDocument, { InvoiceDocumentSkeleton } from "@/modules/invoices/components/InvoiceDocument.jsx";
 import { TENANT_QUERY_KEY } from "@/modules/settings/constants.js";
 import { bookingInvoiceKey } from "@/modules/invoices/constants.js";
 import { useInvoiceTemplate } from "@/modules/invoices/useInvoiceTemplate.js";
@@ -18,7 +18,8 @@ import { useInvoiceTemplate } from "@/modules/invoices/useInvoiceTemplate.js";
 // shipped has no reserved invoice yet — the fetch 404s and this just falls
 // back to showing no number, exactly like the old behavior.
 export default function ProvisionalBillModal({ bookingId, stay, onClose }) {
-  const { data: tenant, isLoading } = useQuery({ queryKey: [TENANT_QUERY_KEY], queryFn: () => apiFetch("/tenant") });
+  const tenantQuery = useQuery({ queryKey: [TENANT_QUERY_KEY], queryFn: () => apiFetch("/tenant") });
+  const tenant = tenantQuery.data;
   const { data: reserved } = useQuery({
     queryKey: bookingInvoiceKey(bookingId),
     queryFn: () => apiFetch(`/bookings/${bookingId}/invoice`),
@@ -43,7 +44,11 @@ export default function ProvisionalBillModal({ bookingId, stay, onClose }) {
         )
       }
     >
-      {(isLoading || !template) && <p className="text-sm text-ink-muted">Preparing bill…</p>}
+      {tenantQuery.isError && !tenant ? (
+        <ErrorState compact title="Couldn't prepare the bill" error={tenantQuery.error} onRetry={() => tenantQuery.refetch()} />
+      ) : (
+        !ready && <InvoiceDocumentSkeleton />
+      )}
       {ready && (
         <InvoiceDocument
           provisional

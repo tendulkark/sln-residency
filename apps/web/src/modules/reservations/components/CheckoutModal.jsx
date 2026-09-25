@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertTriangle, LogOut, Split, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { formatCurrencyExact as formatCurrency, formatDateTime } from "@/lib/format.js";
-import { Button, Input, Modal, Select } from "@/ui/index.js";
+import { Button, ErrorState, Input, Modal, Select, Skeleton } from "@/ui/index.js";
 import { PAYMENT_METHODS_QUERY_KEY } from "@/modules/common/constants.js";
 
 function describeGap(minutes) {
@@ -39,7 +39,7 @@ function BillingOption({ selected, onSelect, title, detail, amount }) {
 // checkout that would leave a balance, so the button stays locked until
 // the entered amounts match.
 export default function CheckoutModal({ bookingId, roomLabel, onClose, onCheckedOut }) {
-  const { data: preview, isLoading, refetch, isFetching } = useQuery({
+  const { data: preview, refetch, isFetching, isError, error: loadError } = useQuery({
     queryKey: ["checkout-preview", bookingId],
     queryFn: () => apiFetch(`/bookings/${bookingId}/checkout-preview`),
     staleTime: 0,
@@ -95,8 +95,17 @@ export default function CheckoutModal({ bookingId, roomLabel, onClose, onChecked
 
   return (
     <Modal title={`Checkout · Room ${roomLabel}`} onClose={onClose}>
-      {isLoading || !preview ? (
-        <p className="text-sm text-ink-muted">Working out the final bill…</p>
+      {!preview && isError ? (
+        <ErrorState compact title="Couldn't work out the final bill" error={loadError} onRetry={() => refetch()} />
+      ) : !preview ? (
+        <div role="status" aria-label="Working out the final bill" className="space-y-3">
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-14 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <div className="flex justify-end">
+            <Skeleton className="h-9 w-44" />
+          </div>
+        </div>
       ) : (
         <div className="space-y-4">
           {preview.differs ? (
@@ -155,6 +164,7 @@ export default function CheckoutModal({ bookingId, roomLabel, onClose, onChecked
                     <Select
                       label={i === 0 ? "Payment method" : undefined}
                       options={methodOptions}
+                      loading={!methods}
                       value={row.methodId}
                       onChange={(v) => setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, methodId: v } : r)))}
                       placeholder="Select method"
@@ -197,7 +207,7 @@ export default function CheckoutModal({ bookingId, roomLabel, onClose, onChecked
             <div className="rounded-md border-2 border-warning bg-warning-tint p-3">
               <p className="mb-2 text-xs font-bold uppercase tracking-wider text-warning">Refund {formatCurrency(-balance)} to the guest</p>
               <div className="space-y-2">
-                <Select label="Refund method" options={methodOptions} value={refundMethodId} onChange={setRefundMethodId} placeholder="Select method" />
+                <Select label="Refund method" options={methodOptions} loading={!methods} value={refundMethodId} onChange={setRefundMethodId} placeholder="Select method" />
                 <Input label="Reference (optional)" value={refundNote} onChange={(e) => setRefundNote(e.target.value)} placeholder="e.g. UPI ref / handed over in cash" />
               </div>
             </div>
@@ -225,7 +235,7 @@ export default function CheckoutModal({ bookingId, roomLabel, onClose, onChecked
                 setError(null);
                 checkout.mutate();
               }}
-              disabled={!settled || checkout.isPending || isFetching}
+              disabled={!settled || isFetching} loading={checkout.isPending}
             >
               <LogOut className="h-4 w-4" />
               {checkout.isPending
