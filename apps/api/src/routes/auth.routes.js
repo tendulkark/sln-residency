@@ -2,6 +2,7 @@ import argon2 from "argon2";
 import { loginSchema, changePasswordSchema } from "@sln/shared-schemas";
 import { verifyRefreshToken } from "#src/lib/tokens.js";
 import { recordAudit } from "#src/lib/audit.js";
+import { permissionCodesForRole } from "#src/lib/permissions.js";
 import {
   REFRESH_COOKIE,
   sessionPayload,
@@ -11,11 +12,11 @@ import {
 } from "#src/lib/sessions.js";
 
 async function loadPermissionCodes(prisma, roleId) {
-  const rolePermissions = await prisma.rolePermission.findMany({
-    where: { roleId },
-    include: { permission: true },
+  const role = await prisma.role.findUnique({
+    where: { id: roleId },
+    include: { rolePermissions: { include: { permission: true } } },
   });
-  return rolePermissions.map((rp) => rp.permission.code);
+  return permissionCodesForRole(role);
 }
 
 export default async function authRoutes(fastify) {

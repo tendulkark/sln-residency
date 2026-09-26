@@ -1,11 +1,11 @@
 import { Navigate, Link } from "react-router-dom";
 import { MapPinOff, ShieldOff } from "lucide-react";
 import { useAuthStore } from "@/app/authStore.js";
-import { firstAllowedNavItem } from "@/app/navigation.js";
+import { firstAllowedNavItem, canAccess } from "@/app/navigation.js";
 import { EmptyState, buttonVariants } from "@/ui/index.js";
 
 // Page-level gate: renders its children only if the signed-in user's role
-// holds `permission`, otherwise a friendly "no access" screen inside the
+// holds `permission` (one code, or any one of a list), otherwise a friendly "no access" screen inside the
 // shell (not a redirect loop — a Manager typing /settings should learn why
 // it's blank, not bounce around). Like the sidebar filtering this is a UX
 // nicety only; the API 403s every request the role isn't allowed
@@ -13,7 +13,7 @@ import { EmptyState, buttonVariants } from "@/ui/index.js";
 export default function RequirePermission({ permission, children }) {
   const permissions = useAuthStore((s) => s.permissions);
   const user = useAuthStore((s) => s.user);
-  if (permissions.has(permission)) return children;
+  if (canAccess(permissions, permission)) return children;
 
   const home = firstAllowedNavItem(permissions);
   return (

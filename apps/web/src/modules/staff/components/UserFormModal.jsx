@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dices } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { Button, Input, Select, Modal } from "@/ui/index.js";
-import { USERS_QUERY_KEY, ROLES_QUERY_KEY } from "@/modules/staff/constants.js";
+import { USERS_QUERY_KEY } from "@/modules/staff/constants.js";
+import { ROLES_QUERY_KEY } from "@/modules/roles/constants.js";
 
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 function generatePassword() {

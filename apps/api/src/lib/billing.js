@@ -1,4 +1,4 @@
-import { getApplicableTaxRule, splitInclusiveTax } from "#src/lib/tax.js";
+import { getApplicableTaxRuleForInclusive, splitInclusiveTax } from "#src/lib/tax.js";
 
 // Based on the highest existing suffix, not a row count — a count-based
 // scheme collides forever once any invoice is missing from the sequence
@@ -150,9 +150,10 @@ export async function computeStayBreakdown(prisma, tenantId, bookingId) {
   const netRoomsInclTax = round2(roomsInclTax - discountTotal);
   // GST slabs for hotel rooms go by the tariff per room per night, not by
   // the whole stay's total — look the rule up with the highest nightly rate
-  // in the stay, so a slab rule (appliesAbove/BelowAmount) picks correctly.
+  // in the stay. ratePerNight includes GST, so the lookup backs GST out
+  // before comparing against the slab (tax.js).
   const nightlyTariff = billable.reduce((max, b) => Math.max(max, Number(b.ratePerNight)), 0);
-  const taxRule = await getApplicableTaxRule(prisma, tenantId, nightlyTariff);
+  const taxRule = await getApplicableTaxRuleForInclusive(prisma, tenantId, nightlyTariff);
   const roomRate = taxRule ? Number(taxRule.ratePercent) : 0;
 
   // Rate-wise GST lines (what the invoice's tax table and the GST report

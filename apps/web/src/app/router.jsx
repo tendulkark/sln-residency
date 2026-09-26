@@ -14,8 +14,16 @@ import HousekeepingPage from "@/modules/housekeeping/pages/HousekeepingPage.jsx"
 import { HOUSEKEEPING_NAV_ITEM } from "@/modules/housekeeping/constants.js";
 import ReservationsPage from "@/modules/reservations/pages/ReservationsPage.jsx";
 import { RESERVATIONS_NAV_ITEM } from "@/modules/reservations/constants.js";
-import SettingsPage from "@/modules/settings/pages/SettingsPage.jsx";
-import { SETTINGS_NAV_ITEM } from "@/modules/settings/constants.js";
+import SettingsLayout, { SettingsIndex } from "@/modules/settings/pages/SettingsLayout.jsx";
+import HotelProfilePage from "@/modules/settings/pages/HotelProfilePage.jsx";
+import TaxRulesPage from "@/modules/settings/pages/TaxRulesPage.jsx";
+import PaymentMethodsPage from "@/modules/settings/pages/PaymentMethodsPage.jsx";
+import StatusesPage from "@/modules/settings/pages/StatusesPage.jsx";
+import { SETTINGS_NAV_ITEM, SETTINGS_TABS } from "@/modules/settings/constants.js";
+import RolesPage from "@/modules/roles/pages/RolesPage.jsx";
+import { ROLES_NAV_ITEM } from "@/modules/roles/constants.js";
+import AuditLogPage from "@/modules/audit/pages/AuditLogPage.jsx";
+import { AUDIT_NAV_ITEM } from "@/modules/audit/constants.js";
 import ReportsPage from "@/modules/reports/pages/ReportsPage.jsx";
 import { REPORTS_NAV_ITEM } from "@/modules/reports/constants.js";
 import InvoicesPage from "@/modules/invoices/pages/InvoicesPage.jsx";
@@ -39,6 +47,26 @@ const page = (navItem, element) => ({
   errorElement: <RouteError />,
 });
 
+// Settings is a hub: the layout opens for anyone holding any tab's
+// permission, and each tab is gated on its own.
+const SETTINGS_TAB_PAGES = {
+  hotel: <HotelProfilePage />,
+  "tax-rules": <TaxRulesPage />,
+  "payment-methods": <PaymentMethodsPage />,
+  statuses: <StatusesPage />,
+};
+const settingsRoute = {
+  ...page(SETTINGS_NAV_ITEM, <SettingsLayout />),
+  children: [
+    { index: true, element: <SettingsIndex /> },
+    ...SETTINGS_TABS.map((tab) => ({
+      path: tab.path,
+      element: <RequirePermission permission={tab.permission}>{SETTINGS_TAB_PAGES[tab.path]}</RequirePermission>,
+      errorElement: <RouteError />,
+    })),
+  ],
+};
+
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
@@ -56,11 +84,13 @@ export const router = createBrowserRouter([
               page(ROOMS_NAV_ITEM, <RoomsSetupPage />),
               page(HOUSEKEEPING_NAV_ITEM, <HousekeepingPage />),
               page(RESERVATIONS_NAV_ITEM, <ReservationsPage />),
-              page(SETTINGS_NAV_ITEM, <SettingsPage />),
+              settingsRoute,
               page(REPORTS_NAV_ITEM, <ReportsPage />),
               page(INVOICES_NAV_ITEM, <InvoicesPage />),
               page(INVOICE_DESIGN_NAV_ITEM, <InvoiceDesignPage />),
               page(STAFF_NAV_ITEM, <StaffPage />),
+              page(ROLES_NAV_ITEM, <RolesPage />),
+              page(AUDIT_NAV_ITEM, <AuditLogPage />),
               // No RequirePermission wrapper — every signed-in role manages
               // their own account, not just users.manage. ProtectedRoute
               // (the parent) already guarantees authentication.

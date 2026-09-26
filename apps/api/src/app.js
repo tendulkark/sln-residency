@@ -19,6 +19,9 @@ import reportsRoutes from "#src/routes/reports.routes.js";
 import usersRoutes from "#src/routes/users.routes.js";
 import rolesRoutes from "#src/routes/roles.routes.js";
 import invoiceTemplateRoutes from "#src/routes/invoice-template.routes.js";
+import paymentMethodsRoutes from "#src/routes/payment-methods.routes.js";
+import taxRulesRoutes from "#src/routes/tax-rules.routes.js";
+import auditLogsRoutes from "#src/routes/audit-logs.routes.js";
 
 export async function buildApp() {
   const fastify = Fastify({ logger: true });
@@ -43,6 +46,9 @@ export async function buildApp() {
   await fastify.register(usersRoutes);
   await fastify.register(rolesRoutes);
   await fastify.register(invoiceTemplateRoutes);
+  await fastify.register(paymentMethodsRoutes);
+  await fastify.register(taxRulesRoutes);
+  await fastify.register(auditLogsRoutes);
 
   fastify.get("/health", async () => ({ ok: true }));
 

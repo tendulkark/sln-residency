@@ -67,8 +67,10 @@ Module map (`apps/web/src/modules/`):
 | `reservations` | `ReservationsPage`| `BookingFormModal`, `ManageStayModal`, `EditBookingModal`, `ExtendStayModal`, `RoomBookingsModal`, `DayBookingsModal`, `DaySheet`, `BookingRow`, `MiniDatePicker`, `MonthYearPicker` (+ `calendarUtils.js`) |
 | `invoices`     | `InvoicesPage`, `InvoiceDesignPage` | `InvoiceModal`, `InvoiceDocument`, `ProvisionalBillModal`, `GuestDetailsForm`, `InvoiceDesignForm` (+ `useInvoiceTemplate.js`, `invoicePreviewSample.js`) |
 | `reports`      | `ReportsPage`     | `ReportPeriodPicker`, `BookingsReport`, `RevenueReport`, `OccupancyReport`, `GstReport`, `reportParts` (+ `reportPeriod.js`) |
-| `settings`     | `SettingsPage`    | —                                                                                                                     |
+| `settings`     | `SettingsLayout` (hub) → `HotelProfilePage`, `TaxRulesPage`, `PaymentMethodsPage`, `StatusesPage` | `SettingsSection`, `TaxRuleFormModal` (+ `taxRuleUtils.js`) |
 | `staff`        | `StaffPage`       | `UserFormModal`, `ResetPasswordModal`                                                                                 |
+| `roles`        | `RolesPage`       | `RoleEditor`                                                                                                          |
+| `audit`        | `AuditLogPage`    | `AuditDetailModal` (+ `auditFormat.js`)                                                                               |
 | `profile`      | `ProfilePage`     | `SignedInDevicesCard`                                                                                                 |
 | `common`       | —                 | `StatusBadge`, `GstCalculator` — components/keys shared by several modules but still domain-aware (so not in `ui/`) |
 
@@ -139,8 +141,32 @@ Conventions:
   collections in the dashboard and reports. A finalized invoice prints
   from a frozen snapshot, with GST split rate by rate (equal CGST/SGST
   plus a round-off line).
-- **Settings** — hotel profile (name, address, phone, GSTIN, logo, brand
-  color) used on every printed invoice and in the sidebar.
+- **Settings** — a hub with one tab per area, each gated by its own
+  permission:
+  - **Hotel profile** (`settings.manage`) — name, address, phone, GSTIN,
+    logo, brand color, used on every printed invoice and in the sidebar.
+  - **Tax rules** (`taxrules.manage`) — GST slabs on the room tariff. A
+    slab is matched on the tariff per room per night *before* GST, as the
+    half-open range (above, up to], so a boundary tariff falls in the lower
+    slab. Overlapping active slabs are refused, a "GST in force today"
+    ladder flags any tariff range no rule covers, and a rule that has billed
+    a finalized invoice keeps its rate, slab and start date (end-date it and
+    add a new one to change the rate). The SAC code feeds the GSTR-1 export.
+  - **Payment methods** (`paymentmethods.manage`) — add, rename, switch
+    off; a method with payments can't be deleted, and one must stay on.
+  - **Statuses** (`statuses.manage`) — rename, recolor and reorder room/
+    booking/payment statuses, and choose whether a new booking starts
+    Pending or Confirmed. The built-in statuses (`Status.isSystem`,
+    `WORKFLOW_STATUS_CODES`) drive check-in/checkout, so their codes are
+    fixed.
+- **Roles & Permissions** (`roles.manage`) — create, rename, duplicate and
+  delete roles and tick their permissions. The built-in Admin role is
+  read-only and always holds every permission (incl. future ones); a role
+  in use can't be deleted, and nobody can remove `roles.manage` from their
+  own role. Changes apply on the affected users' next request.
+- **Audit Log** (`auditlog.view`) — every recorded change, newest first,
+  filterable by date, person, area and action, with plain-English labels,
+  a before/after view, and a per-record history.
 - **Invoice Design** (Admin-only, `invoices.customize`) — pick the printed
   invoice's layout (Classic/Modern/Minimal), accent color, font and size,
   logo position, which optional hotel/guest fields show, and the wording of
@@ -210,6 +236,6 @@ Conventions:
 
 ## What's next
 
-See the build order in [AI_RULES.md](AI_RULES.md) — next up is the rest of
-Phase 4's admin controls (roles/permissions, statuses, tax rules, payment
-methods, and an audit-log viewer).
+See the build order in [AI_RULES.md](AI_RULES.md) — Phase 4 is complete;
+next up are the first live deployment and Phase 7's multi-tenant/reseller
+layer.

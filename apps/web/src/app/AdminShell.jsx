@@ -5,7 +5,7 @@ import { LogOut, Hotel, ChevronLeft, ChevronRight, Menu as MenuIcon } from "luci
 import { useAuthStore } from "@/app/authStore.js";
 import { apiFetch } from "@/lib/api.js";
 import { Button } from "@/ui/index.js";
-import { NAV_ITEMS } from "@/app/navigation.js";
+import { NAV_ITEMS, canAccess } from "@/app/navigation.js";
 import { LOGIN_ROUTE_PATH } from "@/modules/auth/constants.js";
 import { PROFILE_ROUTE_PATH } from "@/modules/profile/constants.js";
 import { ModuleRefreshProvider } from "@/app/ModuleRefresh.jsx";
@@ -38,7 +38,7 @@ function SidebarContent({ collapsed, tenant, user, permissions, onNavigate, onLo
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
-        {NAV_ITEMS.filter((item) => permissions.has(item.permission)).map((item) => (
+        {NAV_ITEMS.filter((item) => canAccess(permissions, item.permission)).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

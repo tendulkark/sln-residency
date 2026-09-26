@@ -25,8 +25,9 @@ export const PERMISSIONS = [
   { code: "invoices.generate", description: "Generate an invoice for a booking" },
   { code: "invoices.cancel", description: "Cancel a wrong invoice and reissue a replacement" },
   { code: "invoices.customize", description: "Change the printed invoice's layout, colors, visible fields, and footer wording" },
-  { code: "statuses.manage", description: "Manage room/booking/payment status lists" },
+  { code: "statuses.manage", description: "Rename, recolor and reorder room/booking/payment statuses" },
   { code: "taxrules.manage", description: "Manage GST/tax rule slabs" },
+  { code: "paymentmethods.manage", description: "Add, rename and switch off payment methods" },
   { code: "users.manage", description: "Manage staff accounts" },
   { code: "roles.manage", description: "Manage roles and their permissions" },
   { code: "reports.view", description: "View occupancy/revenue/GST reports" },
@@ -34,10 +35,15 @@ export const PERMISSIONS = [
   { code: "settings.manage", description: "Manage hotel profile (name, address, logo, GSTIN) and branding" },
 ];
 
+export const PERMISSION_CODES = PERMISSIONS.map((p) => p.code);
+
 // Default permission sets used only to seed a brand-new tenant's built-in
-// Admin/Manager/Employee roles. After seeding, an Admin can freely edit these via
-// the roles.manage UI — this list is not consulted again at runtime.
-export const DEFAULT_ADMIN_PERMISSION_CODES = PERMISSIONS.map((p) => p.code);
+// Admin/Manager/Employee roles. After seeding, an Admin can freely edit the
+// Manager/Employee (and any custom) roles via Roles & Permissions — these
+// lists are not consulted again at runtime. The built-in Admin role is the
+// exception: it always holds the whole catalog (apps/api/src/lib/
+// permissions.js), so no edit can ever lock a hotel out of its own console.
+export const DEFAULT_ADMIN_PERMISSION_CODES = PERMISSION_CODES;
 
 // A Manager runs the desk day-to-day with everything an Admin has *except*
 // the post-checkout correction powers — once a stay is checked out and its

@@ -52,7 +52,7 @@ function deviceInfo(request) {
 // be applied the same way.
 export function sessionPayload(user, permissions) {
   return {
-    user: { id: user.id, name: user.name, email: user.email, roleName: user.role.name },
+    user: { id: user.id, name: user.name, email: user.email, roleId: user.roleId, roleName: user.role.name },
     tenant: {
       id: user.tenant.id,
       name: user.tenant.name,
