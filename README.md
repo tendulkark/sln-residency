@@ -15,6 +15,9 @@ payment methods) is hardcoded — it's all editable data. See
   Query, Zustand — plain JavaScript (JSX), no TypeScript.
 - **Backend**: Node.js + Fastify 5 + Prisma + PostgreSQL, JWT auth (access
   token in memory, refresh token as an httpOnly cookie, rotated on use).
+  Each signed-in browser/device is its own `UserSession` row, so staff can
+  be signed in on the desk PC and a phone at once, and sign any device out
+  from their Profile (effective on that device's next request).
 - **Monorepo**: npm workspaces — `apps/web`, `apps/api`,
   `packages/shared-schemas` (Zod schemas + the permission catalog, shared by
   both apps).
@@ -31,6 +34,8 @@ apps/web/src
 │   ├── AdminShell.jsx    #   sidebar + header chrome around every page
 │   ├── RootLayout.jsx    #   silent session restore on cold load
 │   ├── authStore.js      #   Zustand session store (token, user, tenant, permissions)
+│   ├── ModuleRefresh.jsx #   per-module Refresh button + Ctrl+R/F5 (refetches only what's on screen)
+│   ├── useSessionSync.js #   keeps permissions/branding in sync with /me while the app is open
 │   └── guards/           #   ProtectedRoute (signed in?) / RequirePermission (allowed?)
 ├── modules/<domain>/     # one folder per business area, all shaped the same way
 │   ├── pages/            #   the routed screen(s) — the module's entry point
@@ -61,8 +66,10 @@ Module map (`apps/web/src/modules/`):
 | `housekeeping` | `HousekeepingPage`| `RoomClosuresModal`                                                                                                   |
 | `reservations` | `ReservationsPage`| `BookingFormModal`, `ManageStayModal`, `EditBookingModal`, `ExtendStayModal`, `RoomBookingsModal`, `DayBookingsModal`, `DaySheet`, `BookingRow`, `MiniDatePicker`, `MonthYearPicker` (+ `calendarUtils.js`) |
 | `invoices`     | `InvoicesPage`, `InvoiceDesignPage` | `InvoiceModal`, `InvoiceDocument`, `ProvisionalBillModal`, `GuestDetailsForm`, `InvoiceDesignForm` (+ `useInvoiceTemplate.js`, `invoicePreviewSample.js`) |
-| `reports`      | `ReportsPage`     | —                                                                                                                     |
+| `reports`      | `ReportsPage`     | `ReportPeriodPicker`, `BookingsReport`, `RevenueReport`, `OccupancyReport`, `GstReport`, `reportParts` (+ `reportPeriod.js`) |
 | `settings`     | `SettingsPage`    | —                                                                                                                     |
+| `staff`        | `StaffPage`       | `UserFormModal`, `ResetPasswordModal`                                                                                 |
+| `profile`      | `ProfilePage`     | `SignedInDevicesCard`                                                                                                 |
 | `common`       | —                 | `StatusBadge`, `GstCalculator` — components/keys shared by several modules but still domain-aware (so not in `ui/`) |
 
 Conventions:
@@ -73,6 +80,12 @@ Conventions:
   import each other's `constants.js` (to invalidate a query) and components
   (e.g. Reservations opens `InvoiceModal`), but never anything in `app/`.
 - `ui/` never imports from `modules/` or knows about hotels, GST, or bookings.
+- Every page renders a `PageHeader`; the shell adds the module **Refresh**
+  button to it automatically (via `PageHeaderExtrasContext`), so a new
+  module gets it for free. Refresh (or Ctrl+R / Cmd+R / F5 inside the app)
+  re-fetches only the queries currently on screen, re-syncs permissions,
+  and keeps the page's filters and open dialogs; Ctrl+Shift+R is still a
+  full browser reload.
 
 ## Phase 1 (foundation)
 
@@ -135,11 +148,17 @@ Conventions:
   signature/stamp image), with a live preview. Stored per tenant in
   `InvoiceTemplate`; presentation only — GST-required fields always print
   and figures/numbers are never affected.
-- **Reports** — a Rooms Reports module with four tabs: Bookings (status/
-  room-type breakdown, a full detail table with every audit-trail-backed
-  column, CSV export), Revenue (by payment method + daily trend), Occupancy
-  (daily % across a date range), and GST (CGST/SGST collected, by rate,
-  per-invoice) — all filterable by date range.
+- **Reports** — one Day/Week/Month/Year/Custom period (weeks start
+  Sunday, ‹ › to step, kept in the URL) scopes four tabs, each with its own
+  CSV export: **Bookings** (stays, room-nights, average stay, by status /
+  room type, and a compact detail table with a totals row for the whole
+  range), **Revenue** (net collected vs billed with change vs the previous
+  period, by payment method, by staff member, and a per-day/week/month
+  table for cash reconciliation), **Occupancy** (a room counts if it's
+  occupied at midnight; past nights are *actual*, later ones *on the
+  books*, never averaged together; closures excluded; ADR, RevPAR, average
+  stay, by room type), and **GST** (B2B/B2C split, rate-wise table,
+  invoice list and a GSTR-1-friendly CSV with GSTIN and SAC).
 
 ## Local setup
 
@@ -192,5 +211,5 @@ Conventions:
 ## What's next
 
 See the build order in [AI_RULES.md](AI_RULES.md) — next up is the rest of
-Phase 4's admin controls (roles/permissions, statuses, tax rules, and staff
-account management UIs), followed by Phase 5's PWA polish.
+Phase 4's admin controls (roles/permissions, statuses, tax rules, payment
+methods, and an audit-log viewer).

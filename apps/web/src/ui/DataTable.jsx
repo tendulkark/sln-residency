@@ -82,6 +82,21 @@ export function Td({ children, align = "left", pinned = false, className = "" })
   );
 }
 
+// A totals-row cell (inside <tfoot>): sticks to the bottom of the scroll
+// box the way headers stick to the top, so a range's totals stay in view
+// while the rows scroll. Opaque, like pinned cells, for the same reason.
+export function Tf({ children, align = "left", pinned = false, className = "" }) {
+  return (
+    <td
+      className={`sticky bottom-0 z-20 border-t border-line-strong bg-muted px-3 py-2 font-semibold text-ink print:static ${
+        align === "right" ? "text-right" : "text-left"
+      } ${pinned ? "left-0 z-30 border-r border-line print:border-r-0" : ""} ${className}`}
+    >
+      {children}
+    </td>
+  );
+}
+
 // `tr` needs the `group` class for the cell-level zebra/hover to key off it
 // — DataTable.Row is that, so callers don't have to remember.
 export function Tr({ className = "", ...props }) {
@@ -92,11 +107,15 @@ export function Tr({ className = "", ...props }) {
 // - default: capped at `maxHeight` — for a table that shares the page with
 //   other content above it (Reports' stat cards/charts), where the page
 //   still scrolls and the table just shouldn't run away with it.
+// Pass `fixed` with a <colgroup> of widths to lay columns out at exactly
+// those widths (table-layout: fixed) — a wide report then never squeezes
+// one column (Notes) to make room for the rest.
+//
 // - `fill`: grows to whatever height is left in a flex-column parent
 //   (`flex h-full flex-col` on the page root) — for a page that is
 //   basically just the table (Invoices), so it uses the whole screen and
 //   the page itself never scrolls.
-export default function DataTable({ children, maxHeight = "65vh", fill = false, minWidth, className = "" }) {
+export default function DataTable({ children, maxHeight = "65vh", fill = false, fixed = false, minWidth, className = "" }) {
   return (
     <div
       className={`overflow-auto overscroll-contain rounded-lg border border-line-strong bg-card shadow-sm print:max-h-none print:overflow-visible ${
@@ -104,7 +123,7 @@ export default function DataTable({ children, maxHeight = "65vh", fill = false, 
       } ${className}`}
       style={fill ? undefined : { maxHeight }}
     >
-      <table className="w-full border-separate border-spacing-0 text-left text-sm" style={minWidth ? { minWidth } : undefined}>
+      <table className={`w-full border-separate border-spacing-0 text-left text-sm ${fixed ? "table-fixed" : ""}`} style={minWidth ? { minWidth } : undefined}>
         {children}
       </table>
     </div>

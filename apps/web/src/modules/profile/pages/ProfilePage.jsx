@@ -5,6 +5,7 @@ import { PERMISSIONS } from "@sln/shared-schemas";
 import { apiFetch } from "@/lib/api.js";
 import { useAuthStore } from "@/app/authStore.js";
 import { Button, Input, Badge, Card, PageHeader } from "@/ui/index.js";
+import SignedInDevicesCard from "@/modules/profile/components/SignedInDevicesCard.jsx";
 
 const EMPTY_PASSWORD_FORM = { currentPassword: "", newPassword: "", confirmPassword: "" };
 
@@ -135,6 +136,8 @@ export default function ProfilePage() {
           </div>
         </form>
       </Card>
+
+      <SignedInDevicesCard />
     </div>
   );
 }

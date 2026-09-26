@@ -1,6 +1,7 @@
 import { useRouteError } from "react-router-dom";
 import { Home, RotateCw, TriangleAlert } from "lucide-react";
 import { Button } from "@/ui/index.js";
+import { useModuleRefresh } from "@/app/ModuleRefresh.jsx";
 
 // Shown instead of a page when rendering it crashed (or a route failed to
 // load) — a plain explanation and a way forward, rather than react-router's
@@ -8,6 +9,9 @@ import { Button } from "@/ui/index.js";
 // sidebar stays usable, and once at the root as the last resort.
 export default function RouteError({ fullScreen = false }) {
   const error = useRouteError();
+  // Inside the shell, a crashed page can be retried on its own — the rest
+  // of the app (sidebar, session, other modules' data) never went away.
+  const moduleRefresh = useModuleRefresh();
   // A new build was deployed while this tab was open, so an old page chunk
   // no longer exists — reloading picks up the new version.
   const staleBuild = /dynamically imported module|importing a module script failed/i.test(error?.message ?? "");
@@ -21,13 +25,22 @@ export default function RouteError({ fullScreen = false }) {
       <p className="max-w-md text-sm text-ink-muted">
         {staleBuild
           ? "Reload to get the latest version of the app."
-          : "Your data is safe — nothing was saved halfway. Reload the page, or go back to the dashboard and try again."}
+          : moduleRefresh
+            ? "Your data is safe — nothing was saved halfway. Try this screen again, or go back to the start."
+            : "Your data is safe — nothing was saved halfway. Reload the page, or go back to the dashboard and try again."}
       </p>
       <div className="mt-1 flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-          <RotateCw className="h-3.5 w-3.5" />
-          Reload
-        </Button>
+        {moduleRefresh && !staleBuild ? (
+          <Button variant="outline" size="sm" onClick={moduleRefresh.refresh} loading={moduleRefresh.refreshing}>
+            <RotateCw className="h-3.5 w-3.5" />
+            Try again
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+            <RotateCw className="h-3.5 w-3.5" />
+            Reload
+          </Button>
+        )}
         {!staleBuild && (
           <Button size="sm" onClick={() => window.location.assign("/")}>
             <Home className="h-3.5 w-3.5" />
