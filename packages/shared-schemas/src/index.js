@@ -10,3 +10,7 @@ export * from "#src/payment.js";
 export * from "#src/tenant.js";
 export * from "#src/invoiceTemplate.js";
 export * from "#src/user.js";
+export * from "#src/status.js";
+export * from "#src/paymentMethod.js";
+export * from "#src/taxRule.js";
+export * from "#src/role.js";

@@ -1,5 +1,5 @@
 const FIELD_CLASSES =
-  "w-full rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
+  "w-full rounded-md border border-line-strong bg-card px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:bg-muted disabled:text-ink-muted";
 
 export default function Input({ label, error, icon: Icon, className = "", id, ...props }) {
   const fieldId = id ?? props.name;

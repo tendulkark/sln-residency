@@ -93,11 +93,18 @@ explicitly asked later.
       Printable from Manage Stay, reprinted from Reports, or found/managed
       from the dedicated **Invoices** module (search/filter by number,
       guest, room, date, status; cancel & reissue from there too).
-- [ ] Phase 4 — Admin controls: room types/pricing management (Rooms Setup),
-      hotel profile/branding (Settings), staff accounts (Staff), and the
-      printed invoice's look (Invoice Design, `invoice-template.routes.js`)
-      are in; manage roles/permissions, statuses, and tax rules are still
-      outstanding.
+- [x] Phase 4 — Admin controls: room types/pricing management (Rooms Setup),
+      staff accounts (Staff), the printed invoice's look (Invoice Design),
+      and a Settings hub with Hotel profile, Tax rules (`tax-rules.routes.js`),
+      Payment methods (`payment-methods.routes.js`) and Statuses
+      (`statuses.routes.js`) tabs; Roles & Permissions (`roles.routes.js`);
+      and a read-only Audit Log (`audit-logs.routes.js`). Invariants: the
+      built-in Admin role always holds every permission and can't be edited
+      (`lib/permissions.js` `permissionCodesForRole`); the workflow statuses
+      (`WORKFLOW_STATUS_CODES`, `Status.isSystem`) can be relabelled but
+      never re-coded or removed; tax slabs are matched on the pre-GST tariff
+      as (above, up to], active slabs may not overlap, and a rule that has
+      billed a finalized invoice keeps its rate/slab/start date.
 - [x] Phase 5 — PWA polish: manifest + generated icons (favicons,
       apple-touch-icon, 192/512 + maskable) via `vite-plugin-pwa`, an
       offline-shell service worker (network-first for API calls), and iOS

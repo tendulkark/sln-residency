@@ -163,6 +163,12 @@ model Status {
   sortOrder  Int     @default(0)
   isDefault  Boolean @default(false)
   isTerminal Boolean @default(false) // e.g. "Checked-out", "Cancelled", "Refunded"
+  // A built-in status the app's own workflow looks up by code (check-in
+  // sets the room "occupied", checkout sets it "dirty", reports skip
+  // "cancelled", ...) — see WORKFLOW_STATUS_CODES in shared-schemas. Its
+  // label/color/order can be changed from Settings → Statuses, but never
+  // its code, domain or terminal flag, and it can't be deleted.
+  isSystem   Boolean @default(false)
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   rooms    Room[]
@@ -505,4 +511,6 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([entityType, entityId])
+  // The Audit Log screen pages newest-first through one tenant's rows.
+  @@index([tenantId, createdAt])
 }

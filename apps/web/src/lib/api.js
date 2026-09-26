@@ -100,7 +100,15 @@ export async function apiFetch(path, { retry = true, syncOnForbidden = true, ...
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `Request failed: ${res.status}`);
+    // A 400 from a shared Zod schema carries per-field messages; surface the
+    // first one instead of a bare "Invalid payload", and keep them all on
+    // the error so a form can mark each field.
+    const fieldErrors = body.details?.fieldErrors ?? {};
+    const firstFieldError = Object.values(fieldErrors).flat()[0];
+    const error = new Error(body.error === "Invalid payload" && firstFieldError ? firstFieldError : body.error ?? `Request failed: ${res.status}`);
+    error.status = res.status;
+    error.details = body.details;
+    throw error;
   }
 
   return res.status === 204 ? null : res.json();

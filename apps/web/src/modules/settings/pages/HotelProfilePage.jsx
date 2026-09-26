@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, ImagePlus, Trash2 } from "lucide-react";
+import { ImagePlus, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api.js";
 import { useAuthStore } from "@/app/authStore.js";
-import { Button, Input, Textarea, PageHeader, ErrorState, FormSkeleton } from "@/ui/index.js";
+import { Button, Input, Textarea, ErrorState, FormSkeleton } from "@/ui/index.js";
+import SettingsSection from "@/modules/settings/components/SettingsSection.jsx";
 import { TENANT_QUERY_KEY } from "@/modules/settings/constants.js";
 
 const MAX_LOGO_BYTES = 1_500_000; // ~1.5MB decoded, well under the shared-schema's cap
@@ -17,7 +18,8 @@ function fileToDataUrl(file) {
   });
 }
 
-export default function SettingsPage() {
+// Settings → Hotel profile (settings.manage).
+export default function HotelProfilePage() {
   const queryClient = useQueryClient();
   const updateTenant = useAuthStore((s) => s.updateTenant);
   const tenantQuery = useQuery({ queryKey: [TENANT_QUERY_KEY], queryFn: () => apiFetch("/tenant") });
@@ -70,9 +72,8 @@ export default function SettingsPage() {
   }
 
   const header = (
-    <PageHeader
-      icon={Building2}
-      title="Hotel Settings"
+    <SettingsSection
+      title="Hotel profile"
       subtitle="This letterhead — name, logo, address, phone, GSTIN — appears on every printed tax invoice."
     />
   );

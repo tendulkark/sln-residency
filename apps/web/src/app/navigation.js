@@ -6,6 +6,8 @@ import { INVOICES_NAV_ITEM, INVOICE_DESIGN_NAV_ITEM } from "@/modules/invoices/c
 import { REPORTS_NAV_ITEM } from "@/modules/reports/constants.js";
 import { STAFF_NAV_ITEM } from "@/modules/staff/constants.js";
 import { SETTINGS_NAV_ITEM } from "@/modules/settings/constants.js";
+import { ROLES_NAV_ITEM } from "@/modules/roles/constants.js";
+import { AUDIT_NAV_ITEM } from "@/modules/audit/constants.js";
 
 // Each entry is owned by its module's own constants.js (to/label/permission/
 // icon) — this just assembles them in sidebar order. Shared by AdminShell
@@ -21,13 +23,21 @@ export const NAV_ITEMS = [
   INVOICES_NAV_ITEM,
   REPORTS_NAV_ITEM,
   STAFF_NAV_ITEM,
+  ROLES_NAV_ITEM,
   INVOICE_DESIGN_NAV_ITEM,
   SETTINGS_NAV_ITEM,
+  AUDIT_NAV_ITEM,
 ];
+
+// A page's `permission` is one code, or a list meaning "any of these" — a
+// hub like Settings opens for anyone who can reach at least one of its tabs.
+export function canAccess(permissions, required) {
+  return Array.isArray(required) ? required.some((code) => permissions.has(code)) : permissions.has(required);
+}
 
 // The first page the signed-in user is actually allowed to see — where the
 // bare "/" lands, and where a denied page offers to send them. Null only if
 // their role has no page permissions at all.
 export function firstAllowedNavItem(permissions) {
-  return NAV_ITEMS.find((item) => permissions.has(item.permission)) ?? null;
+  return NAV_ITEMS.find((item) => canAccess(permissions, item.permission)) ?? null;
 }

@@ -16,18 +16,6 @@ function dayRange(dateStr) {
 }
 
 export default async function paymentsRoutes(fastify) {
-  // Read-only lookup for the record-payment form's method dropdown.
-  fastify.get(
-    "/payment-methods",
-    { preHandler: [fastify.authenticate, requirePermission("payments.view")] },
-    async (request) => {
-      return fastify.prisma.paymentMethod.findMany({
-        where: { tenantId: request.user.tenantId, isActive: true },
-        orderBy: { name: "asc" },
-      });
-    }
-  );
-
   fastify.get(
     "/payments",
     { preHandler: [fastify.authenticate, requirePermission("payments.view")] },

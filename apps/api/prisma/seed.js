@@ -6,6 +6,7 @@ import {
   DEFAULT_ADMIN_PERMISSION_CODES,
   DEFAULT_MANAGER_PERMISSION_CODES,
   DEFAULT_EMPLOYEE_PERMISSION_CODES,
+  WORKFLOW_STATUS_CODES,
 } from "@sln/shared-schemas";
 
 const prisma = new PrismaClient();
@@ -166,7 +167,7 @@ async function main() {
       const row = await prisma.status.upsert({
         where: { tenantId_domain_code: { tenantId: tenant.id, domain, code: status.code } },
         update: {},
-        create: { tenantId: tenant.id, domain, ...status },
+        create: { tenantId: tenant.id, domain, ...status, isSystem: WORKFLOW_STATUS_CODES[domain].includes(status.code) },
       });
       byCode.set(status.code, row);
     }

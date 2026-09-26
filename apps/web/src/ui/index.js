@@ -11,6 +11,7 @@ export { default as Combobox } from "@/ui/Combobox.jsx";
 export { default as Switch } from "@/ui/Switch.jsx";
 export { default as Slider } from "@/ui/Slider.jsx";
 export { default as Modal } from "@/ui/Modal.jsx";
+export { default as ConfirmModal } from "@/ui/ConfirmModal.jsx";
 export { default as Card } from "@/ui/Card.jsx";
 export { default as Badge } from "@/ui/Badge.jsx";
 export { default as Chip } from "@/ui/Chip.jsx";

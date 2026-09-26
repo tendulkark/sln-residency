@@ -1,5 +1,6 @@
 import fp from "fastify-plugin";
 import { verifyAccessToken } from "#src/lib/tokens.js";
+import { permissionCodesForRole } from "#src/lib/permissions.js";
 
 // Decorates the request with `authenticate`, a preHandler that verifies the
 // bearer access token and loads the caller's tenant/role/permissions onto
@@ -45,7 +46,7 @@ export default fp(async function authPlugin(fastify) {
       email: user.email,
       roleName: user.role.name,
       sessionId: session.id,
-      permissions: new Set(user.role.rolePermissions.map((rp) => rp.permission.code)),
+      permissions: new Set(permissionCodesForRole(user.role)),
     };
   });
 });
