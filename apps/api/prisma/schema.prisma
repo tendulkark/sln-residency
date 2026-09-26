@@ -45,6 +45,7 @@ model Tenant {
   roomClosures  RoomClosure[]
   bookingCharges BookingCharge[]
   invoiceTemplate InvoiceTemplate?
+  userSessions  UserSession[]
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +101,6 @@ model User {
   email             String
   passwordHash      String
   isActive          Boolean   @default(true)
-  refreshTokenHash  String? // hash of the currently-valid refresh token, rotated on each use
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -114,9 +114,39 @@ model User {
   auditLogs        AuditLog[]
   roomClosuresCreated RoomClosure[] @relation("RoomClosureCreatedBy")
   bookingChargesCreated BookingCharge[] @relation("BookingChargeCreatedBy")
+  sessions         UserSession[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
+}
+
+// One row per signed-in device/browser, so staff can stay signed in on the
+// front-desk PC and a phone at once. The refresh token (httpOnly cookie)
+// carries this row's id as `sid`; the access token carries it too, so
+// signing a device out (deleting its row) locks it out on its very next
+// request, not 15 minutes later. Only a SHA-256 of the token is stored.
+model UserSession {
+  id                String   @id
+  tenantId          String
+  userId            String
+  refreshTokenHash  String
+  // The token this one replaced at the last rotation. Accepted for a few
+  // seconds after `rotatedAt`, so two tabs refreshing at the same moment
+  // don't sign each other out; any later replay of it means the old token
+  // leaked, and the whole session is dropped.
+  previousTokenHash String?
+  rotatedAt         DateTime @default(now())
+  userAgent         String?
+  ipAddress         String?
+  createdAt         DateTime @default(now())
+  lastUsedAt        DateTime @default(now())
+  expiresAt         DateTime
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
 }
 
 // ---------------------------------------------------------------------------

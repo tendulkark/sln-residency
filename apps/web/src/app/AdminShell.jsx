@@ -8,6 +8,8 @@ import { Button } from "@/ui/index.js";
 import { NAV_ITEMS } from "@/app/navigation.js";
 import { LOGIN_ROUTE_PATH } from "@/modules/auth/constants.js";
 import { PROFILE_ROUTE_PATH } from "@/modules/profile/constants.js";
+import { ModuleRefreshProvider } from "@/app/ModuleRefresh.jsx";
+import { useSessionSync } from "@/app/useSessionSync.js";
 
 const SIDEBAR_COLLAPSED_KEY = "sln:sidebarCollapsed";
 
@@ -95,6 +97,7 @@ export default function AdminShell() {
   const tenant = useAuthStore((s) => s.tenant);
   const permissions = useAuthStore((s) => s.permissions);
   const clearSession = useAuthStore((s) => s.clearSession);
+  useSessionSync();
 
   // A per-browser UI preference, not tenant/business data — localStorage is
   // the right home for it, not the server. Only meaningful for the desktop
@@ -195,7 +198,9 @@ export default function AdminShell() {
       </aside>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-6">
-        <Outlet />
+        <ModuleRefreshProvider>
+          <Outlet />
+        </ModuleRefreshProvider>
       </main>
     </div>
   );

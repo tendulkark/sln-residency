@@ -19,12 +19,21 @@ export default fp(async function authPlugin(fastify) {
       return reply.code(401).send({ error: "Invalid or expired token" });
     }
 
-    const user = await fastify.prisma.user.findUnique({
-      where: { id: payload.sub },
-      include: { role: { include: { rolePermissions: { include: { permission: true } } } } },
-    });
+    // The token must still belong to a live signed-in device — signing a
+    // device out (Profile screen, or an Admin resetting the password)
+    // deletes its UserSession row, which locks this token out immediately.
+    const session = payload.sid
+      ? await fastify.prisma.userSession.findUnique({
+          where: { id: payload.sid },
+          include: { user: { include: { role: { include: { rolePermissions: { include: { permission: true } } } } } } },
+        })
+      : null;
+    const user = session?.user;
 
-    if (!user || !user.isActive || user.tenantId !== payload.tenantId) {
+    if (!session || session.expiresAt < new Date() || session.userId !== payload.sub) {
+      return reply.code(401).send({ error: "Signed out on this device" });
+    }
+    if (!user.isActive || user.tenantId !== payload.tenantId) {
       return reply.code(401).send({ error: "User no longer valid" });
     }
 
@@ -34,6 +43,8 @@ export default fp(async function authPlugin(fastify) {
       roleId: user.roleId,
       name: user.name,
       email: user.email,
+      roleName: user.role.name,
+      sessionId: session.id,
       permissions: new Set(user.role.rolePermissions.map((rp) => rp.permission.code)),
     };
   });

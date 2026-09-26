@@ -38,10 +38,39 @@ export async function refreshSession() {
   return data.accessToken;
 }
 
+// How stale the signed-in user's permissions may get before an automatic
+// sync (window focus, moving between modules, the background timer)
+// re-reads them. A module refresh or a 403 syncs regardless.
+const SESSION_SYNC_MIN_INTERVAL_MS = 30_000;
+let lastSessionSyncAt = 0;
+let sessionSyncPromise = null;
+
+// Re-reads the signed-in user, their role's permissions and the hotel's
+// branding from /me into the auth store, so an Admin's role change shows
+// up in an open console (sidebar, page guards, buttons) without signing
+// out. A deactivated account or a device signed out elsewhere gets a 401
+// here, which apiFetch turns into a sign-out.
+export function syncSession({ force = false } = {}) {
+  if (!useAuthStore.getState().accessToken) return Promise.resolve();
+  if (!force && Date.now() - lastSessionSyncAt < SESSION_SYNC_MIN_INTERVAL_MS) return Promise.resolve();
+
+  sessionSyncPromise ??= apiFetch("/me", { syncOnForbidden: false })
+    .then((data) => {
+      lastSessionSyncAt = Date.now();
+      useAuthStore.getState().syncSession(data);
+    })
+    .catch(() => {}) // offline or signed out — the screens already show that
+    .finally(() => {
+      sessionSyncPromise = null;
+    });
+  return sessionSyncPromise;
+}
+
 // Central fetch wrapper: attaches the bearer token, sends the httpOnly
 // refresh cookie, and on a 401 tries exactly one refresh-and-retry before
-// giving up and clearing the session.
-export async function apiFetch(path, { retry = true, ...options } = {}) {
+// giving up and clearing the session. A 403 means the UI offered something
+// this role can no longer do, so the permissions are re-synced right away.
+export async function apiFetch(path, { retry = true, syncOnForbidden = true, ...options } = {}) {
   const accessToken = useAuthStore.getState().accessToken;
 
   const res = await send(`${API_URL}${path}`, {
@@ -63,9 +92,11 @@ export async function apiFetch(path, { retry = true, ...options } = {}) {
     });
     const newToken = await refreshPromise;
     if (newToken) {
-      return apiFetch(path, { ...options, retry: false });
+      return apiFetch(path, { ...options, retry: false, syncOnForbidden });
     }
   }
+
+  if (res.status === 403 && syncOnForbidden) syncSession({ force: true });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

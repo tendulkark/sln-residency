@@ -20,7 +20,7 @@ export { default as EmptyState } from "@/ui/EmptyState.jsx";
 export { default as Skeleton, CardSkeleton, TableSkeleton, ListSkeleton, FormSkeleton } from "@/ui/Skeleton.jsx";
 export { default as Spinner } from "@/ui/Spinner.jsx";
 export { default as ErrorState } from "@/ui/ErrorState.jsx";
-export { default as PageHeader } from "@/ui/PageHeader.jsx";
+export { default as PageHeader, PageHeaderExtrasContext } from "@/ui/PageHeader.jsx";
 export { default as DonutChart } from "@/ui/DonutChart.jsx";
 export { default as MiniBarChart } from "@/ui/MiniBarChart.jsx";
 export { default as DataTable, Th, Td, Tr } from "@/ui/DataTable.jsx";

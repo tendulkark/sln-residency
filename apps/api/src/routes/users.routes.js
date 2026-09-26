@@ -2,6 +2,7 @@ import argon2 from "argon2";
 import { userSchema, userUpdateSchema, resetPasswordSchema } from "@sln/shared-schemas";
 import { requirePermission } from "#src/lib/permissions.js";
 import { recordAudit } from "#src/lib/audit.js";
+import { endAllSessions } from "#src/lib/sessions.js";
 
 const USER_SELECT = {
   id: true,
@@ -136,6 +137,9 @@ export default async function usersRoutes(fastify) {
       let user;
       try {
         user = await fastify.prisma.user.update({ where: { id: existing.id }, data, select: USER_SELECT });
+        // A deactivated account is refused on its next request anyway;
+        // dropping its sessions also frees their rows straight away.
+        if (data.isActive === false) await endAllSessions(fastify.prisma, existing.id);
       } catch (err) {
         if (err.code === "P2002") return reply.code(409).send({ error: "A staff account with this email already exists" });
         throw err;
@@ -155,9 +159,9 @@ export default async function usersRoutes(fastify) {
   );
 
   // An Admin setting a new password for someone else's account (locked
-  // out, forgotten, or a fresh hire's first login). Clears the account's
-  // refresh token so every device it was signed into needs to sign in
-  // again with the new password — the self-service change below doesn't,
+  // out, forgotten, or a fresh hire's first login). Ends every device
+  // session of the account, so each device it was signed into needs to
+  // sign in again with the new password — the self-service change below doesn't,
   // since re-entering the current password there already reverified the
   // active session.
   fastify.post(
@@ -175,8 +179,9 @@ export default async function usersRoutes(fastify) {
 
       await fastify.prisma.user.update({
         where: { id: existing.id },
-        data: { passwordHash: await argon2.hash(parsed.data.password), refreshTokenHash: null },
+        data: { passwordHash: await argon2.hash(parsed.data.password) },
       });
+      await endAllSessions(fastify.prisma, existing.id);
 
       await recordAudit(fastify.prisma, {
         tenantId,
