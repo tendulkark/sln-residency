@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
-import { Columns3, Download, Printer, ReceiptText, Search, SearchX } from "lucide-react";
+import { CheckCircle2, Columns3, Download, Printer, ReceiptText, Search, SearchX } from "lucide-react";
 import { apiFetch, downloadFile } from "@/lib/api.js";
 import { formatDateTime, formatMoney, formatShortDate, formatTime } from "@/lib/format.js";
 import { useSort } from "@/lib/useSort.js";
@@ -9,7 +9,16 @@ import { Badge, BarList, Button, DataTable, EmptyState, Input, SegmentedControl,
 import InvoiceModal from "@/modules/invoices/components/InvoiceModal.jsx";
 import { statusesKey } from "@/modules/common/constants.js";
 import { REPORTS_BOOKINGS_QUERY_KEY } from "@/modules/reports/constants.js";
-import { InfoTip, KpiCard, KpiGrid, Pager, ReportLoadState, ReportPanel, Refetching } from "@/modules/reports/components/reportParts.jsx";
+import {
+  REPORT_TABLE_MAX_HEIGHT,
+  InfoTip,
+  KpiCard,
+  KpiGrid,
+  Pager,
+  ReportLoadState,
+  ReportPanel,
+  Refetching,
+} from "@/modules/reports/components/reportParts.jsx";
 
 const COUNT_BY = [
   { value: "checkIn", label: "Check-in date" },
@@ -33,9 +42,15 @@ function Stamp({ scheduled, actual, by }) {
     <>
       <p className="whitespace-nowrap">{formatDateTime(scheduled)}</p>
       {actual && (
-        <p className="text-xs text-success">
-          Actual {formatShortDate(actual)}, {formatTime(actual)}
-          {by ? ` · ${by}` : ""}
+        <p
+          className="flex items-center gap-1 whitespace-nowrap text-xs text-success"
+          title={`Actual ${formatDateTime(actual)}${by ? ` by ${by}` : ""}`}
+        >
+          <CheckCircle2 className="h-3 w-3 shrink-0" aria-label="Actual" />
+          <span className="truncate">
+            {formatShortDate(actual)}, {formatTime(actual)}
+            {by ? ` · ${by}` : ""}
+          </span>
         </p>
       )}
     </>
@@ -134,8 +149,20 @@ function buildColumns({ onReprint }) {
         </>
       ),
     },
-    { id: "checkIn", label: "Check-in", width: 190, sortKey: "checkIn", render: (r) => <Stamp scheduled={r.checkIn} actual={r.actualCheckIn} by={r.checkedInBy} /> },
-    { id: "checkOut", label: "Check-out", width: 190, sortKey: "checkOut", render: (r) => <Stamp scheduled={r.checkOut} actual={r.actualCheckOut} by={r.checkedOutBy} /> },
+    {
+      id: "checkIn",
+      label: "Check-in",
+      width: 190,
+      sortKey: "checkIn",
+      render: (r) => <Stamp scheduled={r.checkIn} actual={r.actualCheckIn} by={r.checkedInBy} />,
+    },
+    {
+      id: "checkOut",
+      label: "Check-out",
+      width: 190,
+      sortKey: "checkOut",
+      render: (r) => <Stamp scheduled={r.checkOut} actual={r.actualCheckOut} by={r.checkedOutBy} />,
+    },
     { id: "nights", label: "Nights", width: 72, align: "right", render: (r) => <span className="tabular-nums">{r.nights}</span> },
     {
       id: "taxable",
@@ -227,7 +254,8 @@ function buildColumns({ onReprint }) {
       id: "paidVia",
       label: "Paid via",
       width: 150,
-      render: (r) => (r.paymentMethods.length ? <p className="text-xs text-ink-soft">{r.paymentMethods.join(", ")}</p> : <span className="text-ink-faint">—</span>),
+      render: (r) =>
+        r.paymentMethods.length ? <p className="text-xs text-ink-soft">{r.paymentMethods.join(", ")}</p> : <span className="text-ink-faint">—</span>,
     },
     { id: "notes", label: "Notes", width: 260, render: (r) => <Notes text={r.notes} /> },
   ];
@@ -271,7 +299,11 @@ function ColumnsMenu({ columns, hidden, onChange }) {
           </label>
         ))}
         {hidden.size > 0 && (
-          <button type="button" onClick={() => [...hidden].forEach(toggle)} className="mt-1 w-full rounded px-2 py-1.5 text-left text-xs font-medium text-brand hover:bg-muted">
+          <button
+            type="button"
+            onClick={() => [...hidden].forEach(toggle)}
+            className="mt-1 w-full rounded px-2 py-1.5 text-left text-xs font-medium text-brand hover:bg-muted"
+          >
             Show all columns
           </button>
         )}
@@ -314,7 +346,7 @@ export default function BookingsReport({ from, to }) {
           page: String(page),
           pageSize,
           ...(sort.sortBy ? { sortBy: sort.sortBy, sortDir: sort.sortDir } : {}),
-        })}`
+        })}`,
       ),
     placeholderData: (prev) => prev,
   });
@@ -364,14 +396,16 @@ export default function BookingsReport({ from, to }) {
         <KpiCard label="No-shows" value={counts.noShows} />
       </KpiGrid>
 
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mb-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <ReportPanel title="By status">
           <BarList
             items={data.byStatus.map((s) => ({ key: s.code, label: s.label, value: s.count, display: `${s.count} · ${s.percent}%`, color: s.color }))}
           />
         </ReportPanel>
         <ReportPanel title="By room type">
-          <BarList items={data.byRoomType.map((rt) => ({ key: rt.name, label: rt.name, value: rt.count, display: `${rt.count} · ${rt.percent}%` }))} />
+          <BarList
+            items={data.byRoomType.map((rt) => ({ key: rt.name, label: rt.name, value: rt.count, display: `${rt.count} · ${rt.percent}%` }))}
+          />
         </ReportPanel>
       </div>
 
@@ -398,7 +432,13 @@ export default function BookingsReport({ from, to }) {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 print:hidden">
           <div className="flex flex-wrap items-center gap-2">
             <div className="w-64">
-              <Input icon={Search} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Guest name, phone or room" aria-label="Search" />
+              <Input
+                icon={Search}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Guest name, phone or room"
+                aria-label="Search"
+              />
             </div>
             <div className="w-44">
               <Select options={statusOptions} value={statusFilter} onChange={setStatusFilter} placeholder="All statuses" />
@@ -410,7 +450,8 @@ export default function BookingsReport({ from, to }) {
 
         {query.isFetching && data.rows.length === 0 && <TableSkeleton rows={6} columns={8} />}
 
-        {data.rows.length === 0 && !query.isFetching &&
+        {data.rows.length === 0 &&
+          !query.isFetching &&
           (search || statusFilter ? (
             <EmptyState
               icon={SearchX}
@@ -435,7 +476,7 @@ export default function BookingsReport({ from, to }) {
           ))}
 
         {data.rows.length > 0 && (
-          <DataTable fixed minWidth={`${tableWidth}px`} maxHeight="70vh">
+          <DataTable fixed minWidth={`${tableWidth}px`} maxHeight={REPORT_TABLE_MAX_HEIGHT}>
             <colgroup>
               {visible.map((c) => (
                 <col key={c.id} style={{ width: c.width }} />

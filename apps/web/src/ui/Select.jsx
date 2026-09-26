@@ -1,6 +1,5 @@
-import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from "@headlessui/react";
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from "@headlessui/react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
-import { Fragment } from "react";
 
 // Native-<select>-like API on top of Headless UI's Listbox, so every
 // dropdown in the app looks and behaves the same and is themeable from one
@@ -29,25 +28,31 @@ export default function Select({ label, options, value, onChange, placeholder = 
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
             )}
           </ListboxButton>
-          <Transition as={Fragment} leave="transition ease-in duration-100" leaveFrom="opacity-100" leaveTo="opacity-0">
-            <ListboxOptions className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-line bg-card py-1 text-sm shadow-lg focus:outline-none">
-              {options.length === 0 && <div className="px-3 py-2 text-ink-muted">{emptyText}</div>}
-              {options.map((option) => (
-                <ListboxOption
-                  key={option.value}
-                  value={option.value}
-                  className="relative cursor-pointer select-none px-3 py-2 pl-9 text-ink data-[focus]:bg-brand-tint"
-                >
-                  {({ selected: isSelected }) => (
-                    <>
-                      {isSelected && <Check className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand" />}
-                      {option.label}
-                    </>
-                  )}
-                </ListboxOption>
-              ))}
-            </ListboxOptions>
-          </Transition>
+          {/* Anchored (rendered in a floating layer above the page, flipping
+              upward when there's no room below) rather than positioned inside
+              the field's own box — so a sticky table header, a card or a
+              scroll container can never paint over the open list or clip it. */}
+          <ListboxOptions
+            anchor="bottom start"
+            transition
+            className="z-[60] max-h-60 w-[var(--button-width)] overflow-auto rounded-md border border-line bg-card py-1 text-sm shadow-lg [--anchor-gap:4px] focus:outline-none transition duration-100 ease-in data-[leave]:data-[closed]:opacity-0"
+          >
+            {options.length === 0 && <div className="px-3 py-2 text-ink-muted">{emptyText}</div>}
+            {options.map((option) => (
+              <ListboxOption
+                key={option.value}
+                value={option.value}
+                className="relative cursor-pointer select-none px-3 py-2 pl-9 text-ink data-[focus]:bg-brand-tint"
+              >
+                {({ selected: isSelected }) => (
+                  <>
+                    {isSelected && <Check className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand" />}
+                    {option.label}
+                  </>
+                )}
+              </ListboxOption>
+            ))}
+          </ListboxOptions>
         </div>
       </Listbox>
       {error && <p className="text-xs text-danger">{error}</p>}

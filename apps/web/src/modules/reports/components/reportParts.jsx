@@ -2,6 +2,11 @@ import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { Button, Card, CardSkeleton, ErrorState, Select, Skeleton } from "@/ui/index.js";
 
+// A report table's scroll box: tall enough to read, short enough that the
+// whole box (its own sticky header included) fits under the page's pinned
+// title/tabs/period header on a laptop screen.
+export const REPORT_TABLE_MAX_HEIGHT = "max(320px, calc(100vh - 17rem))";
+
 // Small building blocks every Reports tab shares, so the four tabs read as
 // one report rather than four screens that happen to sit together.
 
@@ -33,7 +38,9 @@ export function KpiCard({ label, value, sub, delta, upIsGood = true, deltaLabel 
           </p>
           {delta != null && (
             <p className="mt-1 flex items-center gap-1 text-xs">
-              <span className={`inline-flex items-center gap-0.5 font-semibold ${delta === 0 ? "text-ink-muted" : better ? "text-success" : "text-danger"}`}>
+              <span
+                className={`inline-flex items-center gap-0.5 font-semibold ${delta === 0 ? "text-ink-muted" : better ? "text-success" : "text-danger"}`}
+              >
                 {delta !== 0 && <Arrow className="h-3.5 w-3.5" aria-hidden="true" />}
                 {delta > 0 ? "+" : ""}
                 {delta}%
@@ -55,8 +62,8 @@ const KPI_COLUMNS = {
   2: "lg:grid-cols-2",
   3: "lg:grid-cols-3",
   4: "lg:grid-cols-4",
-  5: "lg:grid-cols-3 2xl:grid-cols-5",
-  6: "lg:grid-cols-3 2xl:grid-cols-6",
+  5: "lg:grid-cols-3 xl:grid-cols-5",
+  6: "lg:grid-cols-3 xl:grid-cols-6",
 };
 
 export function KpiGrid({ columns = 4, children }) {
@@ -90,7 +97,10 @@ export function InfoTip({ label = "How this is worked out", children }) {
         <Info className="h-3.5 w-3.5" />
         {label}
       </PopoverButton>
-      <PopoverPanel anchor="bottom end" className="z-40 mt-1 w-80 max-w-[90vw] space-y-2 rounded-lg border border-line bg-card p-3 text-xs leading-relaxed text-ink-soft shadow-lg">
+      <PopoverPanel
+        anchor="bottom end"
+        className="z-40 mt-1 w-80 max-w-[90vw] space-y-2 rounded-lg border border-line bg-card p-3 text-xs leading-relaxed text-ink-soft shadow-lg"
+      >
         {children}
       </PopoverPanel>
     </Popover>

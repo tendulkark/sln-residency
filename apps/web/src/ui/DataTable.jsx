@@ -118,7 +118,10 @@ export function Tr({ className = "", ...props }) {
 export default function DataTable({ children, maxHeight = "65vh", fill = false, fixed = false, minWidth, className = "" }) {
   return (
     <div
-      className={`overflow-auto overscroll-contain rounded-lg border border-line-strong bg-card shadow-sm print:max-h-none print:overflow-visible ${
+      // `isolate` keeps the sticky header/pinned cells' z-indexes inside
+      // this box, so they can't paint over page chrome (a sticky page
+      // header) as the page scrolls.
+      className={`isolate overflow-auto overscroll-contain rounded-lg border border-line-strong bg-card shadow-sm print:max-h-none print:overflow-visible ${
         fill ? "min-h-0 flex-1" : ""
       } ${className}`}
       style={fill ? undefined : { maxHeight }}

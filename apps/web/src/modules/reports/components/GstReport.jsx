@@ -6,7 +6,16 @@ import { formatDate, formatMoney } from "@/lib/format.js";
 import { Button, DataTable, EmptyState, SegmentedControl, Td, Tf, Th, Tr } from "@/ui/index.js";
 import InvoiceModal from "@/modules/invoices/components/InvoiceModal.jsx";
 import { REPORTS_GST_QUERY_KEY } from "@/modules/reports/constants.js";
-import { InfoTip, KpiCard, KpiGrid, Pager, ReportLoadState, ReportPanel, Refetching } from "@/modules/reports/components/reportParts.jsx";
+import {
+  REPORT_TABLE_MAX_HEIGHT,
+  InfoTip,
+  KpiCard,
+  KpiGrid,
+  Pager,
+  ReportLoadState,
+  ReportPanel,
+  Refetching,
+} from "@/modules/reports/components/reportParts.jsx";
 
 const TYPE_OPTIONS = [
   { value: "all", label: "All" },
@@ -104,16 +113,34 @@ export default function GstReport({ from, to }) {
         <EmptyState
           icon={Landmark}
           title="No tax invoices finalized in this period"
-          subtitle={data.cancelledCount ? `${data.cancelledCount} cancelled invoice(s) in this period are kept for the record.` : "Invoices appear here once a stay is checked out."}
+          subtitle={
+            data.cancelledCount
+              ? `${data.cancelledCount} cancelled invoice(s) in this period are kept for the record.`
+              : "Invoices appear here once a stay is checked out."
+          }
         />
       ) : (
         <>
           <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <SplitCard title="B2B" hint="Issued to a GSTIN — filed invoice by invoice" figures={data.b2b} active={type === "b2b"} onClick={() => setType(type === "b2b" ? "all" : "b2b")} />
-            <SplitCard title="B2C" hint="No GSTIN — filed as rate-wise totals" figures={data.b2c} active={type === "b2c"} onClick={() => setType(type === "b2c" ? "all" : "b2c")} />
+            <SplitCard
+              title="B2B"
+              hint="Issued to a GSTIN — filed invoice by invoice"
+              figures={data.b2b}
+              active={type === "b2b"}
+              onClick={() => setType(type === "b2b" ? "all" : "b2b")}
+            />
+            <SplitCard
+              title="B2C"
+              hint="No GSTIN — filed as rate-wise totals"
+              figures={data.b2c}
+              active={type === "b2c"}
+              onClick={() => setType(type === "b2c" ? "all" : "b2c")}
+            />
             <ReportPanel title="Cancelled invoices">
               <p className="text-xl font-bold tabular-nums text-ink">{data.cancelledCount}</p>
-              <p className="mt-1 text-xs text-ink-muted">Kept for the record (never deleted) and left out of every total here — each was replaced by its reissue.</p>
+              <p className="mt-1 text-xs text-ink-muted">
+                Kept for the record (never deleted) and left out of every total here — each was replaced by its reissue.
+              </p>
             </ReportPanel>
           </div>
 
@@ -174,7 +201,10 @@ export default function GstReport({ from, to }) {
                 </tr>
               </tfoot>
             </DataTable>
-            <p className="mt-2 text-xs text-ink-muted">An invoice with items at two rates (e.g. a room at 5% and food at 18%) counts under both rates, so the rate rows can add up to more invoices than the total.</p>
+            <p className="mt-2 text-xs text-ink-muted">
+              An invoice with items at two rates (e.g. a room at 5% and food at 18%) counts under both rates, so the rate rows can add up to more
+              invoices than the total.
+            </p>
           </ReportPanel>
 
           <ReportPanel
@@ -182,7 +212,10 @@ export default function GstReport({ from, to }) {
             actions={
               <>
                 <InfoTip label="About this export">
-                  <p>The CSV has one line per invoice per tax rate, the way GSTR-1's B2B section is filed, with B2B/B2C, GSTIN and SAC on every line so it can be filtered either way.</p>
+                  <p>
+                    The CSV has one line per invoice per tax rate, the way GSTR-1's B2B section is filed, with B2B/B2C, GSTIN and SAC on every line so
+                    it can be filtered either way.
+                  </p>
                   {missingSac && <p>SAC is blank because your GST rule has no SAC code set yet (accommodation is usually 9963).</p>}
                 </InfoTip>
                 <Button variant="outline" size="sm" onClick={downloadCsv} loading={downloading}>
@@ -201,7 +234,7 @@ export default function GstReport({ from, to }) {
             {data.rows.length === 0 ? (
               <EmptyState icon={Landmark} title={`No ${type.toUpperCase()} invoices in this period`} />
             ) : (
-              <DataTable fixed minWidth={`${INVOICE_TABLE_WIDTH}px`} maxHeight="65vh">
+              <DataTable fixed minWidth={`${INVOICE_TABLE_WIDTH}px`} maxHeight={REPORT_TABLE_MAX_HEIGHT}>
                 <colgroup>
                   {INVOICE_COLUMNS.map((c) => (
                     <col key={c.label} style={{ width: c.width }} />
