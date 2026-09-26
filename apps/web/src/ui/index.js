@@ -21,6 +21,6 @@ export { default as Skeleton, CardSkeleton, TableSkeleton, ListSkeleton, FormSke
 export { default as Spinner } from "@/ui/Spinner.jsx";
 export { default as ErrorState } from "@/ui/ErrorState.jsx";
 export { default as PageHeader, PageHeaderExtrasContext } from "@/ui/PageHeader.jsx";
-export { default as DonutChart } from "@/ui/DonutChart.jsx";
-export { default as MiniBarChart } from "@/ui/MiniBarChart.jsx";
-export { default as DataTable, Th, Td, Tr } from "@/ui/DataTable.jsx";
+export { default as TrendChart } from "@/ui/TrendChart.jsx";
+export { default as BarList } from "@/ui/BarList.jsx";
+export { default as DataTable, Th, Td, Tr, Tf } from "@/ui/DataTable.jsx";

@@ -66,7 +66,7 @@ Module map (`apps/web/src/modules/`):
 | `housekeeping` | `HousekeepingPage`| `RoomClosuresModal`                                                                                                   |
 | `reservations` | `ReservationsPage`| `BookingFormModal`, `ManageStayModal`, `EditBookingModal`, `ExtendStayModal`, `RoomBookingsModal`, `DayBookingsModal`, `DaySheet`, `BookingRow`, `MiniDatePicker`, `MonthYearPicker` (+ `calendarUtils.js`) |
 | `invoices`     | `InvoicesPage`, `InvoiceDesignPage` | `InvoiceModal`, `InvoiceDocument`, `ProvisionalBillModal`, `GuestDetailsForm`, `InvoiceDesignForm` (+ `useInvoiceTemplate.js`, `invoicePreviewSample.js`) |
-| `reports`      | `ReportsPage`     | —                                                                                                                     |
+| `reports`      | `ReportsPage`     | `ReportPeriodPicker`, `BookingsReport`, `RevenueReport`, `OccupancyReport`, `GstReport`, `reportParts` (+ `reportPeriod.js`) |
 | `settings`     | `SettingsPage`    | —                                                                                                                     |
 | `staff`        | `StaffPage`       | `UserFormModal`, `ResetPasswordModal`                                                                                 |
 | `profile`      | `ProfilePage`     | `SignedInDevicesCard`                                                                                                 |
@@ -148,11 +148,17 @@ Conventions:
   signature/stamp image), with a live preview. Stored per tenant in
   `InvoiceTemplate`; presentation only — GST-required fields always print
   and figures/numbers are never affected.
-- **Reports** — a Rooms Reports module with four tabs: Bookings (status/
-  room-type breakdown, a full detail table with every audit-trail-backed
-  column, CSV export), Revenue (by payment method + daily trend), Occupancy
-  (daily % across a date range), and GST (CGST/SGST collected, by rate,
-  per-invoice) — all filterable by date range.
+- **Reports** — one Day/Week/Month/Year/Custom period (weeks start
+  Sunday, ‹ › to step, kept in the URL) scopes four tabs, each with its own
+  CSV export: **Bookings** (stays, room-nights, average stay, by status /
+  room type, and a compact detail table with a totals row for the whole
+  range), **Revenue** (net collected vs billed with change vs the previous
+  period, by payment method, by staff member, and a per-day/week/month
+  table for cash reconciliation), **Occupancy** (a room counts if it's
+  occupied at midnight; past nights are *actual*, later ones *on the
+  books*, never averaged together; closures excluded; ADR, RevPAR, average
+  stay, by room type), and **GST** (B2B/B2C split, rate-wise table,
+  invoice list and a GSTR-1-friendly CSV with GSTIN and SAC).
 
 ## Local setup
 

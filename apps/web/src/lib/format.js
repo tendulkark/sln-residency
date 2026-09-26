@@ -17,6 +17,12 @@ export function formatCurrencyPrecise(amount) {
   return `Rs. ${Number(amount ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Always two decimals, ₹ sign, never wraps — for columns of money in a
+// report table, where amounts line up digit by digit.
+export function formatMoney(amount) {
+  return `₹${Number(amount ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function formatDate(dateLike) {
   return new Date(dateLike).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }

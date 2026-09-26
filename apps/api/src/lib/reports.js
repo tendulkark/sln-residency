@@ -1,4 +1,4 @@
-import { nightsBetween } from "#src/lib/billing.js";
+import { nightsBetween, isVoidStatus } from "#src/lib/billing.js";
 
 // Local-calendar-date helpers — mirrors dashboard.routes.js's localDateLabel
 // convention (never toISOString(), which shifts a date back a day in IST).
@@ -28,9 +28,51 @@ export function localDateLabel(date) {
   return `${year}-${month}-${day}`;
 }
 
+// "2026-09-22 14:00" in the hotel's local time — for CSV cells, where a
+// UTC ISO string would read as the wrong hour to whoever opens the file.
+export function localDateTimeLabel(date) {
+  const d = new Date(date);
+  return `${localDateLabel(d)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export function round2(n) {
   return Math.round(n * 100) / 100;
 }
+
+// The same-length window immediately before [from, to] — what "vs previous
+// period" deltas compare against (a month vs the month before, a custom
+// 10-day range vs the 10 days before it).
+export function previousRange(from, to) {
+  const fromDate = startOfDay(from);
+  const toDate = endOfDayExclusive(to);
+  const days = Math.round((toDate - fromDate) / 86_400_000);
+  return { fromDate: addDays(fromDate, -days), toDate: fromDate };
+}
+
+// Every calendar date label in [fromDate, toDate), so trend charts show a
+// quiet day as a zero instead of silently skipping it.
+export function eachDayLabel(fromDate, toDate) {
+  const labels = [];
+  for (let d = new Date(fromDate); d < toDate; d = addDays(d, 1)) labels.push(localDateLabel(d));
+  return labels;
+}
+
+// An invoice's GST, rate by rate — from the lines frozen in its snapshot
+// (room tariff and each charge at its own slab), or for an invoice issued
+// before those existed, its single stored rate with the tax split evenly.
+// Shared by the GST report and the Bookings report so both always show
+// the same CGST/SGST for the same invoice.
+export function taxLinesOf(invoice) {
+  const lines = invoice.snapshot?.summary?.taxLines;
+  if (Array.isArray(lines) && lines.length) {
+    return lines.map((l) => ({ ratePercent: Number(l.ratePercent), taxable: Number(l.taxable), cgst: Number(l.cgst), sgst: Number(l.sgst) }));
+  }
+  const tax = Number(invoice.taxAmount);
+  const half = round2(tax / 2);
+  return [{ ratePercent: Number(invoice.taxRateSnapshot), taxable: Number(invoice.subtotal), cgst: half, sgst: round2(tax - half) }];
+}
+
+const sumBy = (items, get) => round2(items.reduce((s, x) => s + get(x), 0));
 
 // Shared by every "Rooms Reports > Bookings" query (the summary pass, the
 // paginated detail pass, and the CSV export) so a filter can never drift
@@ -71,7 +113,9 @@ export async function summarizeBookingsInRange(prisma, tenantId, filters) {
     select: {
       id: true,
       groupCode: true,
-      status: { select: { code: true, label: true, color: true } },
+      checkIn: true,
+      checkOut: true,
+      status: { select: { code: true, label: true, color: true, isTerminal: true } },
       room: { select: { roomType: { select: { name: true } } } },
     },
   });
@@ -79,6 +123,8 @@ export async function summarizeBookingsInRange(prisma, tenantId, filters) {
   const groupKeys = new Set(bookings.map((b) => b.groupCode ?? b.id));
   const byStatus = new Map();
   const byRoomType = new Map();
+  let roomNights = 0;
+  let stayedRooms = 0;
 
   for (const b of bookings) {
     const statusKey = b.status.code;
@@ -88,15 +134,77 @@ export async function summarizeBookingsInRange(prisma, tenantId, filters) {
     const roomTypeName = b.room.roomType.name;
     if (!byRoomType.has(roomTypeName)) byRoomType.set(roomTypeName, { name: roomTypeName, count: 0 });
     byRoomType.get(roomTypeName).count += 1;
+
+    // Nights only count for rooms that were (or will be) actually stayed
+    // in — a cancelled or no-show booking sold no room-nights.
+    if (!isVoidStatus(b.status)) {
+      roomNights += nightsBetween(b.checkIn, b.checkOut);
+      stayedRooms += 1;
+    }
   }
 
   const total = bookings.length;
-  const withPercent = (map) => [...map.values()].map((v) => ({ ...v, percent: total ? Math.round((v.count / total) * 100) : 0 }));
+  const withPercent = (map) =>
+    [...map.values()].sort((a, b) => b.count - a.count).map((v) => ({ ...v, percent: total ? Math.round((v.count / total) * 100) : 0 }));
 
   return {
-    counts: { bookings: groupKeys.size, totalRooms: total, cancelled: bookings.filter((b) => b.status.code === "cancelled").length },
+    counts: {
+      bookings: groupKeys.size,
+      totalRooms: total,
+      roomNights,
+      avgStayNights: stayedRooms ? Math.round((roomNights / stayedRooms) * 10) / 10 : 0,
+      cancelled: byStatus.get("cancelled")?.count ?? 0,
+      noShows: byStatus.get("no_show")?.count ?? 0,
+    },
     byStatus: withPercent(byStatus),
     byRoomType: withPercent(byRoomType),
+    totals: await summarizeBookingMoney(prisma, bookings),
+  };
+}
+
+// The Bookings table's totals row — the money columns summed over every
+// booking in the filtered range (not just the page on screen), by the
+// same rules buildBookingReportRows applies per row: tax figures only from
+// a checked-out booking's finalized invoice, payments net of refunds,
+// "retained" only on a cancelled booking. Lean aggregate queries, so a
+// "This Year" range doesn't pay for the per-row enrichment.
+async function summarizeBookingMoney(prisma, bookings) {
+  const ids = bookings.map((b) => b.id);
+  const empty = { taxableValue: 0, cgst: 0, sgst: 0, discount: 0, otherCharges: 0, total: 0, paid: 0, refunded: 0, retained: 0 };
+  if (ids.length === 0) return empty;
+
+  const checkedOutIds = new Set(bookings.filter((b) => b.status.code === "checked_out").map((b) => b.id));
+  const cancelledIds = new Set(bookings.filter((b) => b.status.code === "cancelled").map((b) => b.id));
+  const countedPayment = { bookingId: { in: ids }, status: { code: { notIn: ["failed", "refunded"] } } };
+
+  const [invoices, charges, payments] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { bookingId: { in: [...checkedOutIds] }, isCancelled: false, isFinalized: true },
+      select: { subtotal: true, taxAmount: true, taxRateSnapshot: true, total: true, snapshot: true },
+    }),
+    prisma.bookingCharge.groupBy({ by: ["type"], where: { bookingId: { in: ids } }, _sum: { amount: true } }),
+    prisma.payment.groupBy({ by: ["bookingId", "type"], where: countedPayment, _sum: { amount: true } }),
+  ]);
+
+  const lines = invoices.flatMap(taxLinesOf);
+  const chargeSum = (type) => Number(charges.find((c) => c.type === type)?._sum.amount ?? 0);
+  const paymentSum = (pred) => sumBy(payments.filter(pred), (p) => Number(p._sum.amount ?? 0));
+  const received = paymentSum((p) => p.type !== "refund");
+  const refunded = paymentSum((p) => p.type === "refund");
+  const retained = round2(
+    paymentSum((p) => cancelledIds.has(p.bookingId) && p.type !== "refund") - paymentSum((p) => cancelledIds.has(p.bookingId) && p.type === "refund")
+  );
+
+  return {
+    taxableValue: sumBy(invoices, (i) => Number(i.subtotal)),
+    cgst: sumBy(lines, (l) => l.cgst),
+    sgst: sumBy(lines, (l) => l.sgst),
+    discount: round2(chargeSum("discount")),
+    otherCharges: round2(chargeSum("charge")),
+    total: sumBy(invoices, (i) => Number(i.total)),
+    paid: round2(received - refunded),
+    refunded,
+    retained: Math.max(0, retained),
   };
 }
 
@@ -251,26 +359,24 @@ export async function buildBookingReportRows(prisma, tenantId, filters, { skip, 
     let total = null; // grandTotal + other charges — the final settled amount
 
     if (isCheckedOut && invoice) {
+      const lines = taxLinesOf(invoice);
       taxableValue = Number(invoice.subtotal);
-      const halfTax = round2(Number(invoice.taxAmount) / 2);
-      cgst = halfTax;
-      sgst = round2(Number(invoice.taxAmount) - halfTax);
+      cgst = sumBy(lines, (l) => l.cgst);
+      sgst = sumBy(lines, (l) => l.sgst);
       grandTotal = round2(taxableValue + Number(invoice.taxAmount));
       total = Number(invoice.total);
     }
 
-    const paymentMethods = [...new Set(bPayments.map((p) => p.method.name))];
-    const settlementNote = isCheckedOut
-      ? `Checkout settled via ${paymentMethods.join(", ") || "—"}.${
-          invoice ? ` GST Applied: ${Number(invoice.taxAmount).toFixed(2)}.` : ""
-        } Other/Damages: ${chargesTotal}. Discount: ${discountTotal}.`
-      : null;
+    // Methods the guest actually paid with (refunds excluded) — its own
+    // column now, rather than folded into an auto-generated note that
+    // repeated figures the other columns already show.
+    const paymentMethods = [...new Set(countedPayments.filter((p) => p.type !== "refund").map((p) => p.method.name))];
 
     return {
       id: b.id,
       groupCode: b.groupCode,
       invoiceNumber: invoice?.invoiceNumber ?? null,
-      guest: { name: b.guest.name, phone: b.guest.phone, gstin: b.guest.gstin ?? null },
+      guest: { name: b.guest.name, phone: b.guest.phone, gstin: b.guest.gstin ?? null, companyName: b.guest.companyName ?? null },
       room: b.room.roomNumber,
       roomType: b.room.roomType.name,
       bookedBy: b.createdBy?.name ?? null,
@@ -290,10 +396,11 @@ export async function buildBookingReportRows(prisma, tenantId, filters, { skip, 
       retained: isCancelled ? advance || null : null,
       refunded: refunded || null,
       advance: advance || null,
+      paymentMethods,
       total,
       status: { code: b.status.code, label: b.status.label, color: b.status.color },
       cancelledBy: isCancelled ? (events.cancelled ?? null) : null,
-      notes: [b.notes, settlementNote].filter(Boolean).join("\n") || null,
+      notes: b.notes?.trim() || null,
     };
   });
 
@@ -318,9 +425,9 @@ const CSV_COLUMNS = [
   ["Check-in", (r) => localDateLabel(r.checkIn)],
   ["Check-out", (r) => localDateLabel(r.checkOut)],
   ["Nights", (r) => r.nights],
-  ["Actual In", (r) => (r.actualCheckIn ? new Date(r.actualCheckIn).toISOString() : "")],
+  ["Actual In", (r) => (r.actualCheckIn ? localDateTimeLabel(r.actualCheckIn) : "")],
   ["Checked In By", (r) => r.checkedInBy ?? ""],
-  ["Actual Out", (r) => (r.actualCheckOut ? new Date(r.actualCheckOut).toISOString() : "")],
+  ["Actual Out", (r) => (r.actualCheckOut ? localDateTimeLabel(r.actualCheckOut) : "")],
   ["Checked Out By", (r) => r.checkedOutBy ?? ""],
   ["GSTIN", (r) => r.guest.gstin ?? ""],
   ["Taxable Value", (r) => r.taxableValue ?? ""],
@@ -333,6 +440,7 @@ const CSV_COLUMNS = [
   ["Refunded", (r) => r.refunded ?? ""],
   ["Advance", (r) => r.advance ?? ""],
   ["Total", (r) => r.total ?? ""],
+  ["Paid Via", (r) => r.paymentMethods.join(", ")],
   ["Status", (r) => r.status.label],
   ["Cancelled By", (r) => r.cancelledBy ?? ""],
   ["Notes", (r) => r.notes ?? ""],
@@ -343,8 +451,14 @@ function csvEscape(value) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export function rowsToCsv(rows) {
-  const header = CSV_COLUMNS.map(([label]) => csvEscape(label)).join(",");
-  const lines = rows.map((r, i) => CSV_COLUMNS.map(([, get]) => csvEscape(get(r, i))).join(","));
+// `columns = [[header, (row, index) => value], ...]` — shared by every
+// report's CSV export so quoting/escaping is done one way.
+export function toCsv(columns, rows) {
+  const header = columns.map(([label]) => csvEscape(label)).join(",");
+  const lines = rows.map((r, i) => columns.map(([, get]) => csvEscape(get(r, i))).join(","));
   return [header, ...lines].join("\n");
+}
+
+export function rowsToCsv(rows) {
+  return toCsv(CSV_COLUMNS, rows);
 }
