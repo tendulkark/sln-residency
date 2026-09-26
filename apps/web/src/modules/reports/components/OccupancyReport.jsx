@@ -31,7 +31,9 @@ export default function OccupancyReport({ from, to }) {
   if (data === undefined) return <ReportLoadState query={query} title="Couldn't load the occupancy report" cards={5} />;
 
   if (data.totalRooms === 0) {
-    return <EmptyState icon={BedDouble} title="No rooms set up yet" subtitle="Occupancy is worked out against your rooms — add them in Rooms Setup." />;
+    return (
+      <EmptyState icon={BedDouble} title="No rooms set up yet" subtitle="Occupancy is worked out against your rooms — add them in Rooms Setup." />
+    );
   }
 
   const { actual, onTheBooks } = data;
@@ -47,37 +49,45 @@ export default function OccupancyReport({ from, to }) {
       const side = d.actual ? acc.actual : acc.ahead;
       side.sold += d.occupiedRooms;
       side.available += d.availableRooms;
-    }
+    },
   );
   const showsBoth = actual.days > 0 && onTheBooks.days > 0;
-  const soldTypes = data.byRoomType.reduce((t, r) => ({ sold: t.sold + r.roomNightsSold, available: t.available + r.roomNightsAvailable, revenue: t.revenue + r.roomRevenue }), {
-    sold: 0,
-    available: 0,
-    revenue: 0,
-  });
+  const soldTypes = data.byRoomType.reduce(
+    (t, r) => ({ sold: t.sold + r.roomNightsSold, available: t.available + r.roomNightsAvailable, revenue: t.revenue + r.roomRevenue }),
+    {
+      sold: 0,
+      available: 0,
+      revenue: 0,
+    },
+  );
+
+  const howCounted = (
+    <InfoTip label="How occupancy is counted">
+      <p>
+        A room counts as occupied on a date if a guest is in it at midnight at the end of that date. A stay that starts and ends the same day counts
+        for that day.
+      </p>
+      <p>
+        <strong>Actual</strong> covers nights already past, timed by real check-in/check-out. <strong>On the books</strong> covers tonight and later:
+        guests in house plus arrivals still expected. The two are never averaged together.
+      </p>
+      <p>Rooms under a maintenance block that night aren't counted as available.</p>
+      <p>
+        <strong>Avg. rate per sold night</strong> (ADR) = room revenue ÷ room-nights sold. <strong>Revenue per available night</strong> (RevPAR) =
+        room revenue ÷ room-nights available. Room revenue excludes GST and discounts, and other charges.
+      </p>
+    </InfoTip>
+  );
 
   return (
     <Refetching active={query.isFetching && query.isPlaceholderData}>
-      <div className="mb-3 flex justify-end print:hidden">
-        <InfoTip label="How occupancy is counted">
-          <p>A room counts as occupied on a date if a guest is in it at midnight at the end of that date. A stay that starts and ends the same day counts for that day.</p>
-          <p>
-            <strong>Actual</strong> covers nights already past, timed by real check-in/check-out. <strong>On the books</strong> covers tonight and later: guests in house plus arrivals still expected. The two are
-            never averaged together.
-          </p>
-          <p>Rooms under a maintenance block that night aren't counted as available.</p>
-          <p>
-            <strong>Avg. rate per sold night</strong> (ADR) = room revenue ÷ room-nights sold. <strong>Revenue per available night</strong> (RevPAR) = room revenue ÷ room-nights available. Room revenue excludes GST
-            and discounts, and other charges.
-          </p>
-        </InfoTip>
-      </div>
-
       <KpiGrid columns={onTheBooks.days > 0 ? 5 : 4}>
         <KpiCard
           label="Occupancy"
           value={actual.days ? `${actual.occupancyPercent}%` : "—"}
-          sub={actual.days ? `${actual.roomNightsSold} of ${actual.roomNightsAvailable} room-nights sold` : "No nights in this period have passed yet"}
+          sub={
+            actual.days ? `${actual.roomNightsSold} of ${actual.roomNightsAvailable} room-nights sold` : "No nights in this period have passed yet"
+          }
         />
         <KpiCard label="Avg. rate per sold night" value={actual.roomNightsSold ? formatCurrencyExact(actual.adr) : "—"} sub="ADR · excl. GST" />
         <KpiCard label="Revenue per available night" value={actual.days ? formatCurrencyExact(actual.revpar) : "—"} sub="RevPAR · excl. GST" />
@@ -92,19 +102,17 @@ export default function OccupancyReport({ from, to }) {
       </KpiGrid>
 
       {points.length > 1 && (
-        <ReportPanel className="mb-4" title={`Occupancy per ${bucket}`} subtitle={`${data.totalRooms} rooms · % of available rooms occupied at night audit`}>
+        <ReportPanel
+          className="mb-4"
+          title={`Occupancy per ${bucket}`}
+          subtitle={`${data.totalRooms} rooms · % of available rooms occupied at midnight`}
+          actions={howCounted}
+        >
           <TrendChart
             ariaLabel={`Occupancy per ${bucket}`}
             yMax={100}
             format={(v) => `${v}%`}
-            legend={
-              showsBoth
-                ? [
-                    { label: "Actual" },
-                    { label: "On the books", muted: true },
-                  ]
-                : undefined
-            }
+            legend={showsBoth ? [{ label: "Actual" }, { label: "On the books", muted: true }] : undefined}
             data={points.map((p) => {
               const isAhead = p.actual.available === 0;
               const shown = isAhead ? p.ahead : p.actual;
@@ -129,7 +137,11 @@ export default function OccupancyReport({ from, to }) {
         </ReportPanel>
       )}
 
-      <ReportPanel title="By room type" subtitle="Nights already past only — the same basis as the headline figures.">
+      <ReportPanel
+        title="By room type"
+        subtitle="Nights already past only — the same basis as the headline figures."
+        actions={points.length > 1 ? undefined : howCounted}
+      >
         <DataTable maxHeight="none" minWidth="720px">
           <thead>
             <tr>
@@ -144,7 +156,7 @@ export default function OccupancyReport({ from, to }) {
           <tbody>
             {data.byRoomType.map((t) => (
               <Tr key={t.name}>
-                <Td pinned className="font-medium text-ink">
+                <Td pinned className="whitespace-nowrap font-medium text-ink">
                   {t.name}
                 </Td>
                 <Td align="right" className="tabular-nums">

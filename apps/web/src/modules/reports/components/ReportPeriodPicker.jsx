@@ -94,7 +94,12 @@ export default function ReportPeriodPicker({ period, anchor, from, to, onChange 
           {period === "month" && <MonthYearPicker anchorDate={anchor} onSelect={(d) => set({ anchor: d })} />}
           {period === "year" && <YearPicker anchorDate={anchor} onSelect={(d) => set({ anchor: d })} />}
           {(period === "day" || period === "week") && (
-            <MiniDatePicker label={periodLabel(period, anchor)} anchorDate={anchor} onSelect={(d) => set({ anchor: d })} highlightWeek={period === "week"} />
+            <MiniDatePicker
+              label={periodLabel(period, anchor)}
+              anchorDate={anchor}
+              onSelect={(d) => set({ anchor: d })}
+              highlightWeek={period === "week"}
+            />
           )}
           <Button variant="outline" size="sm" aria-label={`Next ${period}`} onClick={() => set({ anchor: stepAnchor(period, anchor, 1) })}>
             <ChevronRight className="h-4 w-4" />

@@ -6,7 +6,16 @@ import { formatCurrencyExact, formatMoney } from "@/lib/format.js";
 import { BarList, Button, DataTable, EmptyState, Td, Tf, Th, Tr, TrendChart } from "@/ui/index.js";
 import { REPORTS_REVENUE_QUERY_KEY } from "@/modules/reports/constants.js";
 import { bucketFor, bucketLabel, bucketize } from "@/modules/reports/reportPeriod.js";
-import { InfoTip, KpiCard, KpiGrid, ReportLoadState, ReportPanel, Refetching, percentChange } from "@/modules/reports/components/reportParts.jsx";
+import {
+  REPORT_TABLE_MAX_HEIGHT,
+  InfoTip,
+  KpiCard,
+  KpiGrid,
+  ReportLoadState,
+  ReportPanel,
+  Refetching,
+  percentChange,
+} from "@/modules/reports/components/reportParts.jsx";
 
 const BUCKET_NOUN = { day: "day", week: "week", month: "month" };
 
@@ -50,7 +59,7 @@ export default function RevenueReport({ from, to }) {
       acc.net += d.net;
       acc.count += d.count;
       for (const [m, v] of Object.entries(d.byMethod)) acc.byMethod[m] = (acc.byMethod[m] ?? 0) + v;
-    }
+    },
   );
   const nothing = data.received === 0 && data.refunded === 0 && data.billed.invoices === 0;
   const netTotal = data.net || 1;
@@ -65,7 +74,12 @@ export default function RevenueReport({ from, to }) {
           sub={`Received ${formatCurrencyExact(data.received)} · refunded ${formatCurrencyExact(data.refunded)}`}
         />
         <KpiCard label="Received" value={formatCurrencyExact(data.received)} delta={percentChange(data.received, data.previous.received)} />
-        <KpiCard label="Refunds paid out" value={formatCurrencyExact(data.refunded)} delta={percentChange(data.refunded, data.previous.refunded)} upIsGood={false} />
+        <KpiCard
+          label="Refunds paid out"
+          value={formatCurrencyExact(data.refunded)}
+          delta={percentChange(data.refunded, data.previous.refunded)}
+          upIsGood={false}
+        />
         <KpiCard
           label="Billed"
           value={formatCurrencyExact(data.billed.amount)}
@@ -75,7 +89,11 @@ export default function RevenueReport({ from, to }) {
       </KpiGrid>
 
       {nothing ? (
-        <EmptyState icon={IndianRupee} title="No money in or out in this period" subtitle="Payments and refunds show up here as soon as they're recorded at the desk." />
+        <EmptyState
+          icon={IndianRupee}
+          title="No money in or out in this period"
+          subtitle="Payments and refunds show up here as soon as they're recorded at the desk."
+        />
       ) : (
         <>
           {periods.length > 1 && (
@@ -97,7 +115,13 @@ export default function RevenueReport({ from, to }) {
             >
               <TrendChart
                 ariaLabel={`Net collected per ${BUCKET_NOUN[bucket]}`}
-                data={periods.map((p) => ({ key: p.key, label: bucketLabel(p.key, bucket), longLabel: bucketLabel(p.key, bucket, { long: true }), value: Math.round(p.net * 100) / 100, raw: p }))}
+                data={periods.map((p) => ({
+                  key: p.key,
+                  label: bucketLabel(p.key, bucket),
+                  longLabel: bucketLabel(p.key, bucket, { long: true }),
+                  value: Math.round(p.net * 100) / 100,
+                  raw: p,
+                }))}
                 format={(v) => formatCurrencyExact(v)}
                 tooltip={(d) => [
                   { label: "Received", value: formatCurrencyExact(d.raw.received) },
@@ -108,7 +132,7 @@ export default function RevenueReport({ from, to }) {
             </ReportPanel>
           )}
 
-          <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="mb-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
             <ReportPanel title="By payment method" subtitle="Net of refunds, with each method's share of the total.">
               <BarList
                 items={data.byMethod.map((m) => ({
@@ -153,7 +177,7 @@ export default function RevenueReport({ from, to }) {
             }
           >
             {downloadError && <div className="mb-3 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">{downloadError}</div>}
-            <DataTable maxHeight="60vh" minWidth={`${260 + methods.length * 130 + 260}px`}>
+            <DataTable maxHeight={REPORT_TABLE_MAX_HEIGHT} minWidth={`${260 + methods.length * 130 + 260}px`}>
               <thead>
                 <tr>
                   <Th pinned>{bucket === "day" ? "Date" : bucket === "week" ? "Week" : "Month"}</Th>

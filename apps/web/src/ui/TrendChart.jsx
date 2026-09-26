@@ -110,7 +110,14 @@ export default function TrendChart({ data, format = (v) => String(v), yMax, heig
 
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={AXIS_WIDTH} x2={width} y1={y(t)} y2={y(t)} stroke={t === 0 ? "var(--color-line-strong)" : "var(--color-line-soft)"} strokeWidth="1" />
+                <line
+                  x1={AXIS_WIDTH}
+                  x2={width}
+                  y1={y(t)}
+                  y2={y(t)}
+                  stroke={t === 0 ? "var(--color-line-strong)" : "var(--color-line-soft)"}
+                  strokeWidth="1"
+                />
                 <text x={AXIS_WIDTH - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-ink-muted text-[11px] tabular-nums">
                   {format(t)}
                 </text>
@@ -178,17 +185,21 @@ export default function TrendChart({ data, format = (v) => String(v), yMax, heig
         )}
       </div>
 
-      <table className="sr-only">
-        <caption>{ariaLabel}</caption>
-        <tbody>
-          {data.map((d) => (
-            <tr key={d.key}>
-              <th scope="row">{d.longLabel ?? d.label}</th>
-              <td>{format(d.value)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Hidden on the wrapper, not the table: a <caption> is laid out
+          outside its table's box, so sr-only on the table left it visible. */}
+      <div className="sr-only">
+        <table>
+          <caption>{ariaLabel}</caption>
+          <tbody>
+            {data.map((d) => (
+              <tr key={d.key}>
+                <th scope="row">{d.longLabel ?? d.label}</th>
+                <td>{format(d.value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
